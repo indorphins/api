@@ -1,0 +1,26 @@
+{
+  "name": "indorphins-be",
+  "version": "1.0.0",
+  "description": "server code for indorphins",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexlindsay/indorphins-be.git"
+  },
+  "author": "Alex Lindsay",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alexlindsay/indorphins-be/issues"
+  },
+  "homepage": "https://github.com/alexlindsay/indorphins-be#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "node-fetch": "^2.6.0",
+    "path": "^0.12.7",
+    "url": "^0.11.0"
+  }
+}
