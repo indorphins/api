@@ -7,6 +7,7 @@ const DAILY_CO_API_KEY =
 
 // Takes in properties in body, create room properties are { name: '', privacy: '', properties: {} }
 async function createRoom(req, res) {
+	console.log('START CREATE ROOM SERVER');
 	try {
 		console.log('Create room req body is ', req.body);
 		const target = dailyCoUrl + '/v1/rooms';
@@ -26,7 +27,7 @@ async function createRoom(req, res) {
 		res.status(200).json(json);
 	} catch (e) {
 		console.log('createRoom error: ', e);
-		throw new Error(e);
+		res.status(400).send(e);
 	}
 }
 
@@ -102,6 +103,7 @@ async function createToken(req, res) {
 			body: JSON.stringify(body)
 		};
 
+		console.log('create token options are ', options);
 		const response = await fetch(target, options);
 		const json = await response.json();
 		res.status(200).json(json);

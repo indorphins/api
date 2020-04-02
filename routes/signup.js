@@ -5,16 +5,18 @@ const path = require('path');
 const userModelController = require('../controller/userModelController');
 
 signup.get('/', (req, res) => {
-  res.status(200).sendFile(path.resolve(__dirname, '../../client/signup.html'));
+	console.log('signup GET');
+	// res.status(200).sendFile(path.resolve(__dirname, '../../client/signup.html'));
 });
 
 signup.get('/signup.css', (req, res) => {
-  res.status(200).sendFile(path.resolve(__dirname, '../../client/signup.css'))
+	console.log('signup GET css');
+	// res.status(200).sendFile(path.resolve(__dirname, '../../client/signup.css'))
 });
 
 signup.post('/', userModelController.createUser, (req, res) => {
-  res.status(200).redirect('/');
-})
-
+	console.log('signup POST');
+	// res.status(200).redirect('/');
+});
 
 module.exports = signup;
