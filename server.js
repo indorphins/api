@@ -59,11 +59,9 @@ app.post('/dailco/token', dailycoController.createToken, (req, res) => {
 // 	res.status(200).send();
 // });
 
-console.log('prcoess env is ', process.env);
-
 const options = {
-	key: fs.readFileSync('./certKeys/indorphins-godaddy-private-key.key'),
-	cert: fs.readFileSync('./certKeys/indorphins_gd_cert.crt'),
+	key: fs.readFileSync('./certKeys/indorphins-2-godaddy-private.key'),
+	cert: fs.readFileSync('./certKeys/indorphins-2.pem'),
 };
 
 https
