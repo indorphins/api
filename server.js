@@ -10,6 +10,9 @@ const loginRouter = require('./routes/login');
 const signupRouter = require('./routes/signup');
 const profileRouter = require('./routes/profile');
 const dailycoRouter = require('./routes/dailyco');
+const https = require('https');
+const fs = require('fs');
+
 app.use(cors());
 console.log('cors used');
 app.use(express.json());
@@ -56,4 +59,13 @@ app.post('/dailco/token', dailycoController.createToken, (req, res) => {
 // 	res.status(200).send();
 // });
 
-app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+console.log('prcoess env is ', process.env);
+
+const options = {
+	key: fs.readFileSync('./certKeys/indorphins-godaddy-private-key.key'),
+	cert: fs.readFileSync('./certKeys/indorphins_gd_cert.crt'),
+};
+
+https
+	.createServer(options, app)
+	.listen(PORT, () => console.log(`Listening on port ${PORT}`));
