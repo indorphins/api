@@ -58,15 +58,15 @@ app.post('/dailco/token', dailycoController.createToken, (req, res) => {
 // 	res.status(200).send();
 // });
 
-const options = {
-	key: fs.readFileSync('./certKeys/indorphins-2-godaddy-private.key'),
-	cert: fs.readFileSync('./certKeys/indorphins-2.crt'),
-};
-
 // const options = {
-// 	key: fs.readFileSync('./certKeys/server.key'),
-// 	cert: fs.readFileSync('./certKeys/server.crt'),
+// 	key: fs.readFileSync('./certKeys/indorphins-2-godaddy-private.key'),
+// 	cert: fs.readFileSync('./certKeys/indorphins-2.crt'),
 // };
+
+const options = {
+	key: fs.readFileSync('./certKeys/server.key'),
+	cert: fs.readFileSync('./certKeys/server.crt'),
+};
 
 https
 	.createServer(options, app)
