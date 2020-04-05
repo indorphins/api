@@ -14,7 +14,6 @@ const https = require('https');
 const fs = require('fs');
 
 app.use(cors());
-console.log('cors used');
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -61,8 +60,13 @@ app.post('/dailco/token', dailycoController.createToken, (req, res) => {
 
 const options = {
 	key: fs.readFileSync('./certKeys/indorphins-2-godaddy-private.key'),
-	cert: fs.readFileSync('./certKeys/indorphins-2.pem'),
+	cert: fs.readFileSync('./certKeys/indorphins-2.crt'),
 };
+
+// const options = {
+// 	key: fs.readFileSync('./certKeys/server.key'),
+// 	cert: fs.readFileSync('./certKeys/server.crt'),
+// };
 
 https
 	.createServer(options, app)
