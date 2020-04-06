@@ -1,5 +1,4 @@
 const express = require('express');
-const path = require('path');
 const app = express();
 const PORT = 3001;
 const bodyParser = require('body-parser');
@@ -52,22 +51,4 @@ app.post('/dailco/token', dailycoController.createToken, (req, res) => {
 	res.status(200).send();
 });
 
-// app.get('/build/bundle.js', (req, res) => {
-// 	// res.status(200).sendFile(path.resolve(__dirname, '../build/bundle.js'));
-// 	console.log('got bundle');
-// 	res.status(200).send();
-// });
-
-// const options = {
-// 	key: fs.readFileSync('./certKeys/indorphins-2-godaddy-private.key'),
-// 	cert: fs.readFileSync('./certKeys/indorphins-2.crt'),
-// };
-
-const options = {
-	key: fs.readFileSync('./certKeys/server.key'),
-	cert: fs.readFileSync('./certKeys/server.crt'),
-};
-
-https
-	.createServer(options, app)
-	.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
