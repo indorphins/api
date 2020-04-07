@@ -3,22 +3,16 @@ const app = express();
 const PORT = 3001;
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
-const cors = require('cors');
 const dailycoController = require('./controller/dailycoController');
 const loginRouter = require('./routes/login');
 const signupRouter = require('./routes/signup');
 const profileRouter = require('./routes/profile');
 const dailycoRouter = require('./routes/dailyco');
-const https = require('https');
-const fs = require('fs');
 
-app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-app.options('*', cors()); // include before other routes
 
 app.use('/', loginRouter);
 app.use('/signup', signupRouter);
