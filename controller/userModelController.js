@@ -19,9 +19,8 @@ userModelController.createUser = (req, res, next) => {
 		email,
 		password,
 		phone_number,
-		user_type
+		user_type,
 	} = req.body;
-	console.log('req.body: ', req.body);
 	const text = `
             INSERT INTO users (created_at, first_name, last_name, email, password, phone_number, user_type)
             values($1, $2, $3, $4, $5, $6, $7)
@@ -33,12 +32,21 @@ userModelController.createUser = (req, res, next) => {
 		email,
 		password,
 		phone_number,
-		user_type
+		user_type,
 	];
 
+	// TODO validate email is not taken, if possible make db throw error for trying to duplicate unique key?
+	// res.status(400).json({success: false, error: 'email_taken'})
+
 	db.query(text, values)
-		.then(response => console.log(response))
-		.catch(err => console.log(err));
+		.then((response) => {
+			console.log('Create User success');
+			res.status(200).json({ success: true });
+		})
+		.catch((err) => {
+			console.log('Create User error', err);
+			res.status(400).json({ success: false, error: err });
+		});
 
 	next();
 };
@@ -46,7 +54,7 @@ userModelController.createUser = (req, res, next) => {
 //used for login verification
 userModelController.findUser = (req, res, next) => {
 	const { username, password } = req.body;
-	console.log('req.body: ', req.body);
+	console.log('user / pass : ', username, password);
 	const text = `
             SELECT email
             FROM users
@@ -55,7 +63,8 @@ userModelController.findUser = (req, res, next) => {
     `;
 	// const values = [username, password];
 	db.query(text)
-		.then(response => {
+		.then((response) => {
+			console.log('Login got ', response);
 			//if the user doesn't exist or username/password is incorrect
 			if (response.rows[0]) {
 				console.log(
@@ -63,13 +72,18 @@ userModelController.findUser = (req, res, next) => {
 					response.rows[0].username,
 					' has been verified through SQL DB'
 				);
+				// TODO only return needed fields (not password)
+				res.status(200).json({ success: true, user: response.rows[0] });
 				next();
 			} else {
 				console.log('Username or password is invalid.');
-				res.send('Invalid username or password. Please sign up or try again.');
+				res.status(400).json({ success: false, error: 'invalid_credentials' });
 			}
 		})
-		.catch(err => console.log(err));
+		.catch((err) => {
+			console.log('Find User error ', err);
+			res.status(400).json({ success: false, error: err });
+		});
 };
 
 // used to find games played and correct answers
@@ -80,7 +94,7 @@ userModelController.findStats = (req, res, next) => {
         WHERE username = '${req.params.username}'
     `;
 	db.query(text)
-		.then(response => {
+		.then((response) => {
 			if (response.rows[0]) {
 				console.log(
 					'User ',
@@ -97,17 +111,17 @@ userModelController.findStats = (req, res, next) => {
 				res.send('Error occurred. Username is not sending properly.');
 			}
 		})
-		.catch(err => console.log(err));
+		.catch((err) => console.log(err));
 };
 
 userModelController.questions = async (req, res, next) => {
 	const url = 'https://opentdb.com/api.php?amount=10&category=9&type=multiple';
 	await fetch(url)
-		.then(response => response.json())
-		.then(data => {
+		.then((response) => response.json())
+		.then((data) => {
 			res.locals.results = data.results;
 		})
-		.catch(err => console.log(err));
+		.catch((err) => console.log(err));
 	next();
 };
 
@@ -122,8 +136,8 @@ userModelController.updateUser = async (req, res, next) => {
 
 	await db
 		.query(text1)
-		.then(response => (res.locals.updatedStats = response.rows[0]))
-		.catch(err => console.log(err));
+		.then((response) => (res.locals.updatedStats = response.rows[0]))
+		.catch((err) => console.log(err));
 
 	res.locals.games_played = res.locals.updatedStats.games_played + 1;
 	res.locals.correct_answers =
@@ -138,8 +152,8 @@ userModelController.updateUser = async (req, res, next) => {
 
 	await db
 		.query(text2)
-		.then(response => console.log(response))
-		.catch(err => console.log(err));
+		.then((response) => console.log(response))
+		.catch((err) => console.log(err));
 
 	next();
 };
@@ -152,8 +166,8 @@ userModelController.deleteUser = async (req, res, next) => {
     `;
 	await db
 		.query(text)
-		.then(response => console.log(`${username} has been deleted`))
-		.catch(err => console.log(err));
+		.then((response) => console.log(`${username} has been deleted`))
+		.catch((err) => console.log(err));
 	next();
 };
 

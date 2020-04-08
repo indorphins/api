@@ -11,9 +11,6 @@ profile.get('/profile.css', (req, res) => {
 
 profile.post('/', userModelController.findUser, (req, res) => {
 	console.log('profile POST');
-	// res
-	// .status(200)
-	// .sendFile(path.resolve(__dirname, '../../client/profile.html'));
 });
 
 module.exports = profile;
