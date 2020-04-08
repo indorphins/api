@@ -1,6 +1,5 @@
 const express = require('express');
 const login = express.Router();
-const path = require('path');
 
 const userModelController = require('../controller/userModelController');
 

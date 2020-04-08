@@ -56,7 +56,7 @@ userModelController.findUser = (req, res, next) => {
 	const { username, password } = req.body;
 	console.log('user / pass : ', username, password);
 	const text = `
-            SELECT email
+            SELECT email, first_name, last_name, phone_number, user_type
             FROM users
             WHERE email = '${username}' AND password = '${password}'
 
