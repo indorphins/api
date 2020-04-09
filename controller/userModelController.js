@@ -44,8 +44,15 @@ userModelController.createUser = (req, res, next) => {
 			res.status(200).json({ success: true });
 		})
 		.catch((err) => {
-			console.log('Create User error', err);
-			res.status(400).json({ success: false, error: err });
+			console.log('Create User error', typeof err, ' ', err);
+			let errMsg = { success: false, error: err };
+			if (err.constraint === 'users_email_key') {
+				errMsg = { success: false, error: 'duplicate_email' };
+			}
+			if (err.constraint === 'users_phone_number_key') {
+				errMsg = { success: false, error: 'duplicate_phone' };
+			}
+			res.status(400).json(errMsg);
 		});
 
 	next();
