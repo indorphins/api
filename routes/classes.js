@@ -11,4 +11,8 @@ classes.post('/', classesController.createClass, (req, res) => {
 	console.log('classes POST Created');
 });
 
+classes.put('/', classesController.endClass, (req, res) => {
+	console.log('classes PUT Created')
+})
+
 module.exports = classes;
