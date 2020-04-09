@@ -46,7 +46,6 @@ classesControler.createClass = (req, res, next) => {
 
 // used to find games played and correct answers
 classesControler.getClasses = (req, res, next) => {
-	console.log('THIS IS NEW TIME', time.getTime())
 	const text = `
         SELECT chat_room_name, class_id
         FROM classes
