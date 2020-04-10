@@ -35,12 +35,11 @@ userModelController.createUser = (req, res, next) => {
 		user_type,
 	];
 
-	// TODO validate email is not taken, if possible make db throw error for trying to duplicate unique key?
-	// res.status(400).json({success: false, error: 'email_taken'})
+	// TODO return user that was just created with all its fields
 
 	db.query(text, values)
 		.then((response) => {
-			console.log('Create User success');
+			console.log('Create User success ', response);
 			res.status(200).json({ success: true });
 		})
 		.catch((err) => {

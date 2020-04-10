@@ -3,12 +3,8 @@ const classes = express.Router();
 
 const classesController = require('../controller/classesController');
 
-classes.get('/', classesController.getClasses, (req, res) => {
-	console.log('classes GET');
-});
+classes.get('/', classesController.getClasses, (req, res) => {});
 
-classes.post('/', classesController.createClass, (req, res) => {
-	console.log('classes POST Created');
-});
+classes.post('/', classesController.createClass, (req, res) => {});
 
 module.exports = classes;

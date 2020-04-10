@@ -32,10 +32,11 @@ classesControler.createClass = (req, res, next) => {
 	];
 	db.query(text, values)
 		.then((response) => {
-			console.log('Create Class success');
+			console.log('Create Class success: ', response);
 			res.status(200).json({ success: true, class_name: chat_room_name });
 		})
 		.catch((err) => {
+			console.log('Create Class error: ', err);
 			res.status(400).json({ success: false, error: err });
 		});
 	next();
