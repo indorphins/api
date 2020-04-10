@@ -11,5 +11,9 @@ login.get('/index.css', (req, res) => {
 	console.log('Login GET css');
 	// res.status(200).sendFile(path.resolve(__dirname, '../../client/index.css'))
 });
+// to test swtich with getAllParticipants
+login.get('/users', userModelController.getAllInstructors, (req, res) => {
+	console.log('Login GET USERS');
+});
 
 module.exports = login;

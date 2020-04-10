@@ -7,4 +7,8 @@ classes.get('/', classesController.getClasses, (req, res) => {});
 
 classes.post('/', classesController.createClass, (req, res) => {});
 
+classes.put('/', classesController.endClass, (req, res) => {
+	console.log('classes PUT Created')
+})
+
 module.exports = classes;
