@@ -4,7 +4,7 @@ const PORT = 3001;
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const dailycoController = require('./controller/dailycoController');
+
 const loginRouter = require('./routes/login');
 const signupRouter = require('./routes/signup');
 const profileRouter = require('./routes/profile');
@@ -18,13 +18,14 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.options('*', cors()); // include before other routes
-
+// routes
 app.use('/signup', signupRouter);
 app.use('/profile', profileRouter);
 app.use('/dailyco', dailycoRouter);
 app.use('/login', loginRouter);
 app.use('/classes', classesRouter);
 
+// what is this route for? 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'application/json');
 	res.send(JSON.stringify({ status: `Active` }));

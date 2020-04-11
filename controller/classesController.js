@@ -1,14 +1,17 @@
 const db = require('../data/userModel');
 const fetch = require('node-fetch');
+// function to get timestamp of current time (formated to send to db)
 const time = require('../utils/getTime');
 
 const classesControler = {};
 
-
+// create a class (currently set to active when classs is created)
 classesControler.createClass = (req, res, next) => {
 	const liveTime = time.getTime();
 	// participants and insturctor id can be null right now for MVP
 	const { status, instructor_name, chat_room_name, total_spots, user_type } = req.body;
+	// checks if instructor is creating a class (logs err if user is not a insturctor)
+	// will add check for admin for future devlopment
 	if (user_type === 1) {
 
 		console.log('Create Class params: ', {
@@ -44,7 +47,7 @@ classesControler.createClass = (req, res, next) => {
 	next();
 };
 
-// used to find games played and correct answers
+// get list of all current active classes (status can chanage in query to get diffrent state of classes)
 classesControler.getClasses = (req, res, next) => {
 	const text = `
         SELECT chat_room_name, class_id
@@ -61,7 +64,7 @@ classesControler.getClasses = (req, res, next) => {
 		});
 	next();
 };
-
+// ends class with time stamp and status change to closed
 classesControler.endClass = (req, res, next) => {
 	const liveTime = time.getTime();
 	// participants and insturctor id can be null right now for MVP
