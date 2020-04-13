@@ -8,21 +8,31 @@ const classesControler = {};
 // create a class (currently set to active when classs is created)
 classesControler.createClass = (req, res, next) => {
 	const liveTime = time.getTime();
-	// participants and insturctor id can be null right now for MVP
-	const { status, instructor_name, chat_room_name, total_spots, user_type } = req.body;
+	// participants can be null
+	// user_id will = instructor_id so make sure to pass in user_id
+	const {
+		status,
+		instructor_name,
+		chat_room_name,
+		total_spots,
+		user_type,
+		user_id
+	} = req.body;
 	// checks if instructor is creating a class (logs err if user is not a insturctor)
 	// will add check for admin for future devlopment
 	if (user_type === 1) {
-
 		console.log('Create Class params: ', {
 			status,
 			instructor_name,
 			chat_room_name,
 			total_spots,
+			user_id
 		});
+
 		const text = `
 		INSERT INTO classes (created_at, status, instructor_name, chat_room_name, total_spots, instructor_id)
-		values($1, $2, $3, $4, $5, (Select user_id from users WHERE user_id = 1))
+		values($1, $2, $3, $4, $5, (Select user_id from users WHERE user_id = ${user_id}))
+		RETURNING created_at, status, instructor_name, chat_room_name, total_spots, instructor_id
     `;
 		const values = [
 			liveTime,
@@ -33,16 +43,18 @@ classesControler.createClass = (req, res, next) => {
 		];
 		db.query(text, values)
 			.then((response) => {
-				console.log('Create Class success');
-				res.status(200).json({ success: true, class_name: chat_room_name });
+				console.log('Create Class success: ', response);
+				res.status(200).json({ success: true, class_name: response.rows });
 			})
 			.catch((err) => {
+				console.log('Create Class error: ', err);
 				res.status(400).json({ success: false, error: err });
 			});
-
-	}
-	else {
-		console.log('user must be an instructor to create a class') // note this is just for now we should find a better way to work this
+	} else {
+		console.log('user must be an instructor to create a class'); // note this is just for now we should find a better way to work this
+		res
+			.status(400)
+			.json({ success: false, error: 'only_instructors_can_make_classes' });
 	}
 	next();
 };
@@ -74,11 +86,12 @@ classesControler.endClass = (req, res, next) => {
 	UPDATE classes
 	SET updated_at = $1, status = 'closed'
 	WHERE class_id = '${class_id}'
+	RETURNING status
 `;
-	const values = [liveTime]
+	const values = [liveTime];
 	db.query(text, values)
 		.then((response) => {
-			res.status(200).json({ success: true });
+			res.status(200).json({ success: true, status: response.rows });
 		})
 		.catch((err) => console.log(err));
 	next();

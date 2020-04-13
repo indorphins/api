@@ -5,7 +5,7 @@ const time = require('../utils/getTime');
 
 const userModelController = {};
 
-// Contorller to get all participant users 
+// Contorller to get all participant users
 userModelController.getAllParticipants = (req, res, next) => {
 	const text = `
 	SELECT * FROM public.users WHERE user_type = '0'
@@ -42,7 +42,7 @@ userModelController.getAllInstructors = (req, res, next) => {
 };
 
 // action whenever a new user signs up - stored in users Table
-// email && phone number must be unique 
+// email && phone number must be unique
 userModelController.createUser = async (req, res, next) => {
 	// check to see if phone number is proper format
 	if (req.body.phone_number.length === 10) {
@@ -81,11 +81,17 @@ userModelController.createUser = async (req, res, next) => {
 			})
 			.catch((err) => {
 				console.log('Create User error', err);
-				res.status(400).json({ success: false, error: 'email and/or phone number already taken' });
+				let errMsg = { success: false, error: err };
+				if (err.constraint === 'users_email_key') {
+					errMsg = { success: false, error: 'duplicate_email' };
+				}
+				if (err.constraint === 'users_phone_number_key') {
+					errMsg = { success: false, error: 'duplicate_phone' };
+				}
+				res.status(400).json(errMsg);
 			});
-	}
-	else {
-		res.status(400).json({ success: false, error: 'invalid phone number' })
+	} else {
+		res.status(400).json({ success: false, error: 'invalid phone number' });
 	}
 
 	next();
@@ -137,14 +143,13 @@ userModelController.updateUser = (req, res, next) => {
 `;
 	db.query(text)
 		.then((response) => {
-			res.status(200).json({ success: true, user: response.rows })
+			res.status(200).json({ success: true, user: response.rows });
 		})
 		.catch((err) => {
 			res.status(400).json({ success: false, error: err });
-		})
+		});
 
 	next();
-}
-
+};
 
 module.exports = userModelController;
