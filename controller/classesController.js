@@ -6,6 +6,7 @@ const time = require('../utils/getTime');
 const classesControler = {};
 
 // create a class (currently set to active when classs is created)
+// TODO add duration field to initializer and return value
 classesControler.createClass = (req, res, next) => {
 	const liveTime = time.getTime();
 	// participants can be null
@@ -16,7 +17,7 @@ classesControler.createClass = (req, res, next) => {
 		chat_room_name,
 		total_spots,
 		user_type,
-		user_id
+		user_id,
 	} = req.body;
 	// checks if instructor is creating a class (logs err if user is not a insturctor)
 	// will add check for admin for future devlopment
@@ -26,7 +27,7 @@ classesControler.createClass = (req, res, next) => {
 			instructor_name,
 			chat_room_name,
 			total_spots,
-			user_id
+			user_id,
 		});
 
 		const text = `
@@ -59,10 +60,12 @@ classesControler.createClass = (req, res, next) => {
 	next();
 };
 
-// get list of all current active classes (status can chanage in query to get diffrent state of classes)
+// get list of all current active classes (status can change in query to get diffrent state of classes)
 classesControler.getClasses = (req, res, next) => {
+	// TODO fix participants spelling in DB and here
+	// TODO add duration
 	const text = `
-        SELECT chat_room_name, class_id
+        SELECT status, chat_room_name, class_id, instructor_name, total_spots, pariticipants, duration
         FROM classes
         WHERE status = 'active'
     `;
@@ -76,24 +79,32 @@ classesControler.getClasses = (req, res, next) => {
 		});
 	next();
 };
-// ends class with time stamp and status change to closed
+
+/*
+ * Ends class with time stamp and status changes to closed
+ * Takes in class_id in req.body, returns success json { success: true }
+ */
 classesControler.endClass = (req, res, next) => {
 	const liveTime = time.getTime();
-	// participants and insturctor id can be null right now for MVP
+	// participants and instructor id can be null right now for MVP
 	const { class_id } = req.body;
 	console.log('req.body: ', req.body);
 	const text = `
 	UPDATE classes
-	SET updated_at = $1, status = 'closed'
+	SET updated_at = $1 , status = 'closed'
 	WHERE class_id = '${class_id}'
 	RETURNING status
 `;
 	const values = [liveTime];
+	console.log('END CLASS id ', class_id);
 	db.query(text, values)
 		.then((response) => {
 			res.status(200).json({ success: true, status: response.rows });
 		})
-		.catch((err) => console.log(err));
+		.catch((err) => {
+			console.log('EndClass Error: ', err);
+			res.status(400).json({ success: false, error: err });
+		});
 	next();
 };
 
