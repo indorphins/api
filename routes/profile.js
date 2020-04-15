@@ -10,7 +10,8 @@ const userModelController = require('../controller/userModelController');
 // });
 
 profile.put('/', userModelController.updateUser, (req, res) => {
-  console.log('profile POST');
+  console.log('Updated PUT')
+  res.status(200)
 });
 
 module.exports = profile;

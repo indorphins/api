@@ -59,7 +59,7 @@ userModelController.createUser = async (req, res, next) => {
 		const text1 = `
 		INSERT INTO users (created_at, first_name, last_name, email, password, phone_number, user_type)
 		values($1, $2, $3, $4, $5, $6, $7)
-		RETURNING created_at, first_name, last_name, email, phone_number, user_type
+		RETURNING user_id, created_at, first_name, last_name, email, phone_number, user_type
 		`;
 		const values = [
 			liveTime,
@@ -132,22 +132,30 @@ userModelController.findUser = (req, res, next) => {
 		});
 };
 
-// has not been tested fully yet boiler plate code to work on
+// NOTE: all values will be updated (undefined varibales with update db as undefined)
+// email and phone number cannot be updated (will be a sepereate controller)
+// another way to do this is to have a conditional for each undefined var get its value and then store that undefined value and then update it with that value
 userModelController.updateUser = (req, res, next) => {
-	const { first_name, last_name, password, email } = req.body;
-	const text = `
-	UPDATE users
-	SET  = first_name = '${first_name}', last_name = '${last_name}', password = '${password}'
-	WHERE email = '${email}'
-	RETURNING created_at, first_name, last_name, email, phone_number, user_type
-`;
-	db.query(text)
-		.then((response) => {
-			res.status(200).json({ success: true, user: response.rows });
-		})
-		.catch((err) => {
-			res.status(400).json({ success: false, error: err });
-		});
+	const { user_id, first_name, last_name, password, email } = req.body;
+	if (first_name === undefined || last_name === undefined || password === undefined) {
+		console.log('A variable returned undefined')
+	}
+	else {
+		console.log('this is Updated', req.body)
+		const text = `
+			UPDATE users
+			SET first_name = '${first_name}', last_name = '${last_name}', password = '${password}'
+			WHERE email = '${email}'
+			RETURNING user_id, created_at, first_name, last_name, email, phone_number, user_type
+			`;
+		db.query(text)
+			.then((response) => {
+				res.status(200).json({ success: true, user: response.rows });
+			})
+			.catch((err) => {
+				res.status(400).json({ success: false, error: err });
+			});
+	}
 
 	next();
 };
