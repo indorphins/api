@@ -5,7 +5,7 @@ const time = require('../utils/getTime');
 
 const userModelController = {};
 
-// Contorller to get all participant users
+// Controller to get all participant users
 userModelController.getAllParticipants = (req, res, next) => {
 	const text = `
 	SELECT * FROM public.users WHERE user_type = '0'
@@ -23,7 +23,7 @@ userModelController.getAllParticipants = (req, res, next) => {
 	next();
 };
 
-// Contorller to get all instructors
+// Controller to get all instructors
 userModelController.getAllInstructors = (req, res, next) => {
 	const text = `
 	SELECT * FROM public.users WHERE user_type = '1'

@@ -17,7 +17,7 @@ classesControler.createClass = (req, res, next) => {
 		chat_room_name,
 		total_spots,
 		user_type,
-		user_id
+		user_id,
 	} = req.body;
 	// checks if instructor is creating a class (logs err if user is not a insturctor)
 	// will add check for admin for future devlopment
@@ -27,18 +27,13 @@ classesControler.createClass = (req, res, next) => {
 			instructor_name,
 			chat_room_name,
 			total_spots,
-			user_id
+			user_id,
 		});
 
 		const text = `
 		INSERT INTO classes (created_at, status, instructor_name, chat_room_name, total_spots, instructor_id)
-<<<<<<< HEAD
-    values($1, $2, $3, $4, $5, (Select user_id from users WHERE user_id = 1))
-    RETURNING class_id, status, instructor_name, chat_room_name, total_spots, instructor_id
-=======
 		values($1, $2, $3, $4, $5, (Select user_id from users WHERE user_id = ${user_id}))
 		RETURNING created_at, status, instructor_name, chat_room_name, total_spots, instructor_id
->>>>>>> 02aec70567f7f850fd846aab7ee950095ebb04ea
     `;
 		const values = [
 			liveTime,
@@ -49,18 +44,11 @@ classesControler.createClass = (req, res, next) => {
 		];
 		db.query(text, values)
 			.then((response) => {
-<<<<<<< HEAD
-				console.log('Create Class success');
-				res.status(200).json({ success: true, class: response.rows[0] });
-			})
-			.catch((err) => {
-=======
 				console.log('Create Class success: ', response);
 				res.status(200).json({ success: true, class_name: response.rows });
 			})
 			.catch((err) => {
 				console.log('Create Class error: ', err);
->>>>>>> 02aec70567f7f850fd846aab7ee950095ebb04ea
 				res.status(400).json({ success: false, error: err });
 			});
 	} else {
@@ -111,12 +99,7 @@ classesControler.endClass = (req, res, next) => {
 	console.log('END CLASS id ', class_id);
 	db.query(text, values)
 		.then((response) => {
-<<<<<<< HEAD
-			console.log('EndClass Success ', response);
-			res.status(200).json({ success: true });
-=======
 			res.status(200).json({ success: true, status: response.rows });
->>>>>>> 02aec70567f7f850fd846aab7ee950095ebb04ea
 		})
 		.catch((err) => {
 			console.log('EndClass Error: ', err);
