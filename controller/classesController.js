@@ -65,7 +65,7 @@ classesControler.getClasses = (req, res, next) => {
 	// TODO fix participants spelling in DB and here
 	// TODO add duration
 	const text = `
-        SELECT status, chat_room_name, class_id, instructor_name, total_spots, pariticipants, duration
+        SELECT status, chat_room_name, class_id, instructor_name, total_spots, participants, duration
         FROM classes
         WHERE status = 'active'
     `;
