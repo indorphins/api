@@ -1,15 +1,12 @@
 const express = require('express');
 const classes = express.Router();
-const path = require('path');
 
-const classesControler = require('../controller/classesController.js');
+const classesController = require('../controller/classesController');
 
-classes.get('/', classesControler.getClasses, (req, res) => {
-  console.log('classes GET')
-});
+classes.get('/', classesController.getClasses, (req, res) => {});
 
-classes.post('/', classesControler.createClasses, (req, res) => {
-  console.log('classes POST Created')
-});
+classes.post('/', classesController.createClass, (req, res) => {});
+
+classes.put('/', classesController.endClass, (req, res) => {});
 
 module.exports = classes;

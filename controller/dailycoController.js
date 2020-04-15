@@ -7,9 +7,7 @@ const DAILY_CO_API_KEY =
 
 // Takes in properties in body, create room properties are { name: '', privacy: '', properties: {} }
 async function createRoom(req, res) {
-	console.log('START CREATE ROOM SERVER');
 	try {
-		console.log('Create room req body is ', req.body);
 		const target = dailyCoUrl + '/v1/rooms';
 		const body = req.body;
 
@@ -17,9 +15,9 @@ async function createRoom(req, res) {
 			method: 'POST',
 			headers: {
 				'content-type': 'application/json',
-				authorization: `Bearer ${DAILY_CO_API_KEY}`
+				authorization: `Bearer ${DAILY_CO_API_KEY}`,
 			},
-			body: JSON.stringify(body)
+			body: JSON.stringify(body),
 		};
 
 		const response = await fetch(target, options);
@@ -34,9 +32,7 @@ async function createRoom(req, res) {
 // get room by name, must pass url parameter name else error returned
 async function getRoom(req, res) {
 	try {
-		console.log('get room req url is ', req.url);
 		const queryObject = url.parse(req.url, true).query;
-		console.log('query obj is ', queryObject);
 		if (!queryObject.name) {
 			throw new Error("Missing parameter 'name' in url");
 		}
@@ -46,8 +42,8 @@ async function getRoom(req, res) {
 			method: 'GET',
 			headers: {
 				'content-type': 'application/json',
-				authorization: `Bearer ${DAILY_CO_API_KEY}`
-			}
+				authorization: `Bearer ${DAILY_CO_API_KEY}`,
+			},
 		};
 
 		const response = await fetch(target, options);
@@ -62,9 +58,7 @@ async function getRoom(req, res) {
 // Delete room
 async function deleteRoom(req, res) {
 	try {
-		console.log('delete room req.url is ', req.url);
 		const queryObject = url.parse(req.url, true).query;
-		console.log('query obj is ', queryObject);
 		if (!queryObject.name) {
 			throw new Error("Missing parameter 'name' in url");
 		}
@@ -74,8 +68,8 @@ async function deleteRoom(req, res) {
 			method: 'DELETE',
 			headers: {
 				'content-type': 'application/json',
-				authorization: `Bearer ${DAILY_CO_API_KEY}`
-			}
+				authorization: `Bearer ${DAILY_CO_API_KEY}`,
+			},
 		};
 
 		const response = await fetch(target, options);
@@ -90,7 +84,6 @@ async function deleteRoom(req, res) {
 // create a token with input properties
 async function createToken(req, res) {
 	try {
-		console.log('Create token req body is ', req.body);
 		const target = dailyCoUrl + '/v1/meeting-tokens';
 		const body = req.body;
 
@@ -98,12 +91,11 @@ async function createToken(req, res) {
 			method: 'POST',
 			headers: {
 				'content-type': 'application/json',
-				authorization: `Bearer ${DAILY_CO_API_KEY}`
+				authorization: `Bearer ${DAILY_CO_API_KEY}`,
 			},
-			body: JSON.stringify(body)
+			body: JSON.stringify(body),
 		};
 
-		console.log('create token options are ', options);
 		const response = await fetch(target, options);
 		const json = await response.json();
 		res.status(200).json(json);
@@ -117,5 +109,5 @@ module.exports = {
 	createRoom: createRoom,
 	deleteRoom: deleteRoom,
 	getRoom: getRoom,
-	createToken: createToken
+	createToken: createToken,
 };
