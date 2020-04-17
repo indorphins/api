@@ -136,15 +136,15 @@ userModelController.findUser = (req, res, next) => {
 // email and phone number cannot be updated (will be a sepereate controller)
 // another way to do this is to have a conditional for each undefined var get its value and then store that undefined value and then update it with that value
 userModelController.updateUser = (req, res, next) => {
-	const { user_id, first_name, last_name, password, email } = req.body;
-	if (first_name === undefined || last_name === undefined || password === undefined) {
+	const { user_id, first_name, last_name, email } = req.body;
+	if (first_name === undefined || last_name === undefined) {
 		console.log('A variable returned undefined')
 	}
 	else {
 		console.log('this is Updated', req.body)
 		const text = `
 			UPDATE users
-			SET first_name = '${first_name}', last_name = '${last_name}', password = '${password}'
+			SET first_name = '${first_name}', last_name = '${last_name}'
 			WHERE email = '${email}'
 			RETURNING user_id, created_at, first_name, last_name, email, phone_number, user_type
 			`;
