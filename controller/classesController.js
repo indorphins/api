@@ -4,7 +4,7 @@ const time = require('../utils/getTime');
 const classesControler = {};
 
 // create a class (currently set to active when classs is created)
-// TODO add duration field to initializer and return value
+// for now duration can be set to null class will exprie right away 
 classesControler.createClass = (req, res, next) => {
 	const liveTime = time.getTime();
 	// participants can be null
@@ -16,6 +16,7 @@ classesControler.createClass = (req, res, next) => {
 		total_spots,
 		user_type,
 		user_id,
+		duration,
 	} = req.body;
 	// checks if instructor is creating a class (logs err if user is not a insturctor)
 	// will add check for admin for future devlopment
@@ -26,11 +27,12 @@ classesControler.createClass = (req, res, next) => {
 			chat_room_name,
 			total_spots,
 			user_id,
+			duration,
 		});
 
 		const text = `
-		INSERT INTO classes (created_at, status, instructor_name, chat_room_name, total_spots, instructor_id)
-		values($1, $2, $3, $4, $5, (Select user_id from users WHERE user_id = ${user_id}))
+		INSERT INTO classes (created_at, status, instructor_name, chat_room_name, total_spots, duration, instructor_id)
+		values($1, $2, $3, $4, $5, $6, (Select user_id from users WHERE user_id = ${user_id}))
 		RETURNING created_at, status, instructor_name, chat_room_name, total_spots, instructor_id
     `;
 		const values = [
@@ -39,6 +41,7 @@ classesControler.createClass = (req, res, next) => {
 			instructor_name,
 			chat_room_name,
 			total_spots,
+			duration,
 		];
 		db.query(text, values)
 			.then((response) => {
@@ -105,5 +108,65 @@ classesControler.endClass = (req, res, next) => {
 		});
 	next();
 };
+
+// function should run every 30 min - will check if there is any active classes that should be expried
+classesControler.checkExpiredClasses = async (req, res, next) => {
+	// get current time
+	const liveTime = time.getTime();
+	var endTime;
+	// check start time and duration time 
+	// want to make a query that gets a all active classes time and duration 
+	const text = `
+        SELECT  class_id, duration, created_at
+        FROM classes
+        WHERE status = 'active'
+		`;
+	await db.query(text)
+		.then((response) => {
+			console.log('Get Active classes success');
+			// itterate through all active times 
+			for (let i = 0; i < response.rows.length; i++) {
+				const duration = (response.rows[i].duration * 60000)
+				console.log(response.rows[i].created_at)
+				endTime = new Date(response.rows[i].created_at.getTime() + duration)
+				console.log('THIS IS ENDTIME', endTime)
+				console.log('THIS IS LIVETIME', new Date(liveTime))
+				if (endTime < new Date(liveTime)) {
+					console.log('IM INSIDE IF STATEMENT')
+					db.query(`UPDATE classes
+					SET status = 'closed'
+					WHERE class_id = '${response.rows[i].class_id}' `)
+						.catch((err) => {
+							res.status(400).json({ success: false, error: err });
+						});
+				}
+			}
+			res.status(200).json({ success: true });
+		})
+		.catch((err) => {
+			res.status(400).json({ success: false, error: err });
+		});
+	next();
+}
+
+classesControler.wipeActiveClasses = (req, res, next) => {
+	db.query(`DELETE FROM classes WHERE status = 'active';`)
+		.then((response) => {
+			res.status(200).json({ success: true });
+		})
+		.catch((err) => {
+			res.status(400).json({ success: false, error: err });
+		});
+}
+
+classesControler.wipeClosedClasses = (req, res, next) => {
+	db.query(`DELETE FROM classes WHERE status = 'closed';`)
+		.then((response) => {
+			res.status(200).json({ success: true });
+		})
+		.catch((err) => {
+			res.status(400).json({ success: false, error: err });
+		});
+}
 
 module.exports = classesControler;
