@@ -1,6 +1,4 @@
 const db = require('../data/userModel');
-const fetch = require('node-fetch');
-// function to get timestamp of current time (formated to send to db)
 const time = require('../utils/getTime');
 
 const classesControler = {};
