@@ -34,7 +34,7 @@ Follow this [link](https://www.postgresql.org/download/) to download the Postgre
 #### Log in to the database
 Log in to the database from the command line in your terminal.  Just type:
 
-### `psql postgres:vogevbto:CzupjdSeT8NNNL5hCamhOL2bx7fuUHH_@drona.db.elephantsql.com:5432/vogevbto `
+### `psql postgres://vogevbto:CzupjdSeT8NNNL5hCamhOL2bx7fuUHH_@drona.db.elephantsql.com:5432/vogevbto `
 You'll find yourself at different command prompt.  That means you're in the database and you can start writing SQL queries.  
 
         * Try typing `\d` to see a list of the different tables.
