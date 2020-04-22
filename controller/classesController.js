@@ -43,7 +43,7 @@ classesControler.createClass = (req, res, next) => {
 		db.query(text, values)
 			.then((response) => {
 				console.log('Create Class success: ', response);
-				res.status(200).json({ success: true, class_name: response.rows });
+				res.status(200).json({ success: true, class: response.rows[0] });
 			})
 			.catch((err) => {
 				console.log('Create Class error: ', err);

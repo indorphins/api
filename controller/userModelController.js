@@ -77,7 +77,7 @@ userModelController.createUser = async (req, res, next) => {
 		db.query(text1, values)
 			.then((response) => {
 				console.log('Create User success');
-				res.status(200).json({ success: true, user: response.rows });
+				res.status(200).json({ success: true, user: response.rows[0] });
 			})
 			.catch((err) => {
 				console.log('Create User error', err);
