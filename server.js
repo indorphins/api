@@ -10,6 +10,7 @@ const signupRouter = require('./routes/signup');
 const profileRouter = require('./routes/profile');
 const dailycoRouter = require('./routes/dailyco');
 const classesRouter = require('./routes/classes');
+const classesController = require('./controller/classesController');
 
 app.use(cors());
 app.use(express.json());
@@ -30,5 +31,10 @@ app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'application/json');
 	res.send(JSON.stringify({ status: `Active` }));
 });
-
+// runs every 5 min to check db for expired classes
+setInterval(async function () {
+	// right now its running the function a extra time - its not affecting the query so its fine for right now
+	await classesController.checkExpiredClasses().catch(err => console.log(err));
+	console.log("Hi");
+}, 300000)
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
