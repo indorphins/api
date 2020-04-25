@@ -3,7 +3,19 @@ const classes = express.Router();
 
 const classesController = require('../controller/classesController');
 
-classes.get('/', classesController.getClasses, (req, res) => {});
+classes.get('/active', classesController.getActiveClasses, (req, res) => {});
+
+classes.get(
+	'/scheduled',
+	classesController.getScheduledClassesForUser,
+	(req, res) => {}
+);
+
+classes.get(
+	'/closed',
+	classesController.getClosedClassesForUser,
+	(req, res) => {}
+);
 
 classes.post('/', classesController.createClass, (req, res) => {});
 

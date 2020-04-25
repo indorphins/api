@@ -66,9 +66,7 @@ classesControler.createClass = (req, res, next) => {
 };
 
 // get list of all current active classes (status can change in query to get diffrent state of classes)
-classesControler.getClasses = (req, res, next) => {
-	// TODO fix participants spelling in DB and here
-	// TODO add duration
+classesControler.getActiveClasses = (req, res, next) => {
 	const text = `
         SELECT status, chat_room_name, class_id, instructor_name, total_spots, participants, duration, created_at, start_time
         FROM classes
@@ -83,6 +81,92 @@ classesControler.getClasses = (req, res, next) => {
 			res.status(400).json({ success: false, error: err });
 		});
 	next();
+};
+
+// get list of all scheduled classes for given id
+classesControler.getScheduledClassesForUser = (req, res, next) => {
+	const queryObject = url.parse(req.url, true).query;
+	if (!queryObject.user_id) {
+		throw new Error("Missing parameter 'user_id' in url");
+	}
+	const text = `
+        SELECT classes
+        FROM users
+        WHERE user_id = $1
+    `;
+	const values = [queryObject.user_id];
+	db.query(text, values)
+		.then((response) => {
+			console.log('Get Users classes success is ', response);
+			const scheduled = [];
+			response.rows[0].forEach((classId) => {
+				classesControler.getClass(classId).then((c) => {
+					if (c.status === 'scheduled') {
+						scheduled.push(c);
+					}
+				});
+			});
+			res.status(200).json({ success: true, classes: scheduled });
+		})
+		.catch((err) => {
+			res.status(400).json({ success: false, error: err });
+		});
+	next();
+};
+
+// get list of all closed classes for given id
+classesControler.getClosedClassesForUser = (req, res, next) => {
+	const queryObject = url.parse(req.url, true).query;
+	if (!queryObject.user_id) {
+		throw new Error("Missing parameter 'user_id' in url");
+	}
+	const text = `
+        SELECT classes
+        FROM users
+        WHERE user_id = $1
+    `;
+	const values = [queryObject.user_id];
+	db.query(text, values)
+		.then((response) => {
+			console.log('Get Users classes success is ', response);
+			const closed = [];
+			response.rows[0].forEach((classId) => {
+				classesControler.getClass(classId).then((c) => {
+					if (c.status === 'closed') {
+						scheduled.push(c);
+					}
+				});
+			});
+			res.status(200).json({ success: true, classes: closed });
+		})
+		.catch((err) => {
+			res.status(400).json({ success: false, error: err });
+		});
+	next();
+};
+
+/**
+ * returns a class if class id is found in classes table
+ */
+classesControler.getClass = (classId) => {
+	if (!classId) {
+		throw Error('getClass - No ClassID');
+	}
+	const text = `
+    SELECT status, chat_room_name, class_id, instructor_name, total_spots, participants, duration, created_at, start_time
+    FROM classes
+    WHERE class_id = '${class_id}' 
+  `;
+	return db
+		.query(text)
+		.then((response) => {
+			console.log('GetClass success - ', response);
+			return response.rows[0];
+		})
+		.catch((error) => {
+			console.log('GetClass - error ', error);
+			throw error;
+		});
 };
 
 /*
