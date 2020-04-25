@@ -7,7 +7,9 @@ classes.get('/', classesController.getClasses, (req, res) => {});
 
 classes.post('/', classesController.createClass, (req, res) => {});
 
-classes.put('/', classesController.endClass, (req, res) => {});
+classes.put('/endClass', classesController.endClass, (req, res) => {});
+
+classes.put('/loadClass', classesController.loadClass, (req, res) => {});
 
 classes.put(
 	'/refreshActive',

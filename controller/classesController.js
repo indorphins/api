@@ -18,6 +18,7 @@ classesControler.createClass = (req, res, next) => {
 		user_type,
 		user_id,
 		duration,
+		start_time,
 	} = req.body;
 	// checks if instructor is creating a class (logs err if user is not a insturctor)
 	// will add check for admin for future devlopment
@@ -29,11 +30,12 @@ classesControler.createClass = (req, res, next) => {
 			total_spots,
 			user_id,
 			duration,
+			start_time,
 		});
 
 		const text = `
-		INSERT INTO classes (created_at, status, instructor_name, chat_room_name, total_spots, duration, instructor_id, start_time)
-		values($1, $2, $3, $4, $5, $6, (Select user_id from users WHERE user_id = ${user_id}), $1)
+    INSERT INTO classes (created_at, status, instructor_name, chat_room_name, total_spots, duration, instructor_id, start_time) 
+    values($1, $2, $3, $4, $5, $6, (Select user_id from users WHERE user_id = ${user_id}), $7)
 		RETURNING created_at, status, instructor_name, chat_room_name, total_spots, instructor_id, start_time, class_id
     `;
 		const values = [
@@ -43,6 +45,7 @@ classesControler.createClass = (req, res, next) => {
 			chat_room_name,
 			total_spots,
 			duration,
+			start_time,
 		];
 		db.query(text, values)
 			.then((response) => {
@@ -109,6 +112,33 @@ classesControler.endClass = (req, res, next) => {
 	next();
 };
 
+/*
+ * Puts the class in a "loaded" status
+ * Takes in class_id in req.body, returns success json { success: true }
+ */
+classesControler.loadClass = (req, res, next) => {
+	const liveTime = time.getTime();
+	// participants and instructor id can be null right now for MVP
+	const { class_id, class_name } = req.body;
+	console.log('req.body: ', req.body);
+	const text = `
+	UPDATE classes
+	SET updated_at = $1 , status = 'loaded', chat_room_name = $2
+	WHERE class_id = '${class_id}'
+	RETURNING status
+`;
+	const values = [liveTime, class_name];
+	db.query(text, values)
+		.then((response) => {
+			res.status(200).json({ success: true, status: response.rows });
+		})
+		.catch((err) => {
+			console.log('EndClass Error: ', err);
+			res.status(400).json({ success: false, error: err });
+		});
+	next();
+};
+
 // function should run every 30 min - will check if there is any active classes that should be expried
 classesControler.checkExpiredClasses = async (req, res, next) => {
 	// get current time
@@ -124,10 +154,10 @@ classesControler.checkExpiredClasses = async (req, res, next) => {
 	await db
 		.query(text)
 		.then((response) => {
+			console.log('Get Active classes success');
 			// itterate through all active times
 			for (let i = 0; i < response.rows.length; i++) {
 				const duration = response.rows[i].duration * 60000;
-				console.log(response.rows[i].created_at);
 				endTime = new Date(response.rows[i].created_at.getTime() + duration);
 				if (endTime < new Date(liveTime)) {
 					db.query(
@@ -139,6 +169,7 @@ classesControler.checkExpiredClasses = async (req, res, next) => {
 					});
 				}
 			}
+			console.log('CheckExpiredClasses Success: ', response);
 			res.status(200).json({ success: true });
 		})
 		.catch((err) => {
