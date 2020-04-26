@@ -1,5 +1,6 @@
 const db = require('../data/userModel');
 const time = require('../utils/getTime');
+const url = require('url');
 
 const classesControler = {};
 
@@ -23,14 +24,16 @@ classesControler.createClass = (req, res, next) => {
 	// checks if instructor is creating a class (logs err if user is not a insturctor)
 	// will add check for admin for future devlopment
 	if (user_type === 1) {
+		const startDateTime = new Date(start_time);
 		console.log('Create Class params: ', {
+			liveTime,
 			status,
 			instructor_name,
 			chat_room_name,
 			total_spots,
 			user_id,
 			duration,
-			start_time,
+			startDateTime,
 		});
 
 		const text = `
@@ -45,8 +48,9 @@ classesControler.createClass = (req, res, next) => {
 			chat_room_name,
 			total_spots,
 			duration,
-			start_time,
+			startDateTime,
 		];
+		// TODO validate start time is in future
 		db.query(text, values)
 			.then((response) => {
 				console.log('Create Class success: ', response);
@@ -74,7 +78,7 @@ classesControler.getActiveClasses = (req, res, next) => {
     `;
 	db.query(text)
 		.then((response) => {
-			console.log('Get Classes success');
+			console.log('Get getActiveClasses success');
 			res.status(200).json({ success: true, classes: response.rows });
 		})
 		.catch((err) => {
@@ -106,9 +110,11 @@ classesControler.getScheduledClassesForUser = (req, res, next) => {
 					}
 				});
 			});
+			console.log('getScheduledClassesForUser - success');
 			res.status(200).json({ success: true, classes: scheduled });
 		})
 		.catch((err) => {
+			console.log('getScheduledClassesForUser - error: ', err);
 			res.status(400).json({ success: false, error: err });
 		});
 	next();
@@ -137,9 +143,11 @@ classesControler.getClosedClassesForUser = (req, res, next) => {
 					}
 				});
 			});
+			console.log('getClosedClassesForUser - success');
 			res.status(200).json({ success: true, classes: closed });
 		})
 		.catch((err) => {
+			console.log('getClosedClassesForUser - error: ', err);
 			res.status(400).json({ success: false, error: err });
 		});
 	next();
@@ -187,7 +195,7 @@ classesControler.endClass = (req, res, next) => {
 	const values = [liveTime];
 	db.query(text, values)
 		.then((response) => {
-			res.status(200).json({ success: true, status: response.rows });
+			res.status(200).json({ success: true, status: response.rows[0] });
 		})
 		.catch((err) => {
 			console.log('EndClass Error: ', err);
@@ -209,12 +217,12 @@ classesControler.loadClass = (req, res, next) => {
 	UPDATE classes
 	SET updated_at = $1 , status = 'loaded', chat_room_name = $2
 	WHERE class_id = '${class_id}'
-	RETURNING status
+	RETURNING status, chat_room_name, class_id, instructor_name, total_spots, participants, duration, created_at, start_time
 `;
 	const values = [liveTime, class_name];
 	db.query(text, values)
 		.then((response) => {
-			res.status(200).json({ success: true, status: response.rows });
+			res.status(200).json({ success: true, class: response.rows[0] });
 		})
 		.catch((err) => {
 			console.log('EndClass Error: ', err);
