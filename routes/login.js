@@ -18,7 +18,7 @@ login.post('/', userModelController.findUser, (req, res) => {
 // to get list of all users swtich with getAllParticipants
 login.get('/users', userModelController.getAllInstructors, (req, res) => {
 	console.log('Login GET USERS');
-	res.status(200)
+	res.status(200);
 });
 
 module.exports = login;

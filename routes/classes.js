@@ -1,44 +1,52 @@
 const express = require('express');
 const classes = express.Router();
 
-const classesController = require('../controller/classesController');
+const classController = require('../mongoControllers/classController');
 
-classes.get('/active', classesController.getActiveClasses, (req, res) => {});
+classes.get('', classController.getClasses, (req, res) => {
+	res.send('Hello ACtive classes');
+});
 
-classes.get(
-	'/scheduled',
-	classesController.getScheduledClassesForUser,
-	(req, res) => {}
-);
+classes.get('/:id', classController.getClass, (req, res) => {});
 
-classes.get(
-	'/closed',
-	classesController.getClosedClassesForUser,
-	(req, res) => {}
-);
+// classes.get(
+// 	'/scheduled',
+// 	classesController.getScheduledClassesForUser,
+// 	(req, res) => {}
+// );
 
-classes.post('/', classesController.createClass, (req, res) => {});
+// classes.get(
+// 	'/closed',
+// 	classesController.getClosedClassesForUser,
+// 	(req, res) => {}
+// );
 
-classes.put('/endClass', classesController.endClass, (req, res) => {});
+classes.delete('/:id', classController.deleteClass, (req, res) => {});
 
-classes.put('/loadClass', classesController.loadClass, (req, res) => {});
+classes.post('/', classController.createClass, (req, res) => {});
 
-classes.put(
-	'/refreshActive',
-	classesController.checkExpiredClasses,
-	(req, res) => {}
-);
+classes.put('/endClass', classController.updateClass, (req, res) => {});
 
-classes.put(
-	'/delete/active',
-	classesController.wipeActiveClasses,
-	(req, res) => {}
-);
+classes.put('/:id', classController.updateClass, (req, res) => {});
 
-classes.put(
-	'/delete/closed',
-	classesController.wipeClosedClasses,
-	(req, res) => {}
-);
+classes.put('/loadClass', classController.updateClass, (req, res) => {});
+
+// classes.put(
+// 	'/refreshActive',
+// 	classesController.checkExpiredClasses,
+// 	(req, res) => {}
+// );
+
+// classes.put(
+// 	'/delete/active',
+// 	classesController.wipeActiveClasses,
+// 	(req, res) => {}
+// );
+
+// classes.put(
+// 	'/delete/closed',
+// 	classesController.wipeClosedClasses,
+// 	(req, res) => {}
+// );
 
 module.exports = classes;
