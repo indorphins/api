@@ -7,46 +7,20 @@ classes.get('', classController.getClasses, (req, res) => {
 	res.send('Hello ACtive classes');
 });
 
-classes.get('/:id', classController.getClass, (req, res) => {});
+classes.get('/id/:id', classController.getClass);
 
-// classes.get(
-// 	'/scheduled',
-// 	classesController.getScheduledClassesForUser,
-// 	(req, res) => {}
-// );
+classes.get('/scheduled', classController.getScheduledClasses);
 
-// classes.get(
-// 	'/closed',
-// 	classesController.getClosedClassesForUser,
-// 	(req, res) => {}
-// );
+classes.get('/', classController.getClasses);
 
-classes.delete('/:id', classController.deleteClass, (req, res) => {});
+classes.delete('/:id', classController.deleteClass);
 
-classes.post('/', classController.createClass, (req, res) => {});
+classes.post('/', classController.createClass);
 
-classes.put('/endClass', classController.updateClass, (req, res) => {});
+classes.put('/end/:id', classController.endClass);
 
-classes.put('/:id', classController.updateClass, (req, res) => {});
+classes.put('/update/:id', classController.updateClass);
 
-classes.put('/loadClass', classController.updateClass, (req, res) => {});
-
-// classes.put(
-// 	'/refreshActive',
-// 	classesController.checkExpiredClasses,
-// 	(req, res) => {}
-// );
-
-// classes.put(
-// 	'/delete/active',
-// 	classesController.wipeActiveClasses,
-// 	(req, res) => {}
-// );
-
-// classes.put(
-// 	'/delete/closed',
-// 	classesController.wipeClosedClasses,
-// 	(req, res) => {}
-// );
+classes.put('/cancel/:id', classController.cancelClass);
 
 module.exports = classes;

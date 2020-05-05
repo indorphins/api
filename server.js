@@ -30,7 +30,7 @@ function connect() {
 		keepAlive: 1,
 		useNewUrlParser: true,
 		useUnifiedTopology: true,
-		useFindAndModify: true,
+		useFindAndModify: false,
 	});
 }
 

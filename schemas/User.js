@@ -25,6 +25,16 @@ const User = new mongoose.Schema({
 		type: String,
 		required: true,
 	},
+	user_type: {
+		type: Number,
+		required: true,
+	},
+	classes: [{ type: mongoose.Schema.ObjectId, ref: 'Class' }],
+	// classes: {
+	// 	type: Array,
+	// 	required: true,
+	// 	default: [],
+	// },
 	created_at: {
 		type: Date,
 		required: true,
