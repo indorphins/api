@@ -1,0 +1,594 @@
+{
+	"info": {
+		"_postman_id": "2436576c-e5b3-40cb-93cc-317bb097becd",
+		"name": "indorphins",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "mongo",
+			"item": [
+				{
+					"name": "classes",
+					"item": [
+						{
+							"name": "Get classes",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"instructor_name\": \"Alex\",\n\t\"duration\": \"60\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3001/classes",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"classes"
+									],
+									"query": [
+										{
+											"key": "id",
+											"value": null,
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Scheduled Classes",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3001/classes/scheduled",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"classes",
+										"scheduled"
+									],
+									"query": [
+										{
+											"key": "id",
+											"value": null,
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Class",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"instructor_name\": \"Alex\",\n\t\"duration\": \"60\",\n\t\"total_spots\": 41,\n\t\"status\": \"scheduled\",\n\t\"instructor_id\": \"1234\",\n\t\"participants\" : [],\n\t\"chat_room_name\": \"test_room_name\",\n\t\"instructor_img\": \"xxx.svg\",\n\t\"start_time\": \"5/5/20\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "localhost:3001/classes/",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"classes",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update class by id",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"participants\" : [{\"name\": \"Alex\"}]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3001/classes/update/5eb0c8b59279902a9f63f614",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"classes",
+										"update",
+										"5eb0c8b59279902a9f63f614"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "End Class by id",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3001/classes/end/5eb0c8b59279902a9f63f614",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"classes",
+										"end",
+										"5eb0c8b59279902a9f63f614"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Cancel Class by id",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3001/classes/cancel/5eb0c8b59279902a9f63f614",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"classes",
+										"cancel",
+										"5eb0c8b59279902a9f63f614"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete class by id",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3001/classes/5eaf440b84504031f53f2362",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"classes",
+										"5eaf440b84504031f53f2362"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get class by id",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3001/classes/id/5eaf440b84504031f53f2362",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"classes",
+										"id",
+										"5eaf440b84504031f53f2362"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "users",
+					"item": [
+						{
+							"name": "Get Users",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3001/users",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User by id",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3001/users/user/5eb0d7573a6d992cd3feebe2",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"users",
+										"user",
+										"5eb0d7573a6d992cd3feebe2"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update User",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"last_name\": \"Jackson\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3001/users/5eaf6828a01c210480be80c4",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"users",
+										"5eaf6828a01c210480be80c4"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete user",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3001/users/5eaf6828a01c210480be80c4",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"users",
+										"5eaf6828a01c210480be80c4"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create User",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": ""
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login User",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"email\": \"test@me.co\",\n\t\"password\": \"testpw\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3001/users/login",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"users",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Class by Id",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\n                \"participants\": [],\n                \"_id\": \"5eb0c108d7ae88293fb30f91\",\n                \"instructor_name\": \"Alex\",\n                \"duration\": 60,\n                \"total_spots\": 41,\n                \"status\": \"scheduled\",\n                \"instructor_id\": \"12364\",\n                \"chat_room_name\": \"garbage_room\",\n                \"instructor_img\": \"xxx.svg\",\n                \"start_time\": \"5/5/20\",\n                \"created_at\": \"2020-05-05T01:27:36.971Z\",\n                \"__v\": 0\n            \n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:3001/users/addClass/5eb0d7573a6d992cd3feebe2",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"users",
+										"addClass",
+										"5eb0d7573a6d992cd3feebe2"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get scheduled classes by id",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:3001/users/getScheduledClassesForId/5eb0d7573a6d992cd3feebe2",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "3001",
+									"path": [
+										"users",
+										"getScheduledClassesForId",
+										"5eb0d7573a6d992cd3feebe2"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "GET Room",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{ec2_host}}/dailyco/room?name=testName",
+					"host": [
+						"{{ec2_host}}"
+					],
+					"path": [
+						"dailyco",
+						"room"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "testName"
+						}
+					]
+				},
+				"description": "get room by name"
+			},
+			"response": []
+		},
+		{
+			"name": "Create Room",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"name\": \"testName\",\n\t\"properties\": {}\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{ec2_host}}/dailyco/room",
+					"host": [
+						"{{ec2_host}}"
+					],
+					"path": [
+						"dailyco",
+						"room"
+					]
+				},
+				"description": "creates a dailyco room"
+			},
+			"response": []
+		},
+		{
+			"name": "Create Token",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"properties\": {\n\t\t\n\t}\n}",
+					"options": {
+						"raw": {}
+					}
+				},
+				"url": {
+					"raw": "{{ec2_host}}/dailyco/token",
+					"host": [
+						"{{ec2_host}}"
+					],
+					"path": [
+						"dailyco",
+						"token"
+					]
+				},
+				"description": "creates a dailyco meeting token"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Room",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [],
+					"options": {
+						"formdata": {}
+					}
+				},
+				"url": {
+					"raw": "{{ec2_host}}/dailyco/room?name=testName",
+					"host": [
+						"{{ec2_host}}"
+					],
+					"path": [
+						"dailyco",
+						"room"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "testName"
+						}
+					]
+				},
+				"description": "delete a room with name"
+			},
+			"response": []
+		},
+		{
+			"name": "Healthy Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": ""
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Wipe active classes from db",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "localhost:3001/classes/delete/active",
+					"host": [
+						"localhost"
+					],
+					"port": "3001",
+					"path": [
+						"classes",
+						"delete",
+						"active"
+					]
+				},
+				"description": "this deletes all classes from the database"
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}
