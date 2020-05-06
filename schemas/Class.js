@@ -1,8 +1,11 @@
+const uuid = require('uuid');
 const mongoose = require('mongoose');
 
 const Class = new mongoose.Schema({
 	class_id: {
 		type: String,
+		required: true,
+		default: uuid.v4(),
 	},
 	status: {
 		type: String,
