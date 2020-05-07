@@ -7,7 +7,6 @@ jobs:
       only:
         - master
         - develop
-        - circleci
         - /feat-.*/
     steps:
       - checkout
