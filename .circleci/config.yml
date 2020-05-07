@@ -17,9 +17,10 @@ jobs:
       - run: sudo apt-get install -y docker-ce
       - run: pip install awscli
       - run: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
-      - run: export BRANCH=$(git rev-parse --abbrev-ref HEAD)
+      - run: export BRANCH=$(git rev-parse --abbrev-ref HEAD); echo $BRANCH
       - run: export TAG=$(git tag --list | head -n 1)
       - run:
+          echo $BRANCH
           if [[ $BRANCH = "master" ]]; then
             export IMAGE_TAG=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$TAG;
           elif [[ $BRANCH = "develop" ]]; then
