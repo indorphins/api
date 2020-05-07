@@ -17,5 +17,5 @@ jobs:
       - run: apt-cache policy docker-ce
       - run: sudo apt-get install -y docker-ce
       - run: docker login --username $DOCKER_USERNAME --password $DOCKER_PASSWORD
-      - run: docker build -t afloesch/indorphins:$CIRCLE_TAG .
-      - run: docker push afloesch/indorphins:$CIRCLE_TAG-$CIRCLE_SHA1
+      - run: docker build -t afloesch/indorphins:$(git tag --list | head -n 1) .
+      - run: docker push afloesch/indorphins:$(git tag --list | head -n 1)
