@@ -20,7 +20,6 @@ jobs:
       - run: export BRANCH=$(git rev-parse --abbrev-ref HEAD)
       - run: export TAG=$(git tag --list | head -n 1)
       - run: 
-        >-
           if [[ $BRANCH = "master" ]]
           then
             export IMAGE_TAG=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$TAG
