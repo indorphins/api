@@ -28,6 +28,6 @@ jobs:
             export IMAGE_TAG=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:dev-$TAG;
           else 
             export IMAGE_TAG=62730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$BRANCH;
-          fi
+          fi;
           docker build -t $IMAGE_TAG .;
           docker push $IMAGE_TAG;
