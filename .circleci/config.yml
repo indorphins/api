@@ -21,6 +21,7 @@ jobs:
       - run: export TAG=$(git tag --list | head -n 1)
       - run:
           BRANCH=$(git rev-parse --abbrev-ref HEAD);
+          TAG=$(git tag --list | head -n 1);
           if [[ $BRANCH = "master" ]]; then
             export IMAGE_TAG=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$TAG;
           elif [[ $BRANCH = "develop" ]]; then
@@ -28,5 +29,5 @@ jobs:
           else 
             export IMAGE_TAG=62730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$BRANCH;
           fi
-      - run: docker build -t $IMAGE_TAG .
-      - run: docker push $IMAGE_TAG
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
