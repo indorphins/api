@@ -6,7 +6,7 @@ COPY ./src /var/www/src/
 COPY ./index.js /var/www/
 COPY ./*.json /var/www/
 
-RUN npm install
+RUN npm install --production
 
 RUN npm install pm2 -g
 
