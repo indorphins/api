@@ -1,7 +1,7 @@
 const express = require('express');
 const users = express.Router();
 
-const userController = require('../mongoControllers/userController');
+const userController = require('../controllers/userController');
 
 users.delete('/:id', userController.deleteUser);
 

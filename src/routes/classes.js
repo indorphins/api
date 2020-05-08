@@ -1,7 +1,7 @@
 const express = require('express');
 const classes = express.Router();
 
-const classController = require('../mongoControllers/classController');
+const classController = require('../controllers/classController');
 
 classes.get('', classController.getClasses, (req, res) => {
 	res.send('Hello ACtive classes');
