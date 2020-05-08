@@ -7,9 +7,9 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 
-const dailycoRouter = require('./routes/dailyco');
-const classesRouter = require('./routes/classes');
-const usersRouter = require('./routes/users');
+const dailycoRouter = require('./src/routes/dailyco');
+const classesRouter = require('./src/routes/classes');
+const usersRouter = require('./src/routes/users');
 
 function listen() {
 	if (app.get('env') === 'test') return;
@@ -28,6 +28,7 @@ function connect() {
 		useNewUrlParser: true,
 		useUnifiedTopology: true,
 		useFindAndModify: false,
+		useCreateIndex: true,
 	});
 }
 
