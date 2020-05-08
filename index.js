@@ -7,7 +7,6 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 
-<<<<<<< HEAD:server.js
 const dailycoRouter = require('./routes/dailyco');
 const classesRouter = require('./routes/classes');
 const usersRouter = require('./routes/users');
@@ -33,14 +32,6 @@ function connect() {
 }
 
 connect();
-=======
-const loginRouter = require('./src/routes/login');
-const signupRouter = require('./src/routes/signup');
-const profileRouter = require('./src/routes/profile');
-const dailycoRouter = require('./src/routes/dailyco');
-const classesRouter = require('./src/routes/classes');
-const classesController = require('./src/controller/classesController');
->>>>>>> master:index.js
 
 app.use(cors());
 app.use(express.json());
