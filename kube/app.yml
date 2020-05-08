@@ -1,0 +1,32 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: indorphins-be
+  labels:
+    app: indorphins-be
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: indorphins-be
+    spec:
+      containers:
+      - name: indorphins-be
+        image: 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest
+        ports:
+        - containerPort: 3001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "indorphins-be"
+spec:
+  selector:
+    app: indorphins-be
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 3001
+    targetPort: 80
