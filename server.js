@@ -26,6 +26,7 @@ function connect() {
 		.on('error', console.log)
 		.on('disconnected', connect)
 		.once('open', listen);
+	// consider adding autoIndex to false for production
 	return mongoose.connect(process.env.DATABASE_URL, {
 		keepAlive: 1,
 		useNewUrlParser: true,
