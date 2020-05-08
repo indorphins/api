@@ -1,22 +1,5 @@
 version: 2
 jobs:
-  buildFeat:
-    machine:
-      image: 'ubuntu-1604:201903-01'
-    branches:
-      only:
-        - /feat-.*/
-    steps:
-      - checkout
-      - run: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-      - run: sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-      - run: sudo apt-get update
-      - run: apt-cache policy docker-ce
-      - run: sudo apt-get install -y docker-ce
-      - run: pip install awscli
-      - run: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
-      - run: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD) .;
-      - run: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD);
   build:
     machine:
       image: 'ubuntu-1604:201903-01'
@@ -26,7 +9,6 @@ jobs:
         - develop
     steps:
       - checkout
-      - buildFeat
       - run: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
       - run: sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
       - run: sudo apt-get update
