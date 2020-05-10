@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: indorphins-be
-        image: 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:0.0.3
+        image: 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest
         ports:
         - containerPort: 3001
 ---
