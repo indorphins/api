@@ -107,7 +107,7 @@ Change VERSION to the docker image tag version to deploy
 kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:VERSION
 ```
 
-It is also possible to update the `kube\app.yml` file with the new image and simply apply the change. 
+It is also possible to update the `kube/app.yml` file with the new image and simply apply the change. 
 
 To get rollout status:
 
