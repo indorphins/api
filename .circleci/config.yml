@@ -53,13 +53,11 @@ workflows:
           filters:
             branches:
               only:
-                - master
                 - develop
       - build:
           filters:
             branches:
               only:
-                - master
                 - develop
           requires:
             - setup
