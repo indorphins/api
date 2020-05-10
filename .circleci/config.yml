@@ -9,12 +9,23 @@ jobs:
         - develop
     steps:
       - checkout
-      - run: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-      - run: sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-      - run: sudo apt-get update
-      - run: apt-cache policy docker-ce
-      - run: sudo apt-get install -y docker-ce
-      - run: pip install awscli
-      - run: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
-      - run: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) .;
-      - run: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1);
+      - run: 
+          name: Install Docker
+          command: |
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+            sudo apt-get update
+            apt-cache policy docker-ce
+            sudo apt-get install -y docker-ce
+      - run:
+          name: Install AWS cli
+          command: pip install awscli
+      - run:
+          name: Authenticate with AWS ECR
+          command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
+      - run: 
+          name: Build Docker Image
+          command: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) .;
+      - run:
+          name: Push Docker Image to ECR 
+          command: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1);
