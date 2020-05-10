@@ -1,12 +1,8 @@
 version: 2
 jobs:
-  build:
+  setup:
     machine:
       image: 'ubuntu-1604:201903-01'
-    branches:
-      only:
-        - master
-        - develop
     steps:
       - checkout
       - run: 
@@ -20,6 +16,10 @@ jobs:
       - run:
           name: Install AWS cli
           command: pip install awscli
+  build:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
       - run:
           name: Authenticate with AWS ECR
           command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
@@ -29,3 +29,23 @@ jobs:
       - run:
           name: Push Docker Image to ECR 
           command: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1);
+
+workflows:
+  version: 2
+  setup_and_build:
+    jobs:
+      - setup:
+          filters:
+            branches:
+              only:
+                - master
+                - develop
+      - build:
+          filters:
+            branches:
+              only:
+                - master
+                - develop
+          requires:
+            - setup
+           
