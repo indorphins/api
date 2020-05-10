@@ -117,7 +117,7 @@ kubectl rollout status deployment.v1.apps/indorphins-be
 
 ## AWS EKS Creation
 
-Use the awscli and their secondary cli tool `eksctl` which takes care of a lot of the AWS plumbing needed to create a managed kuberneted cluster.
+Use the `awscli` and their secondary cli tool `eksctl` which takes care of a lot of the AWS plumbing needed to create a managed kubernetes cluster.
 
 ```
 eksctl create cluster --name indorphins --without-nodegroup --region us-east-1
