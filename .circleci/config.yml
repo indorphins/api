@@ -28,6 +28,22 @@ jobs:
       - run:
           name: Push Docker Image to ECR 
           command: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1);
+  build_feat:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
+      - checkout
+      - run:
+          name: Authenticate with AWS ECR
+          command: |
+            pip install awscli
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
+      - run: 
+          name: Build Docker Image
+          command: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD) .;
+      - run:
+          name: Push Docker Image to ECR 
+          command: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD);
 
 workflows:
   version: 2
