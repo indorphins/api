@@ -31,7 +31,7 @@ jobs:
 
 workflows:
   version: 2
-  setup_and_build:
+  build_release:
     jobs:
       - setup:
           filters:
@@ -47,4 +47,17 @@ workflows:
                 - develop
           requires:
             - setup
-           
+  build_feature:
+    jobs:
+      - setup:
+          filters:
+            branches:
+              only:
+                - /feat-.*/
+      - build_feat:
+          filters:
+            branches:
+              only:
+                - /feat-.*/
+          requires:
+            - setup           
