@@ -29,7 +29,7 @@ app.use('/classes', classesRouter);
 // what is this route for? 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');
-	res.status(200).send('Great Success!!\n');
+	res.status(200).send('Great Success!\n');
 });
 // runs every 5 min to check db for expired classes
 setInterval(async function () {
