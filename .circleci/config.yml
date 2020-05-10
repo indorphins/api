@@ -26,8 +26,8 @@ jobs:
           name: Build Docker Image
           command: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) .;
       - run: 
-        name: Tag Docker Image Latest
-        command: docker tag 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest;
+          name: Tag Docker Image Latest
+          command: docker tag 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest;
       - run:
           name: Push Docker Image to ECR 
           command: |
@@ -49,7 +49,6 @@ jobs:
       - run:
           name: Push Docker Image to ECR 
           command: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD);
-
 workflows:
   version: 2
   build_release:
