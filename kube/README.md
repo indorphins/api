@@ -1,5 +1,16 @@
 # [Kubernetes](https://kubernetes.io/docs/home/)
 
+- [Kubernetes](#kubernetes)
+  * [Setup](#setup)
+  * [Get Service Endpoint](#get-service-endpoint)
+  * [Deploy Indorphins](#deploy-indorphins)
+  * [Update Indorphins](#update-indorphins)
+  * [AWS EKS Creation](#aws-eks-creation)
+    + [Monitoring](#monitoring)
+      - [Kubernetes Dashboard](#kubernetes-dashboard)
+      - [Prometheus](#prometheus)
+      - [Grafana](#grafana)
+
 Kubernetes core functionality abstracts away provisioning of cloud virtualized resources and deployment of services. It is a fairly complex application built on top of Docker with a lot of new concepts you need to wrap your head around to ultimately get proficient, but this basic guide should be enough to get any developer going quickly. 
 
 ## Setup

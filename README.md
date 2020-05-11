@@ -4,6 +4,16 @@ Backend code for the Indorphins video chat application
 
 [![Indorphins](https://circleci.com/gh/afloesch/indorphins-be.svg?style=shield&circle-token=3b155ba273361607512a7c628217c4ca2394de5c)](https://app.circleci.com/pipelines/github/afloesch/indorphins-be)
 
+- [Available Scripts](#available-scripts)
+  * [`npm start`](#-npm-start-)
+- [Connecting to PostgreSQL via Command Line (GUI)](#connecting-to-postgresql-via-command-line--gui-)
+    + [Install PostgreSQL](#install-postgresql)
+    + [Log in to the database](#log-in-to-the-database)
+  * [`psql postgres://vogevbto:CzupjdSeT8NNNL5hCamhOL2bx7fuUHH_@drona.db.elephantsql.com:5432/vogevbto`](#-psql-postgres---vogevbto-czupjdset8nnnl5hcamhol2bx7fuuhh--dronadbelephantsqlcom-5432-vogevbto-)
+- [Docker](#docker)
+  * [Build](#build)
+  * [Run](#run)
+
 ## Available Scripts
 
 In the project directory, you can run:
