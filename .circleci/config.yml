@@ -1,9 +1,10 @@
 version: 2
 jobs:
-  setup:
+  build:
     machine:
       image: 'ubuntu-1604:201903-01'
     steps:
+      - checkout
       - run: 
           name: Install Docker
           command: |
@@ -12,28 +13,6 @@ jobs:
             sudo apt-get update
             apt-cache policy docker-ce
             sudo apt-get install -y docker-ce
-      - run:
-          name: Install awscli
-          command: |
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
-      - run:
-          name: Install eksctl
-          command: |
-            curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-            sudo mv /tmp/eksctl /usr/local/bin
-      - run:
-          name: Install kubectl
-          command: |
-            curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
-            chmod +x ./kubectl
-            sudo mv ./kubectl /usr/local/bin/kubectl
-  build:
-    machine:
-      image: 'ubuntu-1604:201903-01'
-    steps:
-      - checkout
       - run:
           name: Authenticate with AWS ECR
           command: |
@@ -55,6 +34,14 @@ jobs:
       image: 'ubuntu-1604:201903-01'
     steps:
       - checkout
+      - run: 
+          name: Install Docker
+          command: |
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+            sudo apt-get update
+            apt-cache policy docker-ce
+            sudo apt-get install -y docker-ce
       - run:
           name: Authenticate with AWS ECR
           command: |
@@ -71,6 +58,20 @@ jobs:
       image: 'ubuntu-1604:201903-01'
     steps:
       - run:
+          name: Install awscli
+          command: pip install awscli
+      - run:
+          name: Install eksctl
+          command: |
+            curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+            sudo mv /tmp/eksctl /usr/local/bin
+      - run:
+          name: Install kubectl
+          command: |
+            curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+            chmod +x ./kubectl
+            sudo mv ./kubectl /usr/local/bin/kubectl
+      - run:
           name: Get kube config
           command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
       - run:
@@ -81,6 +82,20 @@ jobs:
       image: 'ubuntu-1604:201903-01'
     steps:
       - run:
+        name: Install awscli
+        command: pip install awscli
+      - run:
+          name: Install eksctl
+          command: |
+            curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+            sudo mv /tmp/eksctl /usr/local/bin
+      - run:
+          name: Install kubectl
+          command: |
+            curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+            chmod +x ./kubectl
+            sudo mv ./kubectl /usr/local/bin/kubectl
+      - run:
           name: Get kube config
           command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
       - run:
@@ -90,18 +105,11 @@ workflows:
   version: 2
   build_release:
     jobs:
-      - setup:
-          filters:
-            branches:
-              only:
-                - develop
       - build:
           filters:
             branches:
               only:
                 - develop
-          requires:
-            - setup
       - deploy_dev:
           filters:
             branches:
@@ -111,29 +119,15 @@ workflows:
             - build
   build_feature:
     jobs:
-      - setup:
-          filters:
-            branches:
-              only:
-                - /feat-.*/
       - build_feat:
           filters:
             branches:
               only:
                 - /feat-.*/
-          requires:
-            - setup
   deploy_prod:
     jobs:
-      - setup:
+      - deploy:
           filters:
             branches:
               only:
                 - master
-      - deploy_dev:
-          filters:
-            branches:
-              only:
-                - master
-          requires:
-            - setup
