@@ -1,30 +1,26 @@
 const express = require('express');
 const classes = express.Router();
 
-const classesController = require('../controller/classesController');
+const classController = require('../controllers/classController');
 
-classes.get('/', classesController.getClasses, (req, res) => {});
+classes.get('', classController.getClasses, (req, res) => {
+	res.send('Hello ACtive classes');
+});
 
-classes.post('/', classesController.createClass, (req, res) => {});
+classes.get('/id/:id', classController.getClass);
 
-classes.put('/', classesController.endClass, (req, res) => {});
+classes.get('/scheduled', classController.getScheduledClasses);
 
-classes.put(
-	'/refreshActive',
-	classesController.checkExpiredClasses,
-	(req, res) => {}
-);
+classes.get('/', classController.getClasses);
 
-classes.put(
-	'/delete/active',
-	classesController.wipeActiveClasses,
-	(req, res) => {}
-);
+classes.delete('/:id', classController.deleteClass);
 
-classes.put(
-	'/delete/closed',
-	classesController.wipeClosedClasses,
-	(req, res) => {}
-);
+classes.post('/', classController.createClass);
+
+classes.put('/end/:id', classController.endClass);
+
+classes.put('/update/:id', classController.updateClass);
+
+classes.put('/cancel/:id', classController.cancelClass);
 
 module.exports = classes;
