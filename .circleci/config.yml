@@ -87,7 +87,7 @@ jobs:
           name: Deploy new version to develop
           command: |
             AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
-            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET kubectl --record deployment.apps/indorphins-be-dev set image deployment.v1.apps/indorphins-be-dev indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET kubectl --record deployment.apps/indorphins-be-dev set image deployment.v1.apps/indorphins-be-dev indorphins-be-dev=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
   deploy:
     machine:
       image: 'ubuntu-1604:201903-01'
