@@ -5,7 +5,7 @@
 	"main": "index.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"start": "node index.js"
+		"start": "sh -ac '. ./${APP_ENV}.env; node index.js'"
 	},
 	"repository": {
 		"type": "git",
@@ -18,9 +18,10 @@
 	},
 	"homepage": "https://github.com/alexlindsay/indorphins-be#readme",
 	"dependencies": {
+		"bunyan": "^1.8.12",
+		"bunyan-format": "^0.2.1",
 		"cookie-parser": "^1.4.5",
 		"cors": "^2.8.5",
-		"dotenv": "^8.2.0",
 		"express": "^4.17.1",
 		"mongodb": "^3.5.7",
 		"mongoose": "^5.9.11",

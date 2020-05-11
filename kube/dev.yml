@@ -35,6 +35,9 @@ spec:
         image: 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest
         ports:
         - containerPort: 3001
+        envFrom:
+          - configMapRef:
+              name: indorphins-config
 ---
 apiVersion: v1
 kind: Service

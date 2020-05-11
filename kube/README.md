@@ -89,7 +89,11 @@ kubectl get service indorphins-be -o yaml
 Deploying the application with `kubectl` is simple.
 
 ```
-kubectl apply -f ./app.yml
+kubectl apply -f ./dev.yml
+```
+
+```
+kubectl create configmap indorphins-config --from-env-file=../.env
 ```
 
 ## Update Indorphins
@@ -113,15 +117,40 @@ kubectl rollout status deployment.v1.apps/indorphins-be
 Use the `awscli` and their secondary cli tool `eksctl` which takes care of a lot of the AWS plumbing needed to create a managed kubernetes cluster.
 
 ```
-eksctl create cluster --name indorphins --without-nodegroup --region us-east-1
+eksctl create cluster --name indorphins --without-nodegroup --region us-east-1 -f ./cluster_config.yml
 ```
+
 - Login to AWS and use the Amazon Console to create node groups. There are a number of options to choose from, and security groups and VPCs have to be setup, and the UI makes this simple.
 
 - [Create cluster autoscaler](https://docs.aws.amazon.com/eks/latest/userguide/cluster-autoscaler.html)
 
+- `kubectl edit configmap aws-auth -n kube-system` and add the following:
+
+  ```yml
+  mapUsers: |
+    - userarn: arn:aws:iam::662730807386:user/indorphins-cicd
+      username: indorphins-cicd
+      groups:
+        - system:masters
+    - userarn: arn:aws:iam::662730807386:user/Admin
+      username: Admin
+      groups:
+        - system:masters
+  ```
+
+```
+kubectl apply -f ./aws-auth.yml
+```
+
+```
+kubectl apply -f ./eks-admin-account.yml
+```
+
 ### Monitoring
 
 #### Kubernetes Dashboard
+
+The Kubernetes dashboard is optional if using Prometheus and Grafana.
 
 Follow the AWS guide on how to [install the kubernetes dashboard](https://docs.aws.amazon.com/eks/latest/userguide/dashboard-tutorial.html).
 
@@ -187,7 +216,7 @@ helm install grafana stable/grafana \
   --set persistence.enabled=true
 ```
 
-Follow the instructions in the helm output to get the Grafana admin password. Use kubectl to get the endpoint URL to login to Grafana:
+Follow the instructions in the helm output to get the Grafana admin password, and then use kubectl to get the endpoint URL to login to Grafana:
 
 ```
 kubectl get services --namespace prometheus grafana
