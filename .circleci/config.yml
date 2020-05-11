@@ -80,8 +80,8 @@ jobs:
           name: Get kube config
           command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
       - run:
-        name: Deploy new version to production
-        command: kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
+          name: Deploy new version to production
+          command: kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
 workflows:
   version: 2
   build_release:
