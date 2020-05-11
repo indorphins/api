@@ -51,3 +51,23 @@ You'll find yourself at different command prompt. That means you're in the datab
         * Make sure you finish each query with a semicolon`;`
 
 You may also find this [SQL cheat sheet](http://www.cheat-sheets.org/saved-copy/sqlcheetsheet.gif) useful.
+
+## Docker
+
+A private docker image repository is deployed on AWS ECR [here](https://console.aws.amazon.com/ecr/repositories/indorphins/?region=us-east-1). The builds for this repo are generated through CircleCI on a branch basis. Develop and master branches are reserved for release candidates, while feature branches can be automatically built using a branch name starting with "feat-". All other branches will be ignored.
+
+### Build
+
+Build a local image of indorphins backend.
+
+```
+docker build -t indorphins .
+```
+
+### Run
+
+Start a container.
+
+```
+docker run --rm -p 3001:8080 --name indorphins indorphins
+```
