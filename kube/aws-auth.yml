@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam::662730807386:group/AdminGroup
+      username: Admin
+      groups:
+        - system:bootstrappers
+        - system:masters
+    - rolearn: arn:aws:iam::662730807386:role/EKS-Main
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+  mapUsers: |
+    - userarn: arn:aws:iam::662730807386:user/indorphins-cicd
+      username: indorphins-cicd
+      groups:
+        - system:masters
