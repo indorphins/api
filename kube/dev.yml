@@ -2,13 +2,13 @@
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: indorphins-be
+  name: indorphins-be-dev
   namespace: default
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: php-apache
+    name: indorphins-be-dev
   minReplicas: 1
   maxReplicas: 10
   targetCPUUtilizationPercentage: 50
@@ -16,39 +16,34 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: indorphins-be
+  name: indorphins-be-dev
   namespace: default
   labels:
-    app: indorphins-be
+    app: indorphins-be-dev
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: indorphins-be
+      app: indorphins-be-dev
   template:
     metadata:
       labels:
-        app: indorphins-be
+        app: indorphins-be-dev
     spec:
       containers:
-      - name: indorphins-be
+      - name: indorphins-be-dev
         image: 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest
         ports:
         - containerPort: 3001
-        resources:
-          limits:
-            cpu: 500m
-          requests:
-            cpu: 200m
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: indorphins-be
+  name: indorphins-be-dev
   namespace: default
 spec:
   selector:
-    app: indorphins-be
+    app: indorphins-be-dev
   type: LoadBalancer
   ports:
   - protocol: TCP

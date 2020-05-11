@@ -12,6 +12,23 @@ jobs:
             sudo apt-get update
             apt-cache policy docker-ce
             sudo apt-get install -y docker-ce
+      - run:
+          name: Install awscli
+          command: |
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+      - run:
+          name: Install eksctl
+          command: |
+            curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+            sudo mv /tmp/eksctl /usr/local/bin
+      - run:
+          name: Install kubectl
+          command: |
+            curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+            chmod +x ./kubectl
+            sudo mv ./kubectl /usr/local/bin/kubectl
   build:
     machine:
       image: 'ubuntu-1604:201903-01'
@@ -19,9 +36,7 @@ jobs:
       - checkout
       - run:
           name: Authenticate with AWS ECR
-          command: |
-            pip install awscli
-            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
+          command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
       - run: 
           name: Build Docker Image
           command: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) .;
@@ -40,15 +55,33 @@ jobs:
       - checkout
       - run:
           name: Authenticate with AWS ECR
-          command: |
-            pip install awscli
-            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
+          command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
       - run: 
           name: Build Docker Image
           command: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD) .;
       - run:
           name: Push Docker Image to ECR 
           command: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD);
+  deploy_dev:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
+      - run:
+          name: Get kube config
+          command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
+      - run:
+          name: Deploy new version to develop
+          command: kubectl --record deployment.apps/indorphins-be-dev set image deployment.v1.apps/indorphins-be-dev indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
+  deploy:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
+      - run:
+          name: Get kube config
+          command: AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
+      - run:
+        name: Deploy new version to production
+        command: kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
 workflows:
   version: 2
   build_release:
@@ -65,6 +98,13 @@ workflows:
                 - develop
           requires:
             - setup
+      - deploy_dev:
+          filters:
+            branches:
+              only:
+                - develop
+          requires:
+            - build
   build_feature:
     jobs:
       - setup:
@@ -78,4 +118,18 @@ workflows:
               only:
                 - /feat-.*/
           requires:
-            - setup           
+            - setup
+  deploy_prod:
+    jobs:
+      - setup:
+          filters:
+            branches:
+              only:
+                - master
+      - deploy_dev:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - setup
