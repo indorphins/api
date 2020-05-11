@@ -2,6 +2,8 @@ Backend code for the Indorphins video chat application
 
 ** Setup instructions and more to be added upon release **
 
+[![Indorphins](https://circleci.com/gh/afloesch/indorphins-be.svg?style=shield)](https://app.circleci.com/pipelines/github/afloesch/indorphins-be)
+
 ## Available Scripts
 
 In the project directory, you can run:
