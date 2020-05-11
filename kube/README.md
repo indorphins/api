@@ -11,7 +11,7 @@
       - [Prometheus](#prometheus)
       - [Grafana](#grafana)
 
-Kubernetes core functionality abstracts away provisioning of cloud virtualized resources and deployment of services. It is a fairly complex application built on top of Docker with a lot of new concepts you need to wrap your head around to ultimately get proficient, but this basic guide should be enough to get any developer going quickly. 
+Kubernetes abstracts away provisioning of cloud virtualized resources and deployment of services. It is a fairly complex application built to orchestrate Docker containers and with a lot of new concepts you need to wrap your head around to ultimately get proficient, but this basic guide should be enough to get any developer going quickly. 
 
 ## Setup
 
@@ -33,7 +33,7 @@ Make sure `kubectl` is available.
 kubectl version
 ```
 
-Install aws `eksctl` for some helpful utilities.
+Install aws `eksctl` for some helpful AWS EKS utilities.
 
 ```
 brew install eksctl
@@ -68,7 +68,7 @@ indorphins-be-6f494bbb55-cmk9v   1/1     Running   0          4m27s
 ## Get Service Endpoint
 
 ```
-kubectl get service indorphins-be
+kubectl get services
 ```
 
 Outputs:
@@ -86,7 +86,7 @@ kubectl get service indorphins-be -o yaml
 
 ## Deploy Indorphins
 
-Deploying the application with `kubectl` is simple.
+Deploying the application with `kubectl` is simple. There are two environments defined `dev.yml` and `prod.yml`. Pass in the filename for the environment to deploy.
 
 ```
 kubectl apply -f ./dev.yml
@@ -104,6 +104,8 @@ Change VERSION to the docker image tag version to deploy
 kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:VERSION
 ```
 
+For the latest version simply use "latest" as the VERSION.
+
 It is also possible to update the `kube/app.yml` file with the new image and simply apply the change. 
 
 To get rollout status:
@@ -114,37 +116,28 @@ kubectl rollout status deployment.v1.apps/indorphins-be
 
 ## AWS EKS Creation
 
-Use the `awscli` and their secondary cli tool `eksctl` which takes care of a lot of the AWS plumbing needed to create a managed kubernetes cluster.
+Use the `awscli` and their secondary cli tool `eksctl` which takes care of a lot of the AWS plumbing needed to create a managed kubernetes cluster. This will take 15 to 20 minutes.
 
 ```
 eksctl create cluster --name indorphins --without-nodegroup --region us-east-1 -f ./cluster_config.yml
 ```
 
-- Login to AWS and use the Amazon Console to create node groups. There are a number of options to choose from, and security groups and VPCs have to be setup, and the UI makes this simple.
+Once the cluster is up test that you can reach it.
 
-- [Create cluster autoscaler](https://docs.aws.amazon.com/eks/latest/userguide/cluster-autoscaler.html)
+```
+kubectl get pods --all-namespaces
+```
 
-- `kubectl edit configmap aws-auth -n kube-system` and add the following:
+Login to AWS and use the Console to create node groups. There are a number of options to choose from, and security groups and VPCs have to be setup, and the UI makes this simple.
 
-  ```yml
-  mapUsers: |
-    - userarn: arn:aws:iam::662730807386:user/indorphins-cicd
-      username: indorphins-cicd
-      groups:
-        - system:masters
-    - userarn: arn:aws:iam::662730807386:user/Admin
-      username: Admin
-      groups:
-        - system:masters
-  ```
+After a node group has been created, deploy the updated ConfigMap for AWS user authentication for cluster administration. This is carefully crafted for indorphins needs.
 
 ```
 kubectl apply -f ./aws-auth.yml
 ```
 
-```
-kubectl apply -f ./eks-admin-account.yml
-```
+Lastly, [create and deploy the cluster autoscaler](https://docs.aws.amazon.com/eks/latest/userguide/cluster-autoscaler.html).
+
 
 ### Monitoring
 
@@ -152,7 +145,11 @@ kubectl apply -f ./eks-admin-account.yml
 
 The Kubernetes dashboard is optional if using Prometheus and Grafana.
 
-Follow the AWS guide on how to [install the kubernetes dashboard](https://docs.aws.amazon.com/eks/latest/userguide/dashboard-tutorial.html).
+Follow the AWS guide on how to [install the kubernetes dashboard](https://docs.aws.amazon.com/eks/latest/userguide/dashboard-tutorial.html). A definition for step 3 of that guide has already been created and can be run with the below command.
+
+```
+kubectl apply -f ./eks-admin-account.yml
+```
 
 Get a static token through the awscli to login to the dashboard.
 
@@ -224,3 +221,26 @@ kubectl get services --namespace prometheus grafana
 
 Once logged in, add Prometheus as a Grafana data source, and configure it with `http://prometheus-server` as the URL. Lastly, install some of the helpful pre-built Grafana dashboards for Kubernetes that will aggragate the most essential cluster metrics and give some well done dashboards.
 
+## Appendix
+
+### Minikube
+
+Before diving right into all the AWS setup you can try kubernetes really quickly and easily with Minikube, which runs a single node cluster in a VM. All you need to do to start a cluster is:
+
+```
+minikube start
+```
+
+Once the cluster is up you can test you can test most all of the above on your local machine, like just bring up the service, or try out some helm charts to deploy new services.
+
+To view the kubernetes dashboard.
+
+```
+minikube dashboard
+```
+
+And to tear-down the cluster when you are done.
+
+```
+minikube delete
+```

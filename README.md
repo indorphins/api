@@ -1,70 +1,74 @@
-Backend code for the Indorphins video chat application
-
-** Setup instructions and more to be added upon release **
+# Indorphins Backend
 
 [![Indorphins](https://circleci.com/gh/afloesch/indorphins-be.svg?style=shield&circle-token=3b155ba273361607512a7c628217c4ca2394de5c)](https://app.circleci.com/pipelines/github/afloesch/indorphins-be)
 
-- [Available Scripts](#available-scripts)
-  * [`npm start`](#-npm-start-)
-- [Connecting to PostgreSQL via Command Line (GUI)](#connecting-to-postgresql-via-command-line--gui-)
-    + [Install PostgreSQL](#install-postgresql)
-    + [Log in to the database](#log-in-to-the-database)
-  * [`psql postgres://vogevbto:CzupjdSeT8NNNL5hCamhOL2bx7fuUHH_@drona.db.elephantsql.com:5432/vogevbto`](#-psql-postgres---vogevbto-czupjdset8nnnl5hcamhol2bx7fuuhh--dronadbelephantsqlcom-5432-vogevbto-)
-- [Docker](#docker)
-  * [Build](#build)
-  * [Run](#run)
+Node.js based express service for the Indorphins video chat application. Currently tested against node version 14.1.
 
-## Available Scripts
+- [Indorphins Backend](#indorphins-backend)
+  * [Getting Started](#getting-started)
+    + [Install Node](#install-node)
+    + [Install Docker](#install-docker)
+    + [Run the App](#run-the-app)
+  * [Docker](#docker)
+    + [Build](#build)
+    + [Run](#run)
 
-In the project directory, you can run:
+## Getting Started
 
-### `npm start`
+### Install Node
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3001](http://localhost:3001) to view it in the browser.
+Install Node version manager.
 
-Production server running on:[http://indorphins-be-lb-661510815.us-east-1.elb.amazonaws.com](http://indorphins-be-lb-661510815.us-east-1.elb.amazonaws.com)
+```
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
+```
 
-## Connecting to PostgreSQL via Command Line (GUI)
+Install node version 14.1 and set as the current node version.
 
-#### Install PostgreSQL
+```
+nvm install v14.1
+nvm use v14.1
+```
 
-Follow this [link](https://www.postgresql.org/download/) to download the PostgreSQL installer on your machine:
+### Install Docker
 
-- Select your OS.
+[Download docker desktop for Mac here](https://hub.docker.com/editions/community/docker-ce-desktop-mac/) and install.
 
-  - Mac (with Homebrew): run the command `brew install postgresql`. (recommended)
-  - Mac (w/o Homebrew) & Windows: Use the Interactive installer by EnterpriseDB. You can skip the 'Stack Builder' add-on.
+### Run the App
 
-- Go to your terminal and verify that you can run the psql command: `psql --version`
+Install the project dependencies.
 
-- If the psql command isn't recognized, you'll need to add it to your PATH.
-  - Linux and Mac: add the line `export PATH=$PATH:/Library/PostgreSQL/latest/bin` to your `~/.bashrc` or `~/.bash_profile`, respectively, and restart your terminal. The exact path may vary so be sure to confirm the location of the postgresql binaries.
-  - Windows: go to the advanced system settings to modify the PATH environmental variable to include the `bin` directory within the postgresql install directory.
+```
+npm i
+```
 
-#### Log in to the database
+Setup the environment vars.
 
-Log in to the database from the command line in your terminal. Just type:
+```
+export APP_ENV=env/dev
+```
 
-### `psql postgres://vogevbto:CzupjdSeT8NNNL5hCamhOL2bx7fuUHH_@drona.db.elephantsql.com:5432/vogevbto`
+Start the application.
 
-You'll find yourself at different command prompt. That means you're in the database and you can start writing SQL queries.
+```
+npm start
+```
 
-        * Try typing `\d` to see a list of the different tables.
+Or, pass the env in at runtime and start it.
 
-        * Then try seeing what a specific table looks like by typing `\d TABLE_NAME`
+```
+APP_ENV=env/dev npm start
+```
 
-        * We can always quit out of here by typing `\q`.
+Test that you can curl it successfully.
 
-        * We can type `\?` to get help on other commands and querys too
-
-        * Make sure you finish each query with a semicolon`;`
-
-You may also find this [SQL cheat sheet](http://www.cheat-sheets.org/saved-copy/sqlcheetsheet.gif) useful.
+```
+curl -i localhost:3001/healthy
+```
 
 ## Docker
 
-A private docker image repository is deployed on AWS ECR [here](https://console.aws.amazon.com/ecr/repositories/indorphins/?region=us-east-1). The builds for this repo are generated through CircleCI on a branch basis. Develop and master branches are reserved for release candidates, while feature branches can be automatically built using a branch name starting with "feat-". All other branches will be ignored.
+A private docker image repository is deployed on AWS ECR [here](https://console.aws.amazon.com/ecr/repositories/indorphins/?region=us-east-1). The builds for this repo are generated through CircleCI on a branch basis. Develop and master branches are reserved for release candidates and the production deployment, while feature branches can also be automatically built using a branch name starting with "feat-". All other branches will be ignored by CICD rules.
 
 ### Build
 
@@ -79,5 +83,5 @@ docker build -t indorphins .
 Start a container.
 
 ```
-docker run --rm -p 3001:8080 --name indorphins indorphins
+docker run --rm -p 3001:3001 --name indorphins indorphins
 ```
