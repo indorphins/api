@@ -14,7 +14,7 @@ This only needs to be done once after changing the primary repo location.
 
 1. Login to Circleci with your Github account and give access to your repositories, circleci will pickup the .circleci/config.yml file automatically.
 
-2. Add the required AWS credentials to the project
+2. Add the required AWS credentials
 
     - Create an IAM access key for the indorphins-cicd user *(AWS access key and secret key)*
 
@@ -27,3 +27,13 @@ This only needs to be done once after changing the primary repo location.
     - Add AWS_ACCESS with the access key value
 
     - Add AWS_SECRET with the secret access key value
+
+3. Enable build status pill in core project ../README.md
+
+    - Go to circleci project settings
+
+    - Select API Permissions
+
+    - Create an API token with the "status" scope
+
+    - Update the URL in the README with the new "circle-token=" value

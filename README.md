@@ -42,10 +42,16 @@ Install the project dependencies.
 npm i
 ```
 
+Start Mongo using the docker-compose file, and give it a few seconds to setup the replica set. This will also start a Mongo database browser on [http://localhost:8080/](http://localhost:8080/).
+
+```
+docker-compose up -d
+```
+
 Setup the environment vars.
 
 ```
-export APP_ENV=env/dev
+export APP_ENV=env/local
 ```
 
 Start the application.
@@ -57,13 +63,13 @@ npm start
 Or, pass the env in at runtime and start it.
 
 ```
-APP_ENV=env/dev npm start
+APP_ENV=env/local npm start
 ```
 
 Test that you can curl it successfully.
 
 ```
-curl -i localhost:3001/healthy
+curl -i http://localhost:3001/healthy
 ```
 
 ## Docker
@@ -84,4 +90,42 @@ Start a container.
 
 ```
 docker run --rm -p 3001:3001 --name indorphins indorphins
+```
+
+## Docker Compose
+
+Start Mongo and Mongo Express in the background.
+
+```
+docker-compose up -d
+```
+
+Stop Mongo and Mongo Express.
+
+```
+docker-compose kill
+```
+
+Remove the stopped containers.
+
+```
+docker-compose rm
+```
+
+List the docker volumes on your machine, one of which will have the saved mongo database data.
+
+```
+docker volume list
+```
+
+Delete the mongo database volume.
+
+```
+docker volume rm indorphins-be_mongodb_master_data
+```
+
+Delete all docker volumes from the system
+
+```
+docker volume prune
 ```
