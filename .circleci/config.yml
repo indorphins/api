@@ -1,0 +1,149 @@
+version: 2
+jobs:
+  build:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
+      - checkout
+      - run: 
+          name: Install Docker
+          command: |
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+            sudo apt-get update
+            apt-cache policy docker-ce
+            sudo apt-get install -y docker-ce
+      - run:
+          name: Authenticate with AWS ECR
+          command: |
+            pip install awscli
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
+      - run: 
+          name: Build Docker Image
+          command: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) .;
+      - run: 
+          name: Tag Docker Image Latest
+          command: docker tag 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest;
+      - run:
+          name: Push Docker Image to ECR 
+          command: |
+            docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1);
+            docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest;
+  build_feat:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
+      - checkout
+      - run: 
+          name: Install Docker
+          command: |
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+            sudo apt-get update
+            apt-cache policy docker-ce
+            sudo apt-get install -y docker-ce
+      - run:
+          name: Authenticate with AWS ECR
+          command: |
+            pip install awscli
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 662730807386.dkr.ecr.us-east-1.amazonaws.com
+      - run: 
+          name: Build Docker Image
+          command: docker build -t 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD) .;
+      - run:
+          name: Push Docker Image to ECR 
+          command: docker push 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git rev-parse --abbrev-ref HEAD);
+  deploy_dev:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
+      - checkout
+      - run:
+          name: Install awscli
+          command: pip install awscli
+      - run:
+          name: Install eksctl
+          command: |
+            curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+            sudo mv /tmp/eksctl /usr/local/bin
+      - run:
+          name: Install kubectl
+          command: |
+            curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.16.8/2020-04-16/bin/linux/amd64/kubectl
+            chmod +x ./kubectl
+            mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+            echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+      - run:
+          name: Install AWS IAM Authenticator
+          command: |
+            curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.16.8/2020-04-16/bin/linux/amd64/aws-iam-authenticator
+            chmod +x ./aws-iam-authenticator
+            mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
+            echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+      - run:
+          name: Deploy new version to develop
+          command: |
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET kubectl --record deployment.apps/indorphins-be-dev set image deployment.v1.apps/indorphins-be-dev indorphins-be-dev=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
+  deploy:
+    machine:
+      image: 'ubuntu-1604:201903-01'
+    steps:
+      - checkout
+      - run:
+          name: Install awscli
+          command: pip install awscli
+      - run:
+          name: Install eksctl
+          command: |
+            curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+            sudo mv /tmp/eksctl /usr/local/bin
+      - run:
+          name: Install kubectl
+          command: |
+            curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.16.8/2020-04-16/bin/linux/amd64/kubectl
+            chmod +x ./kubectl
+            mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+            echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+      - run:
+          name: Install AWS IAM Authenticator
+          command: |
+            curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.16.8/2020-04-16/bin/linux/amd64/aws-iam-authenticator
+            chmod +x ./aws-iam-authenticator
+            mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
+            echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+      - run:
+          name: Deploy new version to production
+          command: |
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
+workflows:
+  version: 2
+  build_release:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only:
+                - develop
+      - deploy_dev:
+          filters:
+            branches:
+              only:
+                - develop
+          requires:
+            - build
+  build_feature:
+    jobs:
+      - build_feat:
+          filters:
+            branches:
+              only:
+                - /feat-.*/
+  deploy_prod:
+    jobs:
+      - deploy:
+          filters:
+            branches:
+              only:
+                - master
