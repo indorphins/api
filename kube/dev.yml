@@ -37,7 +37,7 @@ spec:
         - containerPort: 3001
         envFrom:
           - configMapRef:
-              name: indorphins-dev-config
+              name: indorphins-config
 ---
 apiVersion: v1
 kind: Service

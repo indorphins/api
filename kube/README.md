@@ -86,15 +86,20 @@ kubectl get service indorphins-be -o yaml
 
 ## Deploy Indorphins
 
+
+
 Deploying the application with `kubectl` is simple. There are two environments defined `dev.yml` and `prod.yml`. Pass in the filename for the environment to deploy.
 
 ```
 kubectl apply -f ./dev.yml
 ```
 
+> *Note: Indorphins depends on a ConfigMap for the application configuration, which can be deleted and redeployed if values need to be updated. Both dev and prod use the same config currently.*
+
 ```
-kubectl create configmap indorphins-config --from-env-file=../.env
+kubectl create configmap indorphins-config --from-env-file=../env/prod.env
 ```
+
 
 ## Update Indorphins
 
@@ -119,7 +124,7 @@ kubectl rollout status deployment.v1.apps/indorphins-be
 Use the `awscli` and their secondary cli tool `eksctl` which takes care of a lot of the AWS plumbing needed to create a managed kubernetes cluster. This will take 15 to 20 minutes.
 
 ```
-eksctl create cluster --name indorphins --without-nodegroup --region us-east-1 -f ./cluster_config.yml
+eksctl create cluster --name indorphins --without-nodegroup --region us-east-1 --vpc-cidr 10.10.0.0/16
 ```
 
 Once the cluster is up test that you can reach it.
@@ -130,10 +135,16 @@ kubectl get pods --all-namespaces
 
 Login to AWS and use the Console to create node groups. There are a number of options to choose from, and security groups and VPCs have to be setup, and the UI makes this simple.
 
-After a node group has been created, deploy the updated ConfigMap for AWS user authentication for cluster administration. This is carefully crafted for indorphins needs.
+After a node group has been created, deploy the updated ConfigMap for AWS user authentication for cluster administration. This is crafted for indorphins needs.
 
 ```
 kubectl apply -f ./aws-auth.yml
+```
+
+Allow pods to connect to external services.
+
+```
+kubectl set env daemonset -n kube-system aws-node AWS_VPC_K8S_CNI_EXTERNALSNAT=true
 ```
 
 Lastly, [create and deploy the cluster autoscaler](https://docs.aws.amazon.com/eks/latest/userguide/cluster-autoscaler.html).

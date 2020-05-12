@@ -10,8 +10,8 @@ const dailycoRouter = require('./src/routes/dailyco');
 const classesRouter = require('./src/routes/classes');
 const usersRouter = require('./src/routes/users');
 
-const DBCONN = process.env.DATABASE_URL;
-const PORT = 3001;
+const DBCONN = String(process.env.DATABASE_URL).replace(/'|"/gm, '');
+const PORT = process.env.PORT;
 
 var LOG_LEVEL = 30;
 var OUTPUT = 'json';
@@ -56,7 +56,7 @@ function connect() {
 
 log.info('Connecting to MongoDB', DBCONN);
 connect().catch((err) => {
-	log.error({msg: "error connecting to database", err: err});
+	log.fatal({msg: "error connecting to database", err: err});
 });
 
 app.use(cors());
@@ -78,7 +78,6 @@ app.use('/dailyco', dailycoRouter);
 app.use('/classes', classesRouter);
 app.use('/users', usersRouter);
 
-// what is this route for?
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');
 	res.status(200).send('Great Success!\n');
