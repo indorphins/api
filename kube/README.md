@@ -154,8 +154,6 @@ Lastly, [create and deploy the cluster autoscaler](https://docs.aws.amazon.com/e
 
 #### Kubernetes Dashboard
 
-The Kubernetes dashboard is optional if using Prometheus and Grafana.
-
 Follow the AWS guide on how to [install the kubernetes dashboard](https://docs.aws.amazon.com/eks/latest/userguide/dashboard-tutorial.html). A definition for step 3 of that guide has already been created and can be run with the below command.
 
 ```
@@ -196,10 +194,11 @@ Add Prometheus cluster monitoring
 kubectl create namespace prometheus
 helm install prometheus stable/prometheus \
   --namespace prometheus \
-  --set alertmanager.persistentVolume.storageClass="gp2",server.persistentVolume.storageClass="gp2"
+  --set alertmanager.persistentVolume.storageClass="gp2",server.persistentVolume.storageClass="gp2" \
+  -f ./prometheus-config.yml
 ```
 
-Check the pods status
+It can take a minute for the service to come up so check the pods status. If there are any issues with the pods coming up you the kubernetes dashboard will provide helpful information
 
 ```
 kubectl get pods -n prometheus
@@ -224,7 +223,7 @@ helm install grafana stable/grafana \
   --set persistence.enabled=true
 ```
 
-Follow the instructions in the helm output to get the Grafana admin password, and then use kubectl to get the endpoint URL to login to Grafana:
+Follow the instructions in the helm output to get the Grafana admin password, and then use kubectl to get the endpoint URL to login to the Grafana dashboard (*it can take a few minutes for the load balancer DNS name to resolve*):
 
 ```
 kubectl get services --namespace prometheus grafana
