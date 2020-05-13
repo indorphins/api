@@ -1,5 +1,29 @@
 const User = require('../schemas/User');
+const admin = require('firebase-admin');
 const { CLASS_STATUS_SCHEDULED } = require('../constants');
+
+var serviceAccount = require('../../groupfit-auth-firebase-adminsdk-ovr16-697a0631ce.json');
+
+admin.initializeApp({
+	credential: admin.credential.cert(serviceAccount),
+	databaseURL: 'https://groupfit-auth.firebaseio.com',
+});
+
+const verifyFirebaseToken = (idToken) => {
+	// idToken comes from the client app, second boolean parameter is checkRevoked
+	return admin
+		.auth()
+		.verifyIdToken(idToken, true)
+		.then(function (decodedToken) {
+			let uid = decodedToken.uid;
+			console.log('Verified firebase token to uid: ', uid);
+			return uid;
+		})
+		.catch(function (error) {
+			console.log('userController - verifyFirebaseToken - error: ', error);
+			throw error;
+		});
+};
 
 const getUsers = async (req, res) => {
 	try {
@@ -23,7 +47,7 @@ const createUser = async (req, res) => {
 		const newUser = await User.create(req.body);
 		res.status(201).json({
 			success: true,
-			data: { class: newUser },
+			data: { user: newUser },
 		});
 	} catch (err) {
 		console.log('createUser - error: ', err);
@@ -51,13 +75,18 @@ const getUser = async (req, res) => {
 	}
 };
 
+/*
+ * Takes in an email from req.body and finds the user associated with it
+ * Returns the user minus password field (can be deprecated once firebase handles user passwords)
+ */
 const loginUser = async (req, res) => {
 	try {
-		const { email, password } = req.body;
-		const user = await User.findOne(
-			{ email: email, password: password },
-			'-password'
+		const firebaseID = await verifyFirebaseToken(req.params.token);
+		const user = await User.findOne({ firebase_uid: firebaseID }).populate(
+			'classes'
 		);
+
+		console.log('Got user - ', user);
 
 		res.status(200).json({
 			success: !user ? false : true,
@@ -111,11 +140,10 @@ const deleteUser = async (req, res) => {
 
 const addClassForId = async (req, res) => {
 	try {
-		const id = req.params.id;
+		const firebaseID = await verifyFirebaseToken(req.params.token);
 		const c = req.body;
-		console.log('Id ', id, ' - class ', c);
 		const user = await User.findOneAndUpdate(
-			{ _id: id },
+			{ firebase_uid: firebaseID },
 			{ $push: { classes: c } },
 			{
 				new: true,
@@ -138,11 +166,11 @@ const addClassForId = async (req, res) => {
 // TODO get working with find() or iterate over the classes and return
 const getScheduledClassForId = async (req, res) => {
 	try {
-		const id = req.params.id;
+		const firebaseID = await verifyFirebaseToken(req.params.token);
 		console.log('******Id ', id);
 		const user = await User.find(
 			{
-				_id: id,
+				firebase_uid: firebaseID,
 				'classes.status': 'scheduled',
 			},
 			'classes'

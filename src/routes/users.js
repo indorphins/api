@@ -9,14 +9,14 @@ users.post('/', userController.createUser);
 
 users.get('/', userController.getUsers);
 
-users.post('/login', userController.loginUser);
+users.get('/login/:token', userController.loginUser);
 
 users.get('/user/:id', userController.getUser);
 
 users.put('/update/:id', userController.updateUser);
 
-users.put('/addClass/:id', userController.addClassForId);
+users.put('/addClass/:token', userController.addClassForId);
 
-users.get('/getScheduledClasses/:id', userController.getScheduledClassForId);
+users.get('/getScheduledClasses/:token', userController.getScheduledClassForId);
 
 module.exports = users;
