@@ -1,5 +1,5 @@
+const firebase = require('./firebaseController');
 const User = require('../schemas/User');
-const { CLASS_STATUS_SCHEDULED } = require('../constants');
 
 const getUsers = async (req, res) => {
 	try {
@@ -23,7 +23,7 @@ const createUser = async (req, res) => {
 		const newUser = await User.create(req.body);
 		res.status(201).json({
 			success: true,
-			data: { class: newUser },
+			data: { user: newUser },
 		});
 	} catch (err) {
 		console.log('createUser - error: ', err);
@@ -51,13 +51,18 @@ const getUser = async (req, res) => {
 	}
 };
 
+/*
+ * Takes in an email from req.body and finds the user associated with it
+ * Returns the user minus password field (can be deprecated once firebase handles user passwords)
+ */
 const loginUser = async (req, res) => {
 	try {
-		const { email, password } = req.body;
-		const user = await User.findOne(
-			{ email: email, password: password },
-			'-password'
+		const firebaseID = req.params.firebaseUid;
+		const user = await User.findOne({ firebase_uid: firebaseID }).populate(
+			'classes'
 		);
+
+		console.log('Got user - ', user);
 
 		res.status(200).json({
 			success: !user ? false : true,
@@ -111,11 +116,10 @@ const deleteUser = async (req, res) => {
 
 const addClassForId = async (req, res) => {
 	try {
-		const id = req.params.id;
+		const firebaseID = req.params.firebaseUid;
 		const c = req.body;
-		console.log('Id ', id, ' - class ', c);
 		const user = await User.findOneAndUpdate(
-			{ _id: id },
+			{ firebase_uid: firebaseID },
 			{ $push: { classes: c } },
 			{
 				new: true,
@@ -138,11 +142,10 @@ const addClassForId = async (req, res) => {
 // TODO get working with find() or iterate over the classes and return
 const getScheduledClassForId = async (req, res) => {
 	try {
-		const id = req.params.id;
-		console.log('******Id ', id);
+		const firebaseID = req.params.firebaseUid;
 		const user = await User.find(
 			{
-				_id: id,
+				firebase_uid: firebaseID,
 				'classes.status': 'scheduled',
 			},
 			'classes'
