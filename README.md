@@ -1,51 +1,131 @@
-Backend code for the Indorphins video chat application
+# Indorphins Backend
 
-** Setup instructions and more to be added upon release **
+[![Indorphins](https://circleci.com/gh/afloesch/indorphins-be.svg?style=shield&circle-token=3b155ba273361607512a7c628217c4ca2394de5c)](https://app.circleci.com/pipelines/github/afloesch/indorphins-be)
 
-## Available Scripts
+Node.js based express service for the Indorphins video chat application. Currently tested against node version 14.1.
 
-In the project directory, you can run:
+- [Indorphins Backend](#indorphins-backend)
+  * [Getting Started](#getting-started)
+    + [Install Node](#install-node)
+    + [Install Docker](#install-docker)
+    + [Run the App](#run-the-app)
+  * [Docker](#docker)
+    + [Build](#build)
+    + [Run](#run)
 
-### `npm start`
+## Getting Started
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3001](http://localhost:3001) to view it in the browser.
+### Install Node
 
-Production server running on:[http://indorphins-be-lb-661510815.us-east-1.elb.amazonaws.com](http://indorphins-be-lb-661510815.us-east-1.elb.amazonaws.com)
+Install Node version manager.
 
-## Connecting to PostgreSQL via Command Line (GUI)
+```
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
+```
 
-#### Install PostgreSQL
+Install node version 14.1 and set as the current node version.
 
-Follow this [link](https://www.postgresql.org/download/) to download the PostgreSQL installer on your machine:
+```
+nvm install v14.1
+nvm use v14.1
+```
 
-- Select your OS.
+### Install Docker
 
-  - Mac (with Homebrew): run the command `brew install postgresql`. (recommended)
-  - Mac (w/o Homebrew) & Windows: Use the Interactive installer by EnterpriseDB. You can skip the 'Stack Builder' add-on.
+[Download docker desktop for Mac here](https://hub.docker.com/editions/community/docker-ce-desktop-mac/) and install.
 
-- Go to your terminal and verify that you can run the psql command: `psql --version`
+### Run the App
 
-- If the psql command isn't recognized, you'll need to add it to your PATH.
-  - Linux and Mac: add the line `export PATH=$PATH:/Library/PostgreSQL/latest/bin` to your `~/.bashrc` or `~/.bash_profile`, respectively, and restart your terminal. The exact path may vary so be sure to confirm the location of the postgresql binaries.
-  - Windows: go to the advanced system settings to modify the PATH environmental variable to include the `bin` directory within the postgresql install directory.
+Install the project dependencies.
 
-#### Log in to the database
+```
+npm i
+```
 
-Log in to the database from the command line in your terminal. Just type:
+Start Mongo using the docker-compose file, and give it a few seconds to setup the replica set. This will also start a Mongo database browser on [http://localhost:8080/](http://localhost:8080/).
 
-### `psql postgres://vogevbto:CzupjdSeT8NNNL5hCamhOL2bx7fuUHH_@drona.db.elephantsql.com:5432/vogevbto`
+```
+docker-compose up -d
+```
 
-You'll find yourself at different command prompt. That means you're in the database and you can start writing SQL queries.
+Setup the environment vars.
 
-        * Try typing `\d` to see a list of the different tables.
+```
+export APP_ENV=env/local
+```
 
-        * Then try seeing what a specific table looks like by typing `\d TABLE_NAME`
+Start the application.
 
-        * We can always quit out of here by typing `\q`.
+```
+npm start
+```
 
-        * We can type `\?` to get help on other commands and querys too
+Or, pass the env in at runtime and start it.
 
-        * Make sure you finish each query with a semicolon`;`
+```
+APP_ENV=env/local npm start
+```
 
-You may also find this [SQL cheat sheet](http://www.cheat-sheets.org/saved-copy/sqlcheetsheet.gif) useful.
+Test that you can curl it successfully.
+
+```
+curl -i http://localhost:3001/healthy
+```
+
+## Docker
+
+A private docker image repository is deployed on AWS ECR [here](https://console.aws.amazon.com/ecr/repositories/indorphins/?region=us-east-1). The builds for this repo are generated through CircleCI on a branch basis. Develop and master branches are reserved for release candidates and the production deployment, while feature branches can also be automatically built using a branch name starting with "feat-". All other branches will be ignored by CICD rules.
+
+### Build
+
+Build a local image of indorphins backend.
+
+```
+docker build -t indorphins .
+```
+
+### Run
+
+Start a container.
+
+```
+docker run --rm -p 3001:3001 --name indorphins indorphins
+```
+
+## Docker Compose
+
+Start Mongo and Mongo Express in the background.
+
+```
+docker-compose up -d
+```
+
+Stop Mongo and Mongo Express.
+
+```
+docker-compose kill
+```
+
+Remove the stopped containers.
+
+```
+docker-compose rm
+```
+
+List the docker volumes on your machine, one of which will have the saved mongo database data.
+
+```
+docker volume list
+```
+
+Delete the mongo database volume.
+
+```
+docker volume rm indorphins-be_mongodb_master_data
+```
+
+Delete all docker volumes from the system
+
+```
+docker volume prune
+```

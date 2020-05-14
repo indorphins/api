@@ -1,6 +1,6 @@
 const express = require('express');
 const dailyco = express.Router();
-const dailycoController = require('../controllers/dailycoController');
+const dailycoController = require('../controllers/dailyCoController');
 
 dailyco.get('/room', dailycoController.getRoom, (req, res) => {});
 
