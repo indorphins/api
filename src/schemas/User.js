@@ -26,20 +26,16 @@ const User = new mongoose.Schema({
 		type: String,
 		required: true,
 	},
-	password: {
-		type: String,
-		required: true,
-	},
 	user_type: {
 		type: Number,
 		required: true,
 	},
 	classes: [{ type: mongoose.Schema.ObjectId, ref: 'Class' }],
-	// classes: {
-	// 	type: Array,
-	// 	required: true,
-	// 	default: [],
-	// },
+	firebase_uid: {
+		type: String,
+		required: true,
+		unique: true,
+	},
 	created_at: {
 		type: Date,
 		required: true,
