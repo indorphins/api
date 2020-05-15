@@ -1,5 +1,4 @@
 const admin = require('firebase-admin');
-const _get = require('lodash/get');
 const serviceAccount = require('../../groupfit-auth-firebase-adminsdk-ovr16-697a0631ce.json');
 
 admin.initializeApp({
