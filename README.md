@@ -5,13 +5,13 @@
 Node.js based express service for the Indorphins video chat application. Currently tested against node version 14.1.
 
 - [Indorphins Backend](#indorphins-backend)
-  * [Getting Started](#getting-started)
-    + [Install Node](#install-node)
-    + [Install Docker](#install-docker)
-    + [Run the App](#run-the-app)
-  * [Docker](#docker)
-    + [Build](#build)
-    + [Run](#run)
+  - [Getting Started](#getting-started)
+    - [Install Node](#install-node)
+    - [Install Docker](#install-docker)
+    - [Run the App](#run-the-app)
+  - [Docker](#docker)
+    - [Build](#build)
+    - [Run](#run)
 
 ## Getting Started
 
@@ -89,7 +89,7 @@ docker build -t indorphins .
 Start a container.
 
 ```
-docker run --rm -p 3001:3001 --name indorphins indorphins
+docker run --env-file ./env/local.env --rm -p 3001:3001 --name indorphins indorphins
 ```
 
 ## Docker Compose
