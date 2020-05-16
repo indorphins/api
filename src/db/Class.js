@@ -20,23 +20,22 @@ const Class = new mongoose.Schema({
 		unique: true,
 		default: uuid.v4(),
 	},
-	status: {
-		type: String,
-		required: true,
-	},
 	instructor: { 
 		type: mongoose.Schema.ObjectId, 
 		ref: 'User',
 	},
 	participants: [UserRef],
 	// Should be UTC date
-	created_at: {
+	created: {
 		type: Date,
 		required: true,
 		default: new Date().toISOString(),
 	},
 	// Should be UTC date
-	start_time: {
+	start_date: {
+		type: Date,
+	},
+	end_date: {
 		type: Date,
 	},
 	total_spots: {
@@ -47,18 +46,17 @@ const Class = new mongoose.Schema({
 		type: Number,
 		required: true,
 	},
-	// minutes
-	duration: {
+	cost: {
 		type: Number,
 		required: true,
-		default: 60
-	},
+		default: 20.00,
+	}
 });
 
 Class.index({ participants: 1 });
-Class.index({ status: 1 });
-Class.index({ start_time: 1 });
+Class.index({ start_date: -1 });
+Class.index({ end_date: -1 });
 Class.index({ available_spots: -1 });
-Class.index({ class_id: 1, instructor: 1 });
+Class.index({ id: 1, instructor: 1 });
 
 module.exports = mongoose.model('Class', Class);

@@ -37,60 +37,35 @@ function authentication(req, res, next) {
 		});
 };
 
-async function getUser(firebaseID) {
-  let user = null;
-
-  user = await User.findOne({ firebase_uid: firebaseID });
-
-  return user;
+async function isAuthorized(user_type, req, res, next) {
+    // skip if already authorized by another middleware
+    if (req.ctx.authorized) {
+      next();
+    }
+  
+    let firebase_uid = req.ctx.firebaseUid;
+    let user = req.ctx.userData;
+    
+    if (!user) {
+      user = await User.findOne({ firebase_uid: firebase_uid });
+      req.ctx.userData = user;
+    }
+  
+    // if user.user_type matches user_type then set authorized true
+    if (user && user.user_type == user_type) {
+      req.ctx.authorized = true;
+      log.debug("user action authorized for", user_type);
+    }
+  
+    next();
 }
 
 function adminAuthorized(req, res, next) {
-
-  // skip if already authorized by another middleware
-  if (req.ctx.authorized) {
-    next();
-  }
-
-  let firebase_uid = req.ctx.firebaseUid;
-  let user = req.ctx.userData;
-  
-  if (!user) {
-    user = getUser(firebase_uid);
-    req.ctx.userData = user;
-  }
-
-  // if user is admin then set authorized true
-  if (user && user.user_type == "admin") {
-    req.ctx.authorized = true;
-    log.debug("user is admin authorizing action");
-  }
-
-  next();
+  isAuthorized("admin", req, res, next);
 }
 
 function instructorAuthorized(req, res, next) {
-
-  // skip if already authorized by another middleware
-  if (req.ctx.authorized) {
-    next();
-  }
-
-  let firebase_uid = req.ctx.firebaseUid;
-  let user = req.ctx.userData;
-  
-  if (!user) {
-    user = getUser(firebase_uid);
-    req.ctx.userData = user;
-  }
-
-  // if user is instructor then set authorized true
-  if (user && user.user_type == "instructor") {
-    req.ctx.authorized = true;
-    log.debug("user is instructor authorizing action");
-  }
-
-  next();
+  isAuthorized("instructor", req, res, next)
 }
 
 module.exports = {
