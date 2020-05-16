@@ -1,22 +1,4 @@
-const firebase = require('./firebaseController');
-const User = require('../schemas/User');
-
-const getUsers = async (req, res) => {
-	try {
-		const users = await User.find();
-		res.status(200).json({
-			success: true,
-			results: users.length,
-			data: { users },
-		});
-	} catch (err) {
-		console.log('getUsers - error: ', err);
-		res.status(404).json({
-			success: false,
-			message: err,
-		});
-	}
-};
+const User = require('../db/User');
 
 const createUser = async (req, res) => {
 	try {
@@ -114,63 +96,12 @@ const deleteUser = async (req, res) => {
 	}
 };
 
-const addClassForId = async (req, res) => {
-	try {
-		const firebaseID = req.params.firebaseUid;
-		const c = req.body;
-		const user = await User.findOneAndUpdate(
-			{ firebase_uid: firebaseID },
-			{ $push: { classes: c } },
-			{
-				new: true,
-			}
-		).populate('classes');
-		console.log('Got user ', user);
-		res.status(200).json({
-			success: true,
-			data: { user },
-		});
-	} catch (err) {
-		console.log('scheduleClassForId - error: ', err);
-		res.status(404).json({
-			success: false,
-			message: err,
-		});
-	}
-};
 
-// TODO get working with find() or iterate over the classes and return
-const getScheduledClassForId = async (req, res) => {
-	try {
-		const firebaseID = req.params.firebaseUid;
-		const user = await User.find(
-			{
-				firebase_uid: firebaseID,
-				'classes.status': 'scheduled',
-			},
-			'classes'
-		).populate('classes');
-		console.log('got user w/ classes ', user);
-		res.status(200).json({
-			success: true,
-			data: { user },
-		});
-	} catch (err) {
-		console.log('getScheduledClassForId - error: ', err);
-		res.status(404).json({
-			success: false,
-			message: err,
-		});
-	}
-};
 
 module.exports = {
 	deleteUser,
 	getUser,
-	getUsers,
 	updateUser,
 	createUser,
 	loginUser,
-	addClassForId,
-	getScheduledClassForId,
 };

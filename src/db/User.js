@@ -6,7 +6,12 @@ const User = new mongoose.Schema({
 	user_id: {
 		type: String,
 		required: true,
+		unique: true,
 		default: uuid.v4(),
+	},
+	username: {
+		type: String,
+		required: true,
 	},
 	first_name: {
 		type: String,
@@ -24,23 +29,29 @@ const User = new mongoose.Schema({
 	},
 	phone_number: {
 		type: String,
-		required: true,
+		unique: true,
+		required: false,
 	},
 	user_type: {
-		type: Number,
+		type: String,
 		required: true,
 	},
-	classes: [{ type: mongoose.Schema.ObjectId, ref: 'Class' }],
 	firebase_uid: {
 		type: String,
 		required: true,
 		unique: true,
 	},
+	profile_img: {
+		type: String,
+		required: false,
+	},
 	created_at: {
 		type: Date,
 		required: true,
-		default: Date.now,
+		default: new Date().toISOString(),
 	},
 });
+
+User.index({ username: 1 });
 
 module.exports = mongoose.model('User', User);

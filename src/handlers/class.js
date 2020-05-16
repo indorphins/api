@@ -1,5 +1,6 @@
 const { CLASS_STATUS_SCHEDULED } = require('../constants');
-const Class = require('../schemas/Class');
+const Class = require('../db/Class');
+const log = require('../log');
 
 const getClasses = async (req, res) => {
 	try {
@@ -17,33 +18,17 @@ const getClasses = async (req, res) => {
 	}
 };
 
-const getScheduledClasses = async (req, res) => {
-	try {
-		const classes = await Class.find({ status: /scheduled/ });
-		res.status(200).json({
-			success: true,
-			results: classes.length,
-			data: { classes },
-		});
-	} catch (err) {
-		res.status(404).json({
-			success: false,
-			message: err,
-		});
-	}
-};
-
 const createClass = async (req, res) => {
 	try {
 		const newClass = await Class.create(req.body);
-		console.log('new class is ', newClass);
+		log.debug('new class is ', newClass);
 		res.status(201).json({
 			success: true,
 			data: { class: newClass },
 		});
 	} catch (err) {
-		console.log('Error creating class: ', err);
-		res.status(400).json({
+		log.error('Error creating class: ', err);
+		res.status(500).json({
 			success: false,
 			message: err,
 		});
@@ -85,46 +70,6 @@ const updateClass = async (req, res) => {
 	}
 };
 
-const endClass = async (req, res) => {
-	try {
-		const c = await Class.findOneAndUpdate(
-			{ _id: req.params.id },
-			{ status: 'closed' },
-			{ new: true }
-		);
-
-		res.status(200).json({
-			success: true,
-			data: { c },
-		});
-	} catch (err) {
-		res.status(404).json({
-			success: false,
-			message: err,
-		});
-	}
-};
-
-const cancelClass = async (req, res) => {
-	try {
-		const c = await Class.findOneAndUpdate(
-			{ _id: req.params.id },
-			{ status: 'cancelled' },
-			{ new: true }
-		);
-
-		res.status(200).json({
-			success: true,
-			data: { c },
-		});
-	} catch (err) {
-		res.status(404).json({
-			success: false,
-			message: err,
-		});
-	}
-};
-
 const deleteClass = async (req, res) => {
 	try {
 		await Class.findByIdAndDelete(req.params.id);
@@ -146,7 +91,4 @@ module.exports = {
 	getClass,
 	getClasses,
 	createClass,
-	getScheduledClasses,
-	cancelClass,
-	endClass,
 };

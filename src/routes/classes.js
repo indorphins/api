@@ -1,26 +1,31 @@
 const express = require('express');
-const classes = express.Router();
+const middleware = require('../middleware');
+const classController = require('../handlers/class');
 
-const classController = require('../controllers/classController');
+let router = express.Router();
+router.get('/', classController.getClasses);
 
-classes.get('', classController.getClasses, (req, res) => {
-	res.send('Hello ACtive classes');
-});
+router.post('/', middleware.authentication);
+router.post('/', middleware.adminAuthorized);
+router.post('/', middleware.instructorAuthorized);
+router.post('/', classController.createClass);
 
-classes.get('/id/:id', classController.getClass);
+router.get('/:id', classController.getClass);
 
-classes.get('/scheduled', classController.getScheduledClasses);
+router.delete('/:id', middleware.authentication);
+router.delete('/:id', middleware.adminAuthorized);
+router.delete('/:id', middleware.instructorAuthorized);
+router.delete('/:id', classController.deleteClass);
 
-classes.get('/', classController.getClasses);
+router.put('/:id', middleware.authentication);
+router.put('/:id', middleware.adminAuthorized);
+router.put('/:id', middleware.instructorAuthorized);
+router.put('/:id', classController.updateClass);
 
-classes.delete('/:id', classController.deleteClass);
+/*
+router.get('/scheduled', classController.getScheduledClasses);
+router.get('/end/:id', classController.endClass);
+router.get('/cancel/:id', classController.cancelClass);
+*/
 
-classes.post('/', classController.createClass);
-
-classes.put('/end/:id', classController.endClass);
-
-classes.put('/update/:id', classController.updateClass);
-
-classes.put('/cancel/:id', classController.cancelClass);
-
-module.exports = classes;
+module.exports = router;

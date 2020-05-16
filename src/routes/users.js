@@ -1,20 +1,31 @@
 const express = require('express');
-const users = express.Router();
-const firebase = require('../controllers/firebaseController');
-const userController = require('../controllers/userController');
+const firebase = require('../auth');
+const middleware = require('../middleware');
+const user = require('../handlers/user');
 
-users.delete('/:id', userController.deleteUser);
+let router = express.Router();
+router.post('/', middleware.authentication);
+router.post('/:id', middleware.adminAuthorized);
+router.post('/', user.createUser);
 
-users.post('/', userController.createUser);
+router.get('/:id', middleware.authentication);
+router.get('/:id', middleware.adminAuthorized);
+router.get('/:id', user.getUser);
 
-users.get('/', userController.getUsers);
+router.delete('/:id', middleware.authentication);
+router.delete('/:id', middleware.adminAuthorized);
+router.delete('/:id', user.deleteUser);
 
-users.get('/login', (req, res) => {
+router.put('/:id', middleware.authentication);
+router.put('/:id', middleware.adminAuthorized);
+router.put('/:id', user.updateUser);
+
+router.get('/login', (req, res) => {
 	firebase
 		.verifyFirebaseToken(req, res)
 		.then((firebaseUid) => {
 			req.params.firebaseUid = firebaseUid;
-			userController.loginUser(req, res);
+			user.loginUser(req, res);
 		})
 		.catch((error) => {
 			console.log('/login error: ', error);
@@ -22,34 +33,4 @@ users.get('/login', (req, res) => {
 		});
 });
 
-users.get('/user/:id', userController.getUser);
-
-users.put('/update/:id', userController.updateUser);
-
-users.put('/addClass', (req, res) => {
-	firebase
-		.verifyFirebaseToken(req, res)
-		.then((firebaseUid) => {
-			req.params.firebaseUid = firebaseUid;
-			userController.addClassForId(req, res);
-		})
-		.catch((error) => {
-			console.log('/login error: ', error);
-			res.status(400).send();
-		});
-});
-
-users.get('/getScheduledClasses', (req, res) => {
-	firebase
-		.verifyFirebaseToken(req, res)
-		.then((firebaseUid) => {
-			req.params.firebaseUid = firebaseUid;
-			userController.getScheduledClassForId(req, res);
-		})
-		.catch((error) => {
-			console.log('/login error: ', error);
-			res.status(400).send();
-		});
-});
-
-module.exports = users;
+module.exports = router;
