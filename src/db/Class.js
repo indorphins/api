@@ -13,7 +13,8 @@ const UserRef = new mongoose.Schema({
 })
 
 const Class = new mongoose.Schema({
-	class_id: {
+	_id: mongoose.Schema.Types.ObjectId,
+	id: {
 		type: String,
 		required: true,
 		unique: true,
