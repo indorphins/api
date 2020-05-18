@@ -86,10 +86,16 @@ docker build -t indorphins .
 
 ### Run
 
-Start a container.
+Start Mongo.
 
 ```
-docker run --env-file ./env/local.env --rm -p 3001:3001 --name indorphins indorphins
+docker-compose up -d
+```
+
+Start the app container.
+
+```
+docker run --rm --env-file env/docker.env -p 3001:3001 --network indorphins-be_default indorphins
 ```
 
 ## Docker Compose
