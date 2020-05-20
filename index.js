@@ -9,6 +9,7 @@ const bformat = require('bunyan-format');
 const dailycoRouter = require('./src/routes/dailyco');
 const classesRouter = require('./src/routes/classes');
 const usersRouter = require('./src/routes/users');
+const stripeRouter = require('./src/routes/stripe');
 
 const DBCONN = String(process.env.DATABASE_URL).replace(/'|"/gm, '');
 const PORT = process.env.PORT;
@@ -16,29 +17,29 @@ const PORT = process.env.PORT;
 var LOG_LEVEL = 30;
 var OUTPUT = 'json';
 
-if (process.env.LOG_LEVEL == "debug") {
+if (process.env.LOG_LEVEL == 'debug') {
 	LOG_LEVEL = 20;
-	OUTPUT = 'short'
+	OUTPUT = 'short';
 }
 
 const app = express();
 const log = bunyan.createLogger({
-	name: "indorphins",
+	name: 'indorphins',
 	serializers: {
 		err: bunyan.stdSerializers.err,
 		req: bunyan.stdSerializers.req,
-		res: bunyan.stdSerializers.res
+		res: bunyan.stdSerializers.res,
 	},
-	level: LOG_LEVEL, 
-	stream: bformat({ 
+	level: LOG_LEVEL,
+	stream: bformat({
 		outputMode: OUTPUT,
-		levelInString: true 
-	})
+		levelInString: true,
+	}),
 });
 
 function listen() {
 	if (app.get('env') === 'test') return;
-	app.listen(PORT, () => log.info(`App started`, "port", PORT));
+	app.listen(PORT, () => log.info(`App started`, 'port', PORT));
 }
 
 function connect() {
@@ -56,7 +57,7 @@ function connect() {
 
 log.info('Connecting to MongoDB', DBCONN);
 connect().catch((err) => {
-	log.fatal({msg: "error connecting to database", err: err});
+	log.fatal({ msg: 'error connecting to database', err: err });
 });
 
 app.use(cors());
@@ -67,8 +68,8 @@ app.use(cookieParser());
 
 // request logging middleware
 app.use(function (req, res, next) {
-  log.info({message: "request info", req: req, res: res});
-  next();
+	log.info({ message: 'request info', req: req, res: res });
+	next();
 });
 
 app.options('*', cors());
@@ -77,6 +78,7 @@ app.options('*', cors());
 app.use('/dailyco', dailycoRouter);
 app.use('/classes', classesRouter);
 app.use('/users', usersRouter);
+app.use('/stripe', stripeRouter);
 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');
