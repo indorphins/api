@@ -21,19 +21,57 @@ const authenticate = (req, res) => {
 				var connected_account_id = response.stripe_user_id;
 				saveAccountId(connected_account_id);
 
-				// Render some HTML or redirect to a different page.
-				return res.status(200).json({ success: true });
+				res.status(200).json({ success: true });
 			},
 			(err) => {
 				if (err.type === 'StripeInvalidGrantError') {
-					return res
+					res
 						.status(400)
 						.json({ error: 'Invalid authorization code: ' + code });
 				} else {
-					return res.status(500).json({ error: 'An unknown error occurred.' });
+					res.status(500).json({ error: 'An unknown error occurred.' });
 				}
 			}
 		);
+};
+
+const createPayment = async (req, res) => {
+	const dest_acct = req.body.dest_acct;
+	console.log('input dest_acct is ', dest_acct);
+	// TODO validate dest acct id against our instructors' acct ids
+
+	stripe.paymentIntents
+		.create({
+			payment_method_types: ['card'],
+			amount: 1000,
+			currency: 'usd',
+			transfer_data: {
+				destination: dest_acct, // where the money will go
+			},
+			on_behalf_of: dest_acct, // the account the money is intended for
+			application_fee_amount: 250, // what we take
+		})
+		.then((paymentIntent) => {
+			console.log('payment intent is ', paymentIntent);
+			console.log('client secret is ', paymentIntent.client_secret);
+			res
+				.status(200)
+				.json({ success: true, client_secret: paymentIntent.client_secret });
+		})
+		.catch((error) => {
+			console.log('StripeController - createPayment - error : ', error);
+			res.status(400).send(error);
+		});
+};
+
+const refundCharge = async (req, res) => {
+	// How do we verify the charge is valid
+	const refund = await stripe.refunds.create({
+		charge: '{CHARGE_ID}',
+		reverse_transfer: true,
+		refund_application_fee: true, // Gives back the platform fee
+	});
+	res.status(200).json({ success: true, client_secret: refund.client_secret });
 };
 
 const generateState = () => {
@@ -54,4 +92,6 @@ const saveAccountId = (id) => {
 
 module.exports = {
 	authenticate,
+	createPayment,
+	refundCharge,
 };
