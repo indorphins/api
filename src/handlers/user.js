@@ -1,99 +1,211 @@
 const User = require('../db/User');
+const log = require('../log');
 
-const createUser = async (req, res) => {
-	try {
-		const newUser = await User.create(req.body);
-		res.status(201).json({
-			success: true,
-			data: { user: newUser },
-		});
-	} catch (err) {
-		console.log('createUser - error: ', err);
-		res.status(400).json({
-			success: false,
-			message: err,
-		});
-	}
-};
-
-const getUser = async (req, res) => {
-	try {
-		const user = await User.findById(req.params.id).populate('classes');
-
-		res.status(200).json({
-			success: true,
-			data: { user },
-		});
-	} catch (err) {
-		console.log('getUser - error: ', err);
-		res.status(404).json({
-			success: false,
-			message: err,
-		});
-	}
-};
-
-/*
- * Takes in an email from req.body and finds the user associated with it
- * Returns the user minus password field (can be deprecated once firebase handles user passwords)
+/**
+ * Express handler to create a new user. Requires a valid firebase token so that we can properly associate
+ * the user within our systems to the Firebase account.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
  */
-const loginUser = async (req, res) => {
+async function createUser(req, res) {
+	let userData = req.body;
+	let newUser = null;
+
+	userData.firebase_uid = req.ctx.firebase_uid;
+
 	try {
-		const firebaseID = req.params.firebaseUid;
-		const user = await User.findOne({ firebase_uid: firebaseID }).populate(
+		newUser = await User.create(req.body);
+	} catch (err) {
+		log.warn('createUser - error: ', err);
+		res.status(400).json({
+			message: err,
+		});
+		return;
+	}
+
+	res.status(201).json({
+	  message: "New user created",
+		data: newUser,
+	});
+};
+
+/**
+ * Express handler to get a new user. Only authorized for the actual user.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function getUser(req, res) {
+
+	let query = { id: req.params.id };
+	let user;
+
+	try {
+		user = await User.findOne(query)
+	} catch (err) {
+		log.warn('getUser - error: ', err);
+		res.status(404).json({
+			message: err,
+		});
+		return;
+	}
+
+	if (!user) {
+		res.status(404).json({
+			message: "User not found",
+		});
+	}
+
+	// if the record doesn't belong to the requesting user reject the request
+	if (!req.ctx.userData || (user.id != req.ctx.userData.id)) {
+		log.debug('User not authorized', req.ctx.userData);
+		res.status(403).json({
+			message: "Forbidden",
+		});
+		return;
+	}
+
+	res.status(200).json({
+		data: user,
+	});
+};
+
+/**
+ * Takes in an email from req.body and finds the user associated with it. Returns the user 
+ * minus password field (can be deprecated once firebase handles user passwords)
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function loginUser(req, res) {
+
+	let firebaseID = req.params.firebaseUid;
+	let user = null;
+
+	try {
+		user = await User.findOne({ firebase_uid: firebaseID }).populate(
 			'classes'
 		);
-
-		console.log('Got user - ', user);
-
-		res.status(200).json({
-			success: !user ? false : true,
-			data: { user },
-		});
 	} catch (err) {
-		console.log('getUser - error: ', err);
-		res.status(404).json({
-			success: false,
-			message: err,
+		log.warn('getUser - error: ', err);
+		res.status(403).json({
+			message: "Forbidden"
+		});
+		return;
+	}
+
+	if (!user) {
+		res.status(403).json({
+			message: "Forbidden",
 		});
 	}
+
+	res.status(200).json({
+		message: "Successful login",
+		data: user,
+	});
 };
 
-const updateUser = async (req, res) => {
+/**
+ * Express handler to update a user record. Only authorized for the actual user.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function updateUser(req, res) {
+	
+	let query = { id: req.params.id };
+	let user = null;
+
 	try {
-		const query = { _id: req.params.id };
-		const user = await User.findOneAndUpdate(query, req.body, {
+		user = await User.findOne(query);
+	} catch (err) {
+		log.warn('updateUser - error: ', err);
+		res.status(404).json({
+			message: err,
+		});
+		return;
+	}
+
+	if (!user) {
+		log.debug('User not found');
+		res.status(403).json({
+			message: "Forbidden",
+		});
+	}
+
+	// if the record doesn't belong to the requesting user reject the request
+	if (!req.ctx.userData || (user.id != req.ctx.userData.id)) {
+		log.debug('User not authorized', req.ctx.userData);
+		res.status(403).json({
+			message: "Forbidden",
+		});
+		return;
+	}
+
+	try {
+		await User.update(query, req.body, {
 			upsert: true,
-			new: true,
+			new: false,
 		});
-
-		res.status(200).json({
-			success: true,
-			data: { user },
-		});
-	} catch (err) {
-		console.log('updateUser - error: ', err);
-		res.status(404).json({
-			success: false,
-			message: err,
-		});
+	} catch(err) {
+		
 	}
+
+	res.status(200).json({
+		message: "User data updated"
+	});
 };
 
-const deleteUser = async (req, res) => {
+/**
+ * Express handler to delete a user record. Only removes the user from the user collection, not any
+ * user references that might exist in past or future classes.
+ * TODO: This should require a user re-enter their password, which we could implement in the front, and then
+ * here in the backend actually check the issue time of the token and see if it was very recently issued.
+ * NOTE: Could potentially enable this for admins against any user
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function deleteUser(req, res) {
+
+	let user = null;
+
 	try {
-		await User.findByIdAndDelete(req.params.id);
-		res.status(204).json({
-			success: true,
-			data: null,
-		});
+		user = await User.findOne({id: req.params.id});
 	} catch (err) {
-		console.log('deleteUser - error: ', err);
+		log.warn('deleteUser - error: ', err);
 		res.status(404).json({
-			success: false,
 			message: err,
 		});
+		return;
 	}
+
+	if (!user) {
+		log.debug('User not found');
+		res.status(403).json({
+			message: "Forbidden",
+		});
+	}
+
+	// if the record doesn't belong to the requesting user reject the request
+	if (!req.ctx.userData || (user.id != req.ctx.userData.id)) {
+		log.debug('User not authorized', req.ctx.userData);
+		res.status(403).json({
+			message: "Forbidden",
+		});
+		return;
+	}
+
+	try {
+		await User.remove({id: req.params.id});
+	} catch(err) {
+		log.warn('deleteUser - error: ', err);
+		res.status(404).json({
+			message: err,
+		});
+		return;
+	}
+
+	res.status(204).json({
+		message: "User removed",
+	});
 };
 
 

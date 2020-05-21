@@ -4,7 +4,9 @@ const classController = require('../handlers/class');
 
 let router = express.Router();
 
-// Get a list of classes. Will return 100 results at a time. Supports a number of filter flags to optimize query results.
+// Get a list of classes. Will return 100 results at a time. 
+// TODO: Support a number of filter flags to optimize query results.
+// TODO: pagination
 router.get('/', classController.getClasses);
 
 // Create a class. Only allowed for Admins and Instructors
@@ -26,16 +28,16 @@ router.put('/:id', middleware.authentication);
 router.put('/:id', middleware.adminAuthorized);
 router.put('/:id', classController.updateClass);
 
-
 // Add participant to class
 router.post('/:id/participants/:user_id', middleware.authentication);
 router.post('/:id/participants/:user_id', middleware.adminAuthorized);
-router.post('/:id/participants/:user_id', function(req, res, next) { /** implement middlware to validate the use paid for the class */ next();});
+router.post('/:id/participants/:user_id', function(req, res, next) { /** implement middleware to validate the user paid for the class */ next();});
 router.post('/:id/participants/:user_id', function(req, res){ /* implement this */ })
 
 // Remove participant from class
 router.delete('/:id/participants/:user_id', middleware.authentication);
 router.delete('/:id/participants/:user_id', middleware.adminAuthorized);
+router.delete('/:id/participants/:user_id', function(req, res){ /* implement this */ })
 router.delete('/:id/participants/:user_id', function(req, res){ /* implement this */ })
 
 module.exports = router;

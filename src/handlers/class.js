@@ -1,88 +1,201 @@
-const { CLASS_STATUS_SCHEDULED } = require('../constants');
 const Class = require('../db/Class');
 const log = require('../log');
 
-const getClasses = async (req, res) => {
+/**
+ * Express handler for getting existing classes. Supports a number of different query params for
+ * filtering and sorting or different fields and parameters.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function getClasses(req, res) {
+	
+	let page = req.params.page ? Number(req.params.page) - 1 : 0;
+	let limit = req.params.limit ? Number(req.params.limit) : 50;
+
+	// TODO: these could change more based on query params
+	let filter = { start_date: { $gte : new Date().toISOString() }};
+
+	let order = {};
+	order[start_date] = "desc";
+
 	try {
-		const classes = await Class.find();
-		res.status(200).json({
-			success: true,
-			results: classes.length,
-			data: { classes },
+		Class.find(filter).sort(order).skip(page*limit).limit(limit).exec((err, doc) => {
+			if (err) {
+				res.status(500).json(err);
+				return;
+			}
+
+			res.status(200).json({
+				total: doc.total,
+				page: page + 1,
+				limit: limit,
+				data: doc,
+			});
 		});
 	} catch (err) {
 		res.status(404).json({
-			success: false,
 			message: err,
 		});
 	}
 };
 
-const createClass = async (req, res) => {
-	try {
-		const newClass = await Class.create(req.body);
-		log.debug('new class is ', newClass);
-		res.status(201).json({
-			success: true,
-			data: { class: newClass },
+/**
+ * Express handler to create a new class record. Action should only be allowed by
+ * Admins and Instructors, not regular users.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function createClass(req, res) {
+
+	let newClass = null;
+
+	if (!req.ctx.authorized) {
+		log.debug('User not authorized', req.ctx.userData);
+		res.status(403).json({
+			message: "forbidden",
 		});
+		return;
+	}
+
+	try {
+		newClass = await Class.create(req.body);
 	} catch (err) {
 		log.error('Error creating class: ', err);
 		res.status(500).json({
-			success: false,
 			message: err,
 		});
+		return;
 	}
+
+	log.debug('New class created', newClass);
+	res.status(201).json({
+		message: "New class added",
+		data: newClass,
+	});
 };
 
-const getClass = async (req, res) => {
-	try {
-		const c = await Class.findById(req.params.id);
+/**
+ * Express handler to get a class record.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function getClass(req, res) {
 
-		res.status(200).json({
-			success: true,
-			data: { c },
-		});
+	let filter = { id: req.params.id };
+	let c = null;
+
+	try {
+		c = await Class.findOne(filter);
 	} catch (err) {
+		log.warn("error fetching class by id", err);
 		res.status(404).json({
-			success: false,
-			message: err,
+			message: "Class not found",
 		});
+		return;
 	}
+
+	res.status(200).json({
+		data: c,
+	});
 };
 
-const updateClass = async (req, res) => {
+/**
+ * Express handler to update a class record. Only allowed by Admins and Instuctors.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function updateClass(req, res) {
+
+	if (!req.ctx.authorized) {
+		log.debug('User not authorized', req.ctx.userData);
+		res.status(403).json({
+			message: "Forbidden",
+		});
+		return;
+	}
+
+	let c = null;
+
 	try {
-		const c = await Class.findOneAndUpdate(
+		c = await Class.findOneAndUpdate(
 			{ _id: req.params.id },
 			{ $set: req.body }
 		);
-
-		res.status(200).json({
-			success: true,
-			data: { c },
-		});
 	} catch (err) {
+		log.warn("error updating class", err);
 		res.status(404).json({
-			success: false,
-			message: err,
+			message: "Class not found",
 		});
+		return;
 	}
+
+	res.status(200).json({
+		message: "Class updated"
+	});
 };
 
-const deleteClass = async (req, res) => {
-	try {
-		await Class.findByIdAndDelete(req.params.id);
-		res.status(204).json({
-			success: true,
-			data: null,
+/**
+ * Express handler to delete a class. Only allowed by Admins and Instructors.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ */
+async function deleteClass(req, res) {
+
+	// Has user been authorized by middleware
+	if (!req.ctx.authorized) {
+		log.debug('User not authorized', req.ctx.userData);
+		res.status(403).json({
+			message: "Forbidden",
 		});
+		return;
+	}
+
+	let filter = { id: req.params.id };
+	let c = null;
+
+	// Check for class
+	try {
+		c = await Class.findOne(filter);
 	} catch (err) {
 		res.status(404).json({
-			success: false,
-			message: err,
+			message: "Class not found",
+			error: err
 		});
+		return;
 	}
+
+	// Make sure class isn't null
+	if (!c) {
+		res.status(404).json({
+			message: "Class not found",
+		});
+		return;
+	}
+
+	// Check if class has signed up participants
+	// TODO: work out a scheme for refunds.
+	if (c.participants.length > 0) {
+		res.status(400).json({
+			message: "Cannot remove class, it has participants.",
+		});
+		return;
+	}
+
+	// Try to delete the db document
+	try {
+		await Class.remove(filter);
+	} catch(err) {
+		log.warn("error removing class", err);
+		res.status(500).json({
+			message: "Error removing class",
+			error: err,
+		});
+		return;
+	}
+
+	res.status(204).json({
+		message: "Class removed",
+	});
 };
 
 module.exports = {

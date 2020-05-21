@@ -20,13 +20,21 @@ const Class = new mongoose.Schema({
 		unique: true,
 		default: uuid.v4(),
 	},
+	title: {
+		type: String,
+		required: true,
+	},
+	description: {
+		type: String,
+		required: true,
+	},
 	instructor: { 
 		type: mongoose.Schema.ObjectId, 
 		ref: 'User',
 	},
 	participants: [UserRef],
 	// Should be UTC date
-	created: {
+	created_date: {
 		type: Date,
 		required: true,
 		default: new Date().toISOString(),

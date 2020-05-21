@@ -2,6 +2,13 @@ const firebase = require('../auth');
 const log = require('../log');
 const User = require('../db/User');
 
+/**
+ * Custom express middleware that validates a firebase token and returns the firebase uid and full token
+ * claims in the request context if the token is valid.
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ * @param {Function} next - callback function to call when middleware is done
+ */
 function authentication(req, res, next) {
 
   if (!req.headers.authorization) {
@@ -25,8 +32,15 @@ function authentication(req, res, next) {
 		.verifyToken(token)
 		.then((claims) => {
       log.debug("token claims", claims);
+
+      // create request context
+      if (!req.ctx) {
+        req.ctx = {};
+      }
+
       req.ctx.firebaseUid = claims.uid;
       req.ctx.tokenClaims = claims;
+
       next();
 		})
 		.catch((error) => {
@@ -37,6 +51,14 @@ function authentication(req, res, next) {
 		});
 };
 
+/**
+ * Custom express middleware that checks if a user's user type matches the one passed in, and
+ * sets a context flag if the user should be authorized.
+ * @param {String} user_type - a valid user type for the database User model (admin, instructor, user)
+ * @param {Object} req - http request object
+ * @param {Object} res - http response object
+ * @param {Function} next - callback function to call when middleware is done
+ */
 async function isAuthorized(user_type, req, res, next) {
     // skip if already authorized by another middleware
     if (req.ctx.authorized) {

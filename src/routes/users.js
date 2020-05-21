@@ -20,6 +20,12 @@ router.put('/:id', middleware.authentication);
 router.put('/:id', middleware.adminAuthorized);
 router.put('/:id', user.updateUser);
 
+// TODO: searches against indexed participants fields to get all the classes for a user
+// TODO: paginate results
+router.get('/:id/classes/', middleware.authentication);
+router.get('/:id/classes/', middleware.adminAuthorized);
+router.get('/:id/classes/', function(req, res) { /** implement this  */ });
+
 router.get('/login', (req, res) => {
 	firebase
 		.verifyFirebaseToken(req, res)
