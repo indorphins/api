@@ -7,4 +7,6 @@ stripe.get('/verifyToken', stripeController.authenticate);
 
 stripe.post('/createPayment', stripeController.createPayment);
 
+stripe.post('/createCustomer', stripeController.createCustomer);
+
 module.exports = stripe;

@@ -90,8 +90,55 @@ const saveAccountId = (id) => {
 	console.log('Connected account ID: ' + id);
 };
 
+const createCustomer = async (req, res) => {
+	// Create a new customer object
+	const email = req.body.email;
+	try {
+		const customer = await stripe.customers.create({
+			email: email,
+		});
+		// save the customer.id in your database
+		console.log('created customer ', customer);
+		res.status(200).json({ customer });
+	} catch (error) {
+		console.log('Error creating customer ', error);
+		res.status(400).json(error);
+	}
+};
+
+const createSubscription = async (req, res) => {
+  // Attach the payment method to the customer
+  try {
+    await stripe.paymentMethods.attach(req.body.paymentMethodId, {
+      customer: req.body.customerId,
+    });
+  } catch (error) {
+    return res.status('402').send({ error: { message: error.message } });
+  }
+​
+  // Change the default invoice settings on the customer to the new payment method
+  await stripe.customers.update(
+    req.body.customerId,
+    {
+      invoice_settings: {
+        default_payment_method: req.body.paymentMethodId,
+      },
+    }
+  );
+​
+  // Create the subscription
+  const subscription = await stripe.subscriptions.create({
+    customer: req.body.customerId,
+    items: [{ price: 'price_H1NlVtpo6ubk0m' }],
+    expand: ['latest_invoice.payment_intent'],
+  });
+​
+  res.send(subscription);
+}
+
 module.exports = {
 	authenticate,
 	createPayment,
 	refundCharge,
+	createCustomer,
 };
