@@ -155,7 +155,7 @@ async function updateClass(req, res) {
 
 	try {
 		c = await Class.findOneAndUpdate(
-			{ _id: req.params.id },
+			{ id: req.params.id },
 			{ $set: req.body }
 		);
 	} catch (err) {
