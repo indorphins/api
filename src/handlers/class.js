@@ -1,6 +1,10 @@
 const Class = require('../db/Class');
 const log = require('../log');
 
+/**
+ * Utility function to decode a custom filter or sort order passed in through query parameters.
+ * @param {String} value - base64 encoded and stringified json object representing a valid mongo filter or sort object
+ */
 function decodeQueryParam(value) {
 	let buff = new Buffer(value, 'base64');
 	let data = null;
@@ -19,6 +23,7 @@ function decodeQueryParam(value) {
 /**
  * Express handler for getting existing classes. Supports a number of different query params for
  * filtering and sorting or different fields and parameters.
+ * TODO: should guard against searches that will go against non indexed fields
  * @param {Object} req - http request object
  * @param {Object} res - http response object
  */
@@ -44,7 +49,6 @@ async function getClasses(req, res) {
 			order = data;
 		}
 	}
-
 
 	try {
 		Class.find(filter).sort(order).skip(page*limit).limit(limit).exec((err, doc) => {
