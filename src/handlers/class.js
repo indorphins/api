@@ -1,6 +1,21 @@
 const Class = require('../db/Class');
 const log = require('../log');
 
+function decodeQueryParam(value) {
+	let buff = new Buffer(value, 'base64');
+	let data = null;
+
+	try {
+		data = buff.toString();
+		data = JSON.parse(data);
+	} catch(err) {
+		log.warn("invalid encoded object", err);
+		return err, null;
+	}
+
+	return null, data
+}
+
 /**
  * Express handler for getting existing classes. Supports a number of different query params for
  * filtering and sorting or different fields and parameters.
@@ -11,26 +26,30 @@ async function getClasses(req, res) {
 	
 	let page = req.query.page ? Number(req.query.page) - 1 : 0;
 	let limit = req.query.limit ? Number(req.query.limit) : 50;
-	let order = {};
+	let order = { start_date: "desc", name: "asc" };
+	let filter = { start_date: { $gte : new Date().toISOString() }, available_spots: { $gt: 0 }};
 
-	// TODO: the filter could change more based on query params
-	let filter = { start_date: { $gte : new Date().toISOString() }};
+	if (req.query.filter) {
+		let data, err = decodeQueryParam(req.query.filter);
 
-	// NOTE: only supporting one field to sort by ATM but this could be refined
-	if (!req.query.sort) {
-		order[start_date] = "desc";
-	} else {
-		order[req.query.sort] = "asc";
-
-		if (req.query.order) {
-			order[req.query.sort] = req.query.order;
+		if (!err) {
+			filter = data;
 		}
 	}
+
+	if (req.query.order) {
+		let data, err = decodeQueryParam(req.query.sort);
+
+		if (!err) {
+			order = data;
+		}
+	}
+
 
 	try {
 		Class.find(filter).sort(order).skip(page*limit).limit(limit).exec((err, doc) => {
 			if (err) {
-				res.status(500).json(err);
+				res.status(400).json(err);
 				return;
 			}
 
@@ -42,7 +61,7 @@ async function getClasses(req, res) {
 			});
 		});
 	} catch (err) {
-		res.status(404).json({
+		res.status(500).json({
 			message: err,
 		});
 	}
