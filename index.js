@@ -3,8 +3,8 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 
-const classesRouter = require('./src/routes/classes');
-const usersRouter = require('./src/routes/users');
+const classesRouter = require('./src/routes/class');
+const usersRouter = require('./src/routes/user');
 const db = require('./src/db');
 const log = require('./src/log');
 
@@ -33,8 +33,8 @@ app.use(function (req, res, next) {
 app.options('*', cors());
 
 // routes
-app.use('/classes', classesRouter);
-app.use('/users', usersRouter);
+app.use('/class', classesRouter);
+app.use('/user', usersRouter);
 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');
