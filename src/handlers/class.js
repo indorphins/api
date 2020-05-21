@@ -9,21 +9,21 @@ const log = require('../log');
  */
 async function getClasses(req, res) {
 	
-	let page = req.params.page ? Number(req.params.page) - 1 : 0;
-	let limit = req.params.limit ? Number(req.params.limit) : 50;
+	let page = req.query.page ? Number(req.query.page) - 1 : 0;
+	let limit = req.query.limit ? Number(req.query.limit) : 50;
 	let order = {};
 
 	// TODO: the filter could change more based on query params
 	let filter = { start_date: { $gte : new Date().toISOString() }};
 
 	// NOTE: only supporting one field to sort by ATM but this could be refined
-	if (!req.params.sort) {
+	if (!req.query.sort) {
 		order[start_date] = "desc";
 	} else {
-		order[req.params.sort] = "asc";
+		order[req.query.sort] = "asc";
 
-		if (req.params.order) {
-			order[req.params.sort] = req.params.order;
+		if (req.query.order) {
+			order[req.query.sort] = req.query.order;
 		}
 	}
 
