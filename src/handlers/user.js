@@ -81,9 +81,7 @@ async function loginUser(req, res) {
 	let user = null;
 
 	try {
-		user = await User.findOne({ firebase_uid: firebaseID }).populate(
-			'classes'
-		);
+		user = await User.findOne({ firebase_uid: firebaseID });
 	} catch (err) {
 		log.warn('getUser - error: ', err);
 		res.status(403).json({

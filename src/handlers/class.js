@@ -11,12 +11,21 @@ async function getClasses(req, res) {
 	
 	let page = req.params.page ? Number(req.params.page) - 1 : 0;
 	let limit = req.params.limit ? Number(req.params.limit) : 50;
+	let order = {};
 
-	// TODO: these could change more based on query params
+	// TODO: the filter could change more based on query params
 	let filter = { start_date: { $gte : new Date().toISOString() }};
 
-	let order = {};
-	order[start_date] = "desc";
+	// NOTE: only supporting one field to sort by ATM but this could be refined
+	if (!req.params.sort) {
+		order[start_date] = "desc";
+	} else {
+		order[req.params.sort] = "asc";
+
+		if (req.params.order) {
+			order[req.params.sort] = req.params.order;
+		}
+	}
 
 	try {
 		Class.find(filter).sort(order).skip(page*limit).limit(limit).exec((err, doc) => {
@@ -47,6 +56,7 @@ async function getClasses(req, res) {
  */
 async function createClass(req, res) {
 
+	let classData = req.body;
 	let newClass = null;
 
 	if (!req.ctx.authorized) {
@@ -57,8 +67,12 @@ async function createClass(req, res) {
 		return;
 	}
 
+	classData.created_date = new Date().toISOString();
+	classData.instructor = req.ctx.userData;
+	classData.participants = [];
+
 	try {
-		newClass = await Class.create(req.body);
+		newClass = await Class.create(classData);
 	} catch (err) {
 		log.error('Error creating class: ', err);
 		res.status(500).json({
