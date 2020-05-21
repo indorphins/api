@@ -94,10 +94,9 @@ async function loginUser(req, res) {
 		user = await User.findOne({ firebase_uid: firebaseID });
 	} catch (err) {
 		log.warn('getUser - error: ', err);
-		res.status(403).json({
+		return res.status(403).json({
 			message: "Forbidden"
 		});
-		return;
 	}
 
 	if (!user) {
@@ -126,10 +125,9 @@ async function updateUser(req, res) {
 		user = await User.findOne(query);
 	} catch (err) {
 		log.warn('updateUser - error: ', err);
-		res.status(404).json({
+		return res.status(404).json({
 			message: err,
 		});
-		return;
 	}
 
 	if (!user) {
@@ -142,10 +140,9 @@ async function updateUser(req, res) {
 	// if the record doesn't belong to the requesting user reject the request
 	if (!req.ctx.userData || (user.id != req.ctx.userData.id)) {
 		log.debug('User not authorized', req.ctx.userData);
-		res.status(403).json({
+		return res.status(403).json({
 			message: "Forbidden",
 		});
-		return;
 	}
 
 	try {
@@ -154,7 +151,11 @@ async function updateUser(req, res) {
 			new: false,
 		});
 	} catch(err) {
-		
+		log.warn("error updating user record", user);
+		return res.status(400).json({
+			message: "Issue updating data",
+			error: err,
+		})
 	}
 
 	res.status(200).json({
@@ -179,10 +180,9 @@ async function deleteUser(req, res) {
 		user = await User.findOne({id: req.params.id});
 	} catch (err) {
 		log.warn('deleteUser - error: ', err);
-		res.status(404).json({
+		return res.status(404).json({
 			message: err,
 		});
-		return;
 	}
 
 	if (!user) {
@@ -195,20 +195,18 @@ async function deleteUser(req, res) {
 	// if the record doesn't belong to the requesting user reject the request
 	if (!req.ctx.userData || (user.id != req.ctx.userData.id)) {
 		log.debug('User not authorized', req.ctx.userData);
-		res.status(403).json({
+		return res.status(403).json({
 			message: "Forbidden",
 		});
-		return;
 	}
 
 	try {
 		await User.remove({id: req.params.id});
 	} catch(err) {
 		log.warn('deleteUser - error: ', err);
-		res.status(404).json({
+		return res.status(404).json({
 			message: err,
 		});
-		return;
 	}
 
 	res.status(204).json({
