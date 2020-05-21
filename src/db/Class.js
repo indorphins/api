@@ -1,4 +1,3 @@
-const uuid = require('uuid');
 const mongoose = require('mongoose');
 
 const UserRef = new mongoose.Schema({
@@ -12,19 +11,22 @@ const UserRef = new mongoose.Schema({
 	}
 })
 
-const Class = new mongoose.Schema({
-	_id: mongoose.Schema.Types.ObjectId,
+const ClassSchema = new mongoose.Schema({
 	id: {
 		type: String,
 		required: true,
 		unique: true,
-		default: uuid.v4(),
 	},
 	title: {
 		type: String,
+		unique: true,
 		required: true,
 	},
 	description: {
+		type: String,
+		required: true,
+	},
+	type: {
 		type: String,
 		required: true,
 	},
@@ -37,7 +39,6 @@ const Class = new mongoose.Schema({
 	created_date: {
 		type: Date,
 		required: true,
-		default: new Date().toISOString(),
 	},
 	// Should be UTC date
 	start_date: {
@@ -45,10 +46,6 @@ const Class = new mongoose.Schema({
 	},
 	end_date: {
 		type: Date,
-	},
-	total_spots: {
-		type: Number,
-		required: true,
 	},
 	available_spots: {
 		type: Number,
@@ -61,10 +58,11 @@ const Class = new mongoose.Schema({
 	}
 });
 
-Class.index({ participants: 1 });
-Class.index({ start_date: -1 });
-Class.index({ end_date: -1 });
-Class.index({ available_spots: -1 });
-Class.index({ id: 1, instructor: 1 });
+ClassSchema.index({ participants: 1 });
+ClassSchema.index({ start_date: -1 });
+ClassSchema.index({ end_date: -1 });
+ClassSchema.index({ available_spots: -1 });
+ClassSchema.index({ type: 1 });
+ClassSchema.index({ id: 1, instructor: 1 });
 
-module.exports = mongoose.model('Class', Class);
+module.exports = mongoose.model('Class', ClassSchema);

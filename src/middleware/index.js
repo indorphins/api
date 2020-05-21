@@ -11,17 +11,17 @@ const User = require('../db/User');
  */
 function authentication(req, res, next) {
 
-  if (!req.headers.authorization) {
+  if (!req.headers.authorization || req.headers.authorization == "") {
     log.warn('Request missing authorization bearer token');
-    res.status(403).json({
+    return res.status(403).json({
       message: "not authorized",
     });
   }
   
-	const auth = req.headers.authorization.split(' ');
+	let auth = req.headers.authorization.split(' ');
 	if (auth.length < 2) {
     log.warn('Invalid authorization token format');
-    res.status(403).json({
+    return res.status(403).json({
       message: "not authorized",
     });
   }
@@ -32,11 +32,6 @@ function authentication(req, res, next) {
 		.verifyToken(token)
 		.then((claims) => {
       log.debug("token claims", claims);
-
-      // create request context
-      if (!req.ctx) {
-        req.ctx = {};
-      }
 
       req.ctx.firebaseUid = claims.uid;
       req.ctx.tokenClaims = claims;
@@ -61,25 +56,25 @@ function authentication(req, res, next) {
  */
 async function isAuthorized(user_type, req, res, next) {
     // skip if already authorized by another middleware
-    if (req.ctx.authorized) {
-      next();
-    }
+  if (req.ctx.authorized) {
+    return next();
+  }
+
+  let firebase_uid = req.ctx.firebaseUid;
+  let user = req.ctx.userData;
   
-    let firebase_uid = req.ctx.firebaseUid;
-    let user = req.ctx.userData;
-    
-    if (!user) {
-      user = await User.findOne({ firebase_uid: firebase_uid });
-      req.ctx.userData = user;
-    }
-  
-    // if user.user_type matches user_type then set authorized true
-    if (user && user.user_type == user_type) {
-      req.ctx.authorized = true;
-      log.debug("user action authorized for", user_type);
-    }
-  
-    next();
+  if (!user) {
+    user = await User.findOne({ firebase_uid: firebase_uid });
+    req.ctx.userData = user;
+  }
+
+  // if user.user_type matches user_type then set authorized true
+  if (user && user.user_type == user_type) {
+    req.ctx.authorized = true;
+    log.debug("user action authorized for", user_type);
+  }
+
+  next();
 }
 
 function adminAuthorized(req, res, next) {

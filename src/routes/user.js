@@ -5,7 +5,6 @@ const user = require('../handlers/user');
 
 let router = express.Router();
 router.post('/', middleware.authentication);
-router.post('/', middleware.adminAuthorized);
 router.post('/', user.createUser);
 
 router.get('/:id', middleware.authentication);

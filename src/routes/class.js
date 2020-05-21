@@ -4,9 +4,7 @@ const classController = require('../handlers/class');
 
 let router = express.Router();
 
-// Get a list of classes. Will return 100 results at a time. 
-// TODO: Support a number of filter flags to optimize query results.
-// TODO: pagination
+// Get a list of classes. Will return 50 results at a time by default. 
 router.get('/', classController.getClasses);
 
 // Create a class. Only allowed for Admins and Instructors

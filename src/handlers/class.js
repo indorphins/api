@@ -1,3 +1,4 @@
+const uuid = require('uuid');
 const Class = require('../db/Class');
 const log = require('../log');
 
@@ -6,18 +7,18 @@ const log = require('../log');
  * @param {String} value - base64 encoded and stringified json object representing a valid mongo filter or sort object
  */
 function decodeQueryParam(value) {
-	let buff = new Buffer(value, 'base64');
+	let buff = new Buffer.from(value, 'base64');
 	let data = null;
 
 	try {
-		data = buff.toString();
+		data = buff.toString('utf-8');
 		data = JSON.parse(data);
 	} catch(err) {
 		log.warn("invalid encoded object", err);
-		return err, null;
+		return null;
 	}
 
-	return null, data
+	return data;
 }
 
 /**
@@ -31,21 +32,21 @@ async function getClasses(req, res) {
 	
 	let page = req.query.page ? Number(req.query.page) - 1 : 0;
 	let limit = req.query.limit ? Number(req.query.limit) : 50;
-	let order = { start_date: "desc", name: "asc" };
-	let filter = { start_date: { $gte : new Date().toISOString() }, available_spots: { $gt: 0 }};
+	let order = /*{ start_date: "desc", name: "asc" };*/ {};
+	let filter = /*{ start_date: { $gte : new Date().toISOString() }, available_spots: { $gt: 0 }}*/ {};
 
 	if (req.query.filter) {
-		let data, err = decodeQueryParam(req.query.filter);
+		let data = decodeQueryParam(req.query.filter);
 
-		if (!err) {
+		if (data) {
 			filter = data;
 		}
 	}
 
 	if (req.query.order) {
-		let data, err = decodeQueryParam(req.query.sort);
+		let data = decodeQueryParam(req.query.order);
 
-		if (!err) {
+		if (data) {
 			order = data;
 		}
 	}
@@ -84,12 +85,12 @@ async function createClass(req, res) {
 
 	if (!req.ctx.authorized) {
 		log.debug('User not authorized', req.ctx.userData);
-		res.status(403).json({
-			message: "forbidden",
+		return res.status(403).json({
+			message: "Forbidden",
 		});
-		return;
 	}
 
+	classData.id = uuid.v1();
 	classData.created_date = new Date().toISOString();
 	classData.instructor = req.ctx.userData;
 	classData.participants = [];
@@ -97,11 +98,11 @@ async function createClass(req, res) {
 	try {
 		newClass = await Class.create(classData);
 	} catch (err) {
-		log.error('Error creating class: ', err);
-		res.status(500).json({
-			message: err,
+		log.warn('Error creating class: ', err);
+		return res.status(400).json({
+			message: "issue creating class",
+			error: err
 		});
-		return;
 	}
 
 	log.debug('New class created', newClass);
@@ -145,10 +146,9 @@ async function updateClass(req, res) {
 
 	if (!req.ctx.authorized) {
 		log.debug('User not authorized', req.ctx.userData);
-		res.status(403).json({
+		return res.status(403).json({
 			message: "Forbidden",
 		});
-		return;
 	}
 
 	let c = null;
@@ -160,10 +160,9 @@ async function updateClass(req, res) {
 		);
 	} catch (err) {
 		log.warn("error updating class", err);
-		res.status(404).json({
+		return res.status(404).json({
 			message: "Class not found",
 		});
-		return;
 	}
 
 	res.status(200).json({

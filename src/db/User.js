@@ -1,13 +1,10 @@
-const uuid = require('uuid');
 const mongoose = require('mongoose');
 
 const User = new mongoose.Schema({
-	_id: mongoose.Schema.Types.ObjectId,
 	id: {
 		type: String,
 		required: true,
 		unique: true,
-		default: uuid.v4(),
 	},
 	username: {
 		type: String,
@@ -21,6 +18,12 @@ const User = new mongoose.Schema({
 		type: String,
 		required: true,
 	},
+	city: {
+		type: String,
+	},
+	state: {
+		type: String,
+	},
 	email: {
 		type: String,
 		required: true,
@@ -29,8 +32,9 @@ const User = new mongoose.Schema({
 	},
 	phone_number: {
 		type: String,
-		unique: true,
 		required: false,
+		unique: true, 
+		sparse: true,
 	},
 	user_type: {
 		type: String,
@@ -45,7 +49,7 @@ const User = new mongoose.Schema({
 		type: String,
 		required: false,
 	},
-	created_at: {
+	created_date: {
 		type: Date,
 		required: true,
 		default: new Date().toISOString(),

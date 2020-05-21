@@ -1,3 +1,4 @@
+const uuid = require('uuid');
 const User = require('../db/User');
 const log = require('../log');
 
@@ -11,16 +12,25 @@ async function createUser(req, res) {
 	let userData = req.body;
 	let newUser = null;
 
-	userData.firebase_uid = req.ctx.firebase_uid;
+	if (!req.ctx.tokenClaims) {
+		return res.status(403).json({
+			message: "Forbidden",
+		});
+	}
+
+	if (!userData.firebase_uid) {
+		userData.firebase_uid = req.ctx.firebaseUid;
+	}
+
+	userData.id = uuid.v1();
 
 	try {
-		newUser = await User.create(req.body);
+		newUser = await User.create(userData);
 	} catch (err) {
 		log.warn('createUser - error: ', err);
-		res.status(400).json({
+		return res.status(400).json({
 			message: err,
 		});
-		return;
 	}
 
 	res.status(201).json({
