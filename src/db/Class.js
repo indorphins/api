@@ -63,6 +63,5 @@ ClassSchema.index({ start_date: -1 });
 ClassSchema.index({ end_date: -1 });
 ClassSchema.index({ available_spots: -1 });
 ClassSchema.index({ type: 1 });
-ClassSchema.index({ id: 1, instructor: 1 });
 
 module.exports = mongoose.model('Class', ClassSchema);

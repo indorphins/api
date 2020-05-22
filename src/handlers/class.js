@@ -51,25 +51,24 @@ async function getClasses(req, res) {
 		}
 	}
 
-	try {
-		Class.find(filter).sort(order).skip(page*limit).limit(limit).exec((err, doc) => {
-			if (err) {
-				res.status(400).json(err);
-				return;
-			}
+	let total;
+	let results;
 
-			res.status(200).json({
-				total: doc.total,
-				page: page + 1,
-				limit: limit,
-				data: doc,
-			});
-		});
+	try {
+		total = await Class.find(filter).countDocuments();
+		results = await Class.find(filter).sort(order).skip(page*limit).limit(limit);
 	} catch (err) {
 		res.status(500).json({
 			message: err,
 		});
 	}
+
+	res.status(200).json({
+		total: total,
+		page: page + 1,
+		limit: limit,
+		data: results,
+	});
 };
 
 /**
@@ -180,10 +179,9 @@ async function deleteClass(req, res) {
 	// Has user been authorized by middleware
 	if (!req.ctx.authorized) {
 		log.debug('User not authorized', req.ctx.userData);
-		res.status(403).json({
+		return res.status(403).json({
 			message: "Forbidden",
 		});
-		return;
 	}
 
 	let filter = { id: req.params.id };
@@ -193,43 +191,40 @@ async function deleteClass(req, res) {
 	try {
 		c = await Class.findOne(filter);
 	} catch (err) {
-		res.status(404).json({
-			message: "Class not found",
+		log.error("Connection error", err);
+		return res.status(500).json({
+			message: "Connection error",
 			error: err
 		});
-		return;
 	}
 
 	// Make sure class isn't null
 	if (!c) {
-		res.status(404).json({
+		return res.status(404).json({
 			message: "Class not found",
 		});
-		return;
 	}
 
 	// Check if class has signed up participants
 	// TODO: work out a scheme for refunds.
 	if (c.participants.length > 0) {
-		res.status(400).json({
+		return res.status(400).json({
 			message: "Cannot remove class, it has participants.",
 		});
-		return;
 	}
 
 	// Try to delete the db document
 	try {
-		await Class.remove(filter);
+		let r = await Class.deleteOne(filter);
 	} catch(err) {
 		log.warn("error removing class", err);
-		res.status(500).json({
+		return res.status(500).json({
 			message: "Error removing class",
 			error: err,
 		});
-		return;
 	}
 
-	res.status(204).json({
+	res.status(200).json({
 		message: "Class removed",
 	});
 };
