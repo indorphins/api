@@ -1,5 +1,6 @@
 const uuid = require('uuid');
 const Class = require('../db/Class');
+const User = require('../db/User');
 const log = require('../log');
 
 /**
@@ -82,13 +83,6 @@ async function createClass(req, res) {
 	let classData = req.body;
 	let newClass = null;
 
-	if (!req.ctx.authorized) {
-		log.debug('User not authorized', req.ctx.userData);
-		return res.status(403).json({
-			message: "Forbidden",
-		});
-	}
-
 	classData.id = uuid.v1();
 	classData.created_date = new Date().toISOString();
 	classData.instructor = req.ctx.userData;
@@ -120,20 +114,29 @@ async function getClass(req, res) {
 
 	let filter = { id: req.params.id };
 	let c = null;
+	let i = null;
 
 	try {
 		c = await Class.findOne(filter);
 	} catch (err) {
 		log.warn("error fetching class by id", err);
-		res.status(404).json({
+		return res.status(404).json({
 			message: "Class not found",
 		});
-		return;
 	}
 
-	res.status(200).json({
-		data: c,
-	});
+	try {
+		i = await User.findOne({ _id: c.instructor})
+	} catch (err) {
+		log.warn("error fetching instructor", err);
+		return res.status(404).json({
+			message: "Class not found",
+		});
+	}
+
+	c.instructor = i;
+
+	res.status(200).json(c);
 };
 
 /**
@@ -143,24 +146,18 @@ async function getClass(req, res) {
  */
 async function updateClass(req, res) {
 
-	if (!req.ctx.authorized) {
-		log.debug('User not authorized', req.ctx.userData);
-		return res.status(403).json({
-			message: "Forbidden",
-		});
-	}
-
 	let c = null;
 
 	try {
 		c = await Class.findOneAndUpdate(
-			{ id: req.params.id },
+			{ id: req.params.id, instructor: req.ctx.userData },
 			{ $set: req.body }
 		);
 	} catch (err) {
 		log.warn("error updating class", err);
-		return res.status(404).json({
-			message: "Class not found",
+		return res.status(400).json({
+			message: "Error updating class",
+			error: err,
 		});
 	}
 
@@ -176,24 +173,16 @@ async function updateClass(req, res) {
  */
 async function deleteClass(req, res) {
 
-	// Has user been authorized by middleware
-	if (!req.ctx.authorized) {
-		log.debug('User not authorized', req.ctx.userData);
-		return res.status(403).json({
-			message: "Forbidden",
-		});
-	}
-
-	let filter = { id: req.params.id };
+	let filter = { id: req.params.id, instructor: req.ctx.userData };
 	let c = null;
 
 	// Check for class
 	try {
 		c = await Class.findOne(filter);
 	} catch (err) {
-		log.error("Connection error", err);
+		log.error("Database error", err);
 		return res.status(500).json({
-			message: "Connection error",
+			message: "Database error",
 			error: err
 		});
 	}
@@ -229,10 +218,15 @@ async function deleteClass(req, res) {
 	});
 };
 
+async function addParticipant(req, res) {
+	// Has user been authorized by middleware
+}
+
 module.exports = {
 	deleteClass,
 	updateClass,
 	getClass,
 	getClasses,
 	createClass,
+	addParticipant,
 };

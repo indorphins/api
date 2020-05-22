@@ -11,18 +11,14 @@ const log = require('../log');
 async function createUser(req, res) {
 	let userData = req.body;
 	let newUser = null;
-
-	if (!req.ctx.tokenClaims) {
-		return res.status(403).json({
-			message: "Forbidden",
-		});
-	}
-
-	if (!userData.firebase_uid) {
-		userData.firebase_uid = req.ctx.firebaseUid;
-	}
-
+	
 	userData.id = uuid.v1();
+	userData.created_date = new Date().toISOString();
+
+	if (!req.ctx.userData || req.ctx.userData.user_type != "admin") {
+		userData.firebase_uid = req.ctx.firebaseUid;
+		userData.user_type = "standard";
+	}
 
 	try {
 		newUser = await User.create(userData);
@@ -46,7 +42,13 @@ async function createUser(req, res) {
  */
 async function getUser(req, res) {
 
-	let query = { id: req.params.id };
+	let id = req.ctx.userData.id;
+
+	if (req.params.id) {
+		id = req.params.id;
+	}
+
+	let query = { id: id };
 	let user;
 
 	try {
@@ -63,15 +65,6 @@ async function getUser(req, res) {
 		res.status(404).json({
 			message: "User not found",
 		});
-	}
-
-	// if the record doesn't belong to the requesting user reject the request
-	if (!req.ctx.userData || (user.id != req.ctx.userData.id)) {
-		log.debug('User not authorized', req.ctx.userData);
-		res.status(403).json({
-			message: "Forbidden",
-		});
-		return;
 	}
 
 	res.status(200).json({
@@ -117,16 +110,23 @@ async function loginUser(req, res) {
  * @param {Object} res - http response object
  */
 async function updateUser(req, res) {
+
+	let id = req.ctx.userData.id;
+
+	if (req.params.id) {
+		id = req.params.id;
+	}
 	
-	let query = { id: req.params.id };
+	let query = { id: id };
 	let user = null;
 
 	try {
 		user = await User.findOne(query);
 	} catch (err) {
 		log.warn('updateUser - error: ', err);
-		return res.status(404).json({
-			message: err,
+		return res.status(500).json({
+			message: "Service error",
+			error: err,
 		});
 	}
 
@@ -137,16 +137,14 @@ async function updateUser(req, res) {
 		});
 	}
 
-	// if the record doesn't belong to the requesting user reject the request
-	if (!req.ctx.userData || (user.id != req.ctx.userData.id)) {
-		log.debug('User not authorized', req.ctx.userData);
-		return res.status(403).json({
-			message: "Forbidden",
-		});
+	let data = req.body;
+
+	if (data.user_type && req.ctx.userData.user_type != "admin") {
+		delete data.user_type;
 	}
 
 	try {
-		await User.update(query, req.body, {
+		await User.update(query, data, {
 			upsert: true,
 			new: false,
 		});
@@ -174,10 +172,17 @@ async function updateUser(req, res) {
  */
 async function deleteUser(req, res) {
 
+	let id = req.ctx.userData.id;
+
+	if (req.params.id) {
+		id = req.params.id;
+	}
+
+	let query = {id: id};
 	let user = null;
 
 	try {
-		user = await User.findOne({id: req.params.id});
+		user = await User.findOne(query);
 	} catch (err) {
 		log.warn('deleteUser - error: ', err);
 		return res.status(404).json({
@@ -192,24 +197,17 @@ async function deleteUser(req, res) {
 		});
 	}
 
-	// if the record doesn't belong to the requesting user reject the request
-	if (!req.ctx.userData || (user.id != req.ctx.userData.id)) {
-		log.debug('User not authorized', req.ctx.userData);
-		return res.status(403).json({
-			message: "Forbidden",
-		});
-	}
-
 	try {
-		await User.remove({id: req.params.id});
+		await User.deleteOne(query);
 	} catch(err) {
 		log.warn('deleteUser - error: ', err);
-		return res.status(404).json({
-			message: err,
+		return res.status(500).json({
+			message: "Service error",
+			error: err,
 		});
 	}
 
-	res.status(204).json({
+	res.status(200).json({
 		message: "User removed",
 	});
 };

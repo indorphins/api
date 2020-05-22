@@ -1,40 +1,39 @@
 const express = require('express');
 const middleware = require('../middleware');
-const classController = require('../handlers/class');
+const classHandlers = require('../handlers/class');
 
 let router = express.Router();
 
 // Get a list of classes. Will return 50 results at a time by default. 
-router.get('/', classController.getClasses);
+router.get('/', classHandlers.getClasses);
 
 // Create a class. Only allowed for Admins and Instructors
 router.post('/', middleware.authentication);
-router.post('/', middleware.adminAuthorized);
-router.post('/', middleware.instructorAuthorized);
-router.post('/', classController.createClass);
+router.post('/', middleware.adminOrInstructorAuthorized);
+router.post('/', classHandlers.createClass);
 
 // Get class details
-router.get('/:id', classController.getClass);
+router.get('/:id', classHandlers.getClass);
 
 // Delete a class. Only works if the class has no participants
 router.delete('/:id', middleware.authentication);
-router.delete('/:id', middleware.adminAuthorized);
-router.delete('/:id', classController.deleteClass);
+router.delete('/:id', middleware.adminOrInstructorAuthorized);
+router.delete('/:id', classHandlers.deleteClass);
 
 // Update a class
 router.put('/:id', middleware.authentication);
-router.put('/:id', middleware.adminAuthorized);
-router.put('/:id', classController.updateClass);
+router.put('/:id', middleware.adminOrInstructorAuthorized);
+router.put('/:id', classHandlers.updateClass);
 
 // Add participant to class
 router.post('/:id/participants/:user_id', middleware.authentication);
-router.post('/:id/participants/:user_id', middleware.adminAuthorized);
+router.post('/:id/participants/:user_id', middleware.adminOrInstructorAuthorized);
 router.post('/:id/participants/:user_id', function(req, res, next) { /** implement middleware to validate the user paid for the class */ next();});
 router.post('/:id/participants/:user_id', function(req, res){ /* implement this */ })
 
 // Remove participant from class
 router.delete('/:id/participants/:user_id', middleware.authentication);
-router.delete('/:id/participants/:user_id', middleware.adminAuthorized);
+router.delete('/:id/participants/:user_id', middleware.adminOrInstructorAuthorized);
 router.delete('/:id/participants/:user_id', function(req, res){ /* implement this */ })
 router.delete('/:id/participants/:user_id', function(req, res){ /* implement this */ })
 

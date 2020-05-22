@@ -12,17 +12,17 @@ const User = require('../db/User');
 function authentication(req, res, next) {
 
   if (!req.headers.authorization || req.headers.authorization == "") {
-    log.warn('Request missing authorization bearer token');
+    log.debug('request missing authorization bearer token');
     return res.status(403).json({
-      message: "not authorized",
+      message: "Forbidden",
     });
   }
   
 	let auth = req.headers.authorization.split(' ');
 	if (auth.length < 2) {
-    log.warn('Invalid authorization token format');
+    log.debug('invalid authorization token format');
     return res.status(403).json({
-      message: "not authorized",
+      message: "Forbidden",
     });
   }
 
@@ -36,12 +36,17 @@ function authentication(req, res, next) {
       req.ctx.firebaseUid = claims.uid;
       req.ctx.tokenClaims = claims;
 
+      return User.findOne({ firebase_uid: claims.uid });
+    })
+    .then((user) => {
+      req.ctx.userData = user;
+
       next();
-		})
+    })
 		.catch((error) => {
-			log.warn('firebase token validation', error);
+			log.debug('firebase token validation', error);
 			res.status(403).json({
-        message: "not authorized",
+        message: "Forbidden",
       });
 		});
 };
@@ -55,38 +60,42 @@ function authentication(req, res, next) {
  * @param {Function} next - callback function to call when middleware is done
  */
 async function isAuthorized(user_type, req, res, next) {
-    // skip if already authorized by another middleware
-  if (req.ctx.authorized) {
-    return next();
-  }
 
-  let firebase_uid = req.ctx.firebaseUid;
+  //let firebase_uid = req.ctx.firebaseUid;
   let user = req.ctx.userData;
   
-  if (!user) {
+  /*if (!user) {
     user = await User.findOne({ firebase_uid: firebase_uid });
     req.ctx.userData = user;
-  }
+  }*/
 
   // if user.user_type matches user_type then set authorized true
-  if (user && user.user_type == user_type) {
+  if (user && user_type.indexOf(user.user_type) < 0) {
     req.ctx.authorized = true;
-    log.debug("user action authorized for", user_type);
+    log.warn("user not authorized", user_type);
+    return res.status(403).json({
+      message: "Forbidden",
+    });
   }
 
   next();
 }
 
 function adminAuthorized(req, res, next) {
-  isAuthorized("admin", req, res, next);
+  isAuthorized(["admin"], req, res, next);
 }
 
 function instructorAuthorized(req, res, next) {
-  isAuthorized("instructor", req, res, next)
+  isAuthorized(["instructor"], req, res, next)
+}
+
+function adminOrInstructorAuthorized(req, res, next) {
+  isAuthorized(["admin", "instructor"], req, res, next);
 }
 
 module.exports = {
   authentication,
   adminAuthorized,
   instructorAuthorized,
+  adminOrInstructorAuthorized,
 };
