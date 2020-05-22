@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const UserRef = new mongoose.Schema({
-	user_id: {
+	id: {
 		type: String,
 		required: true,
 	},
@@ -47,6 +47,17 @@ const ClassSchema = new mongoose.Schema({
 	end_date: {
 		type: Date,
 	},
+	recurring: {
+		type: String,
+	},
+	duration: {
+		type: Number,
+		required: true
+	},
+	total_spots: {
+		type: Number,
+		required: true
+	},
 	available_spots: {
 		type: Number,
 		required: true,
@@ -63,6 +74,7 @@ ClassSchema.index({ start_date: -1 });
 ClassSchema.index({ end_date: -1 });
 ClassSchema.index({ available_spots: -1 });
 ClassSchema.index({ type: 1 });
+ClassSchema.index({ duration: 1 });
 ClassSchema.index({ id: 1, instructor: 1 });
 
 module.exports = mongoose.model('Class', ClassSchema);

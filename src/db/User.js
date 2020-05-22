@@ -36,7 +36,7 @@ const User = new mongoose.Schema({
 		unique: true, 
 		sparse: true,
 	},
-	user_type: {
+	type: {
 		type: String,
 		required: true,
 	},

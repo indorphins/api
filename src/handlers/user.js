@@ -16,9 +16,9 @@ async function createUser(req, res) {
 	userData.id = uuid.v1();
 	userData.created_date = new Date().toISOString();
 
-	if (!req.ctx.userData || req.ctx.userData.user_type != "admin") {
+	if (!req.ctx.userData || req.ctx.userData.type != "admin") {
 		userData.firebase_uid = req.ctx.firebaseUid;
-		userData.user_type = "standard";
+		userData.type = "standard";
 	}
 
 	try {
@@ -107,8 +107,8 @@ async function updateUser(req, res) {
 
 	let data = req.body;
 
-	if (data.user_type && req.ctx.userData.user_type != "admin") {
-		delete data.user_type;
+	if (data.type && req.ctx.userData.type != "admin") {
+		delete data.type;
 	}
 
 	try {

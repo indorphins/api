@@ -62,9 +62,10 @@ function authentication(req, res, next) {
 async function isAuthorized(user_type, req, res, next) {
 
   let user = req.ctx.userData;
+  let i = user_type.indexOf(user.type)
 
   // if user.user_type matches user_type then set authorized true
-  if (user && user_type.indexOf(user.user_type) < 0) {
+  if (user && i < 0) {
     req.ctx.authorized = true;
     log.warn("user not authorized", user_type);
     return res.status(403).json({

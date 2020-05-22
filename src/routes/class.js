@@ -1,6 +1,7 @@
 const express = require('express');
 const middleware = require('../middleware');
 const classHandlers = require('../handlers/class');
+const opentokHandlers = require('../handlers/opentok');
 
 let router = express.Router();
 
@@ -41,5 +42,8 @@ router.delete('/:id/participants', classHandlers.removeParticipant);
 router.delete('/:id/participants/:user_id', middleware.authentication);
 router.delete('/:id/participants/:user_id', middleware.adminAuthorized);
 router.delete('/:id/participants/:user_id', classHandlers.removeParticipant);
+
+router.get('/:id/session', middleware.authentication);
+router.get('/:id/session', opentokHandlers.joinSession);
 
 module.exports = router;

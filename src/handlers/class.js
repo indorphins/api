@@ -242,17 +242,17 @@ async function addParticipant(req, res) {
 	}
 
 	let data = {
-		user_id: req.ctx.userData.id, 
+		id: req.ctx.userData.id, 
 		username: req.ctx.userData.username
 	};
 
 	if (req.params.user_id) {
-		data.user_id = req.params.user_id
+		data.id = req.params.user_id
 	}
 
 	let exists = false;
 	c.participants.forEach(function(p) {
-		if (p.user_id == data.user_id) {
+		if (p.id == data.id) {
 			exists = true;
 		}
 	});
@@ -297,17 +297,17 @@ async function removeParticipant(req, res) {
 	}
 
 	let data = {
-		user_id: req.ctx.userData.id, 
+		id: req.ctx.userData.id, 
 		username: req.ctx.userData.username
 	};
 
 	if (req.params.user_id) {
-		data.user_id = req.params.user_id
+		data.id = req.params.user_id
 	}
 
 	let index = -1;
 	for(var i = 0; i < c.participants.length; i++) {
-		if (c.participants[i].user_id == data.user_id) {
+		if (c.participants[i].id == data.id) {
 			index = i;
 		}
 	}
