@@ -73,38 +73,6 @@ async function getUser(req, res) {
 };
 
 /**
- * Takes in an email from req.body and finds the user associated with it. Returns the user 
- * minus password field (can be deprecated once firebase handles user passwords)
- * @param {Object} req - http request object
- * @param {Object} res - http response object
- */
-async function loginUser(req, res) {
-
-	let firebaseID = req.params.firebaseUid;
-	let user = null;
-
-	try {
-		user = await User.findOne({ firebase_uid: firebaseID });
-	} catch (err) {
-		log.warn('getUser - error: ', err);
-		return res.status(403).json({
-			message: "Forbidden"
-		});
-	}
-
-	if (!user) {
-		res.status(403).json({
-			message: "Forbidden",
-		});
-	}
-
-	res.status(200).json({
-		message: "Successful login",
-		data: user,
-	});
-};
-
-/**
  * Express handler to update a user record. Only authorized for the actual user.
  * @param {Object} req - http request object
  * @param {Object} res - http response object

@@ -28,17 +28,4 @@ router.put('/:id', middleware.authentication);
 router.put('/:id', middleware.adminAuthorized);
 router.put('/:id', user.updateUser);
 
-router.get('/login', (req, res) => {
-	firebase
-		.verifyFirebaseToken(req, res)
-		.then((firebaseUid) => {
-			req.params.firebaseUid = firebaseUid;
-			user.loginUser(req, res);
-		})
-		.catch((error) => {
-			console.log('/login error: ', error);
-			res.status(400).send();
-		});
-});
-
 module.exports = router;
