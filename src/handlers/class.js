@@ -241,9 +241,18 @@ async function addParticipant(req, res) {
 		return res.status(404).json({ message: "Class does not exist" });
 	}
 
+	let data = {
+		user_id: req.ctx.userData.id, 
+		username: req.ctx.userData.username
+	};
+
+	if (req.params.user_id) {
+		data.user_id = req.params.user_id
+	}
+
 	let exists = false;
 	c.participants.forEach(function(p) {
-		if (p.user_id == req.ctx.userData.id) {
+		if (p.user_id == data.user_id) {
 			exists = true;
 		}
 	});
@@ -252,7 +261,7 @@ async function addParticipant(req, res) {
 		return res.status(400).json({ message: "User already added to class" });
 	}
 
-	c.participants.push({user_id: req.ctx.userData.id, username: req.ctx.userData.username});
+	c.participants.push(data);
 	c.available_spots = c.available_spots - 1;
 
 	try {
@@ -287,9 +296,18 @@ async function removeParticipant(req, res) {
 		return res.status(404).json({ message: "Class does not exist" });
 	}
 
+	let data = {
+		user_id: req.ctx.userData.id, 
+		username: req.ctx.userData.username
+	};
+
+	if (req.params.user_id) {
+		data.user_id = req.params.user_id
+	}
+
 	let index = -1;
 	for(var i = 0; i < c.participants.length; i++) {
-		if (c.participants[i].user_id == req.ctx.userData.id) {
+		if (c.participants[i].user_id == data.user_id) {
 			index = i;
 		}
 	}
@@ -299,6 +317,7 @@ async function removeParticipant(req, res) {
 	}
 	
 	c.participants.splice(index, 1);
+	c.available_spots = c.available_spots + 1;
 
 	try {
 		await Class.updateOne({ id: req.params.id }, c);
