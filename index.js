@@ -41,6 +41,12 @@ app.get('/healthy', (req, res) => {
 	res.status(200).send('Great Success!\n');
 });
 
+app.get('*', (req, res) => {
+  res.status(404).json({
+		message: "route not supported"
+	});
+})
+
 db.init(() => {
 	app.listen(PORT, () => log.info("App started on port", PORT));
 });
