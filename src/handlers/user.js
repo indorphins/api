@@ -212,30 +212,10 @@ async function deleteUser(req, res) {
 	});
 };
 
-
-async function getClasses(req, res) {
-	let query = {participants: { $elemMatch: {user_id: req.ctx.userData.id }}};
-	let c = null;
-
-	log.debug("query for user classes", query);
-
-	try {
-		c = await Class.find(query);
-	} catch (err) {
-		log.warn('deleteUser - error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
-
-	res.status(200).json(c);
-}
-
 module.exports = {
 	deleteUser,
 	getUser,
 	updateUser,
 	createUser,
 	loginUser,
-	getClasses,
 };
