@@ -147,11 +147,16 @@ async function getClass(req, res) {
 async function updateClass(req, res) {
 
 	let c = null;
+	let data = req.body;
+
+	if (data.participants) {
+		delete data.participants;
+	}
 
 	try {
 		c = await Class.findOneAndUpdate(
 			{ id: req.params.id, instructor: req.ctx.userData },
-			{ $set: req.body }
+			{ $set: data }
 		);
 	} catch (err) {
 		log.warn("error updating class", err);
@@ -219,7 +224,96 @@ async function deleteClass(req, res) {
 };
 
 async function addParticipant(req, res) {
-	// Has user been authorized by middleware
+
+	let c = null;
+
+	try {
+		c = await Class.findOne({ id: req.params.id });
+	} catch(err) {
+		log.warn("database error", err);
+		return res.status(500).json({
+			message: "Database error",
+			error: err,
+		});
+	}
+
+	if (!c) {
+		return res.status(404).json({ message: "Class does not exist" });
+	}
+
+	let exists = false;
+	c.participants.forEach(function(p) {
+		if (p.user_id == req.ctx.userData.id) {
+			exists = true;
+		}
+	});
+
+	if (exists) {
+		return res.status(400).json({ message: "User already added to class" });
+	}
+
+	c.participants.push({user_id: req.ctx.userData.id, username: req.ctx.userData.username});
+	c.available_spots = c.available_spots - 1;
+
+	try {
+		await Class.updateOne({ id: req.params.id }, c);
+	} catch (err) {
+		log.warn("error updating class", err);
+		return res.status(400).json({
+			message: "Error adding participant",
+			error: err,
+		});
+	}
+
+	res.status(200).json({
+		message: "User added to class"
+	});
+}
+
+async function removeParticipant(req, res) {
+	let c = null;
+
+	try {
+		c = await Class.findOne({ id: req.params.id });
+	} catch(err) {
+		log.warn("database error", err);
+		return res.status(500).json({
+			message: "Database error",
+			error: err,
+		});
+	}
+
+	if (!c) {
+		return res.status(404).json({ message: "Class does not exist" });
+	}
+
+	let index = -1;
+	for(var i = 0; i < c.participants.length; i++) {
+		if (c.participants[i].user_id == req.ctx.userData.id) {
+			index = i;
+		}
+	}
+
+	if (index == -1) {
+		return res.status(400).json({ message: "User not in class" });
+	}
+	
+	c.participants.splice(index, 1);
+
+	try {
+		await Class.updateOne({ id: req.params.id }, c);
+	} catch (err) {
+		log.warn("error updating class", err);
+		return res.status(400).json({
+			message: "Error adding participant",
+			error: err,
+		});
+	}
+
+	res.status(200).json({
+		message: "User removed from class"
+	});
+	
 }
 
 module.exports = {
@@ -229,4 +323,5 @@ module.exports = {
 	getClasses,
 	createClass,
 	addParticipant,
+	removeParticipant,
 };

@@ -61,13 +61,7 @@ function authentication(req, res, next) {
  */
 async function isAuthorized(user_type, req, res, next) {
 
-  //let firebase_uid = req.ctx.firebaseUid;
   let user = req.ctx.userData;
-  
-  /*if (!user) {
-    user = await User.findOne({ firebase_uid: firebase_uid });
-    req.ctx.userData = user;
-  }*/
 
   // if user.user_type matches user_type then set authorized true
   if (user && user_type.indexOf(user.user_type) < 0) {

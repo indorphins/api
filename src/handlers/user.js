@@ -213,6 +213,9 @@ async function deleteUser(req, res) {
 };
 
 
+async function getUserClasses(req, res) {
+
+}
 
 module.exports = {
 	deleteUser,

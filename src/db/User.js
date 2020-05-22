@@ -52,7 +52,6 @@ const User = new mongoose.Schema({
 	created_date: {
 		type: Date,
 		required: true,
-		default: new Date().toISOString(),
 	},
 });
 

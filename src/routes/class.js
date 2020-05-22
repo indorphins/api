@@ -26,15 +26,12 @@ router.put('/:id', middleware.adminOrInstructorAuthorized);
 router.put('/:id', classHandlers.updateClass);
 
 // Add participant to class
-router.post('/:id/participants/:user_id', middleware.authentication);
-router.post('/:id/participants/:user_id', middleware.adminOrInstructorAuthorized);
-router.post('/:id/participants/:user_id', function(req, res, next) { /** implement middleware to validate the user paid for the class */ next();});
-router.post('/:id/participants/:user_id', function(req, res){ /* implement this */ })
+router.post('/:id/participants', middleware.authentication);
+router.post('/:id/participants', function(req, res, next) { /** implement middleware to validate the user paid for the class */ next();});
+router.post('/:id/participants', classHandlers.addParticipant);
 
 // Remove participant from class
-router.delete('/:id/participants/:user_id', middleware.authentication);
-router.delete('/:id/participants/:user_id', middleware.adminOrInstructorAuthorized);
-router.delete('/:id/participants/:user_id', function(req, res){ /* implement this */ })
-router.delete('/:id/participants/:user_id', function(req, res){ /* implement this */ })
+router.delete('/:id/participants', middleware.authentication);
+router.delete('/:id/participants', classHandlers.removeParticipant);
 
 module.exports = router;
