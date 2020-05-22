@@ -1,5 +1,6 @@
 const uuid = require('uuid');
 const User = require('../db/User');
+const Class = require('../db/Class');
 const log = require('../log');
 
 /**
@@ -55,14 +56,13 @@ async function getUser(req, res) {
 		user = await User.findOne(query)
 	} catch (err) {
 		log.warn('getUser - error: ', err);
-		res.status(404).json({
+		return res.status(404).json({
 			message: err,
 		});
-		return;
 	}
 
 	if (!user) {
-		res.status(404).json({
+		return res.status(404).json({
 			message: "User not found",
 		});
 	}
@@ -213,8 +213,22 @@ async function deleteUser(req, res) {
 };
 
 
-async function getUserClasses(req, res) {
+async function getClasses(req, res) {
+	let query = {participants: { $elemMatch: {user_id: req.ctx.userData.id }}};
+	let c = null;
 
+	log.debug("query for user classes", query);
+
+	try {
+		c = await Class.find(query);
+	} catch (err) {
+		log.warn('deleteUser - error: ', err);
+		return res.status(404).json({
+			message: err,
+		});
+	}
+
+	res.status(200).json(c);
 }
 
 module.exports = {
@@ -223,4 +237,5 @@ module.exports = {
 	updateUser,
 	createUser,
 	loginUser,
+	getClasses,
 };

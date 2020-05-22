@@ -30,12 +30,12 @@ router.put('/:id', user.updateUser);
 
 // TODO: searches against indexed participants fields to get all the classes for a user
 // TODO: paginate results
-router.get('/classes/', middleware.authentication);
-router.get('/classes/', function(req, res) { /** implement this  */ });
+//router.get('/classes', middleware.authentication);
+//router.get('/classes', user.getClasses);
 
-router.get('/:id/classes/', middleware.authentication);
-router.get('/:id/classes/', middleware.adminAuthorized);
-router.get('/:id/classes/', function(req, res) { /** implement this  */ });
+router.get('/:id/classes', middleware.authentication);
+router.get('/:id/classes', middleware.adminAuthorized);
+router.get('/:id/classes', user.getClasses);
 
 router.get('/login', (req, res) => {
 	firebase
