@@ -5,17 +5,18 @@ const log = require('../log');
 const DBCONN = String(process.env.DATABASE_URL).replace(/'|"/gm, '');
 
 function connect(callback) {
-	mongoose.connection.once('open', callback);
+  mongoose.connection.once('open', callback);
+  const index = process.env.INIT_DB == "true";
 
 	// consider adding autoIndex to false for production
 	return mongoose.connect(DBCONN, {
-		dbName: "indorphins",
+		dbName: process.env.DATABASE_NAME,
 		keepAlive: 1,
 		useNewUrlParser: true,
 		useUnifiedTopology: true,
 		useFindAndModify: false,
-    useCreateIndex: true,
-    autoIndex: true,
+    useCreateIndex: index,
+    autoIndex: index,
     connectTimeoutMS: 5000,
     serverSelectionTimeoutMS: 5000,
 	});

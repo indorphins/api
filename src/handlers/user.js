@@ -185,5 +185,4 @@ module.exports = {
 	getUser,
 	updateUser,
 	createUser,
-	loginUser,
 };
