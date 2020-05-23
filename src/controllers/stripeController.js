@@ -107,38 +107,194 @@ const createCustomer = async (req, res) => {
 };
 
 const createSubscription = async (req, res) => {
-  // Attach the payment method to the customer
-  try {
-    await stripe.paymentMethods.attach(req.body.paymentMethodId, {
-      customer: req.body.customerId,
-    });
-  } catch (error) {
-    return res.status('402').send({ error: { message: error.message } });
-  }
-​
-  // Change the default invoice settings on the customer to the new payment method
-  await stripe.customers.update(
-    req.body.customerId,
-    {
-      invoice_settings: {
-        default_payment_method: req.body.paymentMethodId,
-      },
-    }
-  );
-​
-  // Create the subscription
-  const subscription = await stripe.subscriptions.create({
-    customer: req.body.customerId,
-    items: [{ price: 'price_H1NlVtpo6ubk0m' }],
-    expand: ['latest_invoice.payment_intent'],
-  });
-​
-  res.send(subscription);
-}
+	console.log('REQ BODY IS ', req.body);
+	// Attach the payment method to the customer
+	try {
+		console.log('PAyment method id ', req.body.paymentMethodId);
+		await stripe.paymentMethods.attach(req.body.paymentMethodId, {
+			customer: req.body.customerId,
+		});
+
+		console.log('update customer with invoice');
+
+		// Change the default invoice settings on the customer to the new payment method
+		await stripe.customers.update(req.body.customerId, {
+			invoice_settings: {
+				default_payment_method: req.body.paymentMethodId,
+			},
+		});
+
+		console.log('create subscription');
+
+		// Create the subscription
+		const subscription = await stripe.subscriptions.create({
+			customer: req.body.customerId,
+			items: [{ price: req.body.priceId }],
+			expand: ['latest_invoice.payment_intent'],
+		});
+
+		res.status(200).send(subscription);
+	} catch (error) {
+		return res.status('402').send({ error: { message: error.message } });
+	}
+};
+
+const retryInvoice = async (req, res) => {
+	// Set the default payment method on the customer
+	try {
+		await stripe.paymentMethods.attach(req.body.paymentMethodId, {
+			customer: req.body.customerId,
+		});
+		await stripe.customers.update(req.body.customerId, {
+			invoice_settings: {
+				default_payment_method: req.body.paymentMethodId,
+			},
+		});
+		const invoice = await stripe.invoices.retrieve(req.body.invoiceId, {
+			expand: ['payment_intent'],
+		});
+		res.send(invoice);
+	} catch (error) {
+		// in case card_decline error
+		return res
+			.status('402')
+			.send({ result: { error: { message: error.message } } });
+	}
+};
+
+const cancelSubscription = async (req, res) => {
+	// Delete the subscription
+	const deletedSubscription = await stripe.subscriptions.del(
+		req.body.subscriptionId
+	);
+	// Remove the subscription id from our database TODO
+	res.send(deletedSubscription);
+};
+
+const stripeWebhook = async (req, res) => {
+	// Retrieve the event by verifying the signature using the raw body and secret.
+	let event;
+	try {
+		event = stripe.webhooks.constructEvent(
+			req.body,
+			req.headers['stripe-signature'],
+			process.env.STRIPE_WEBHOOK_SECRET
+		);
+		console.log('Stripe webhook event: ', event);
+	} catch (err) {
+		console.log(err);
+		console.log(`⚠️  Webhook signature verification failed.`);
+		console.log(`⚠️  Check the env file and enter the correct webhook secret.`);
+		return res.sendStatus(400);
+	}
+	// Extract the object from the event.
+	const dataObject = event.data.object;
+	// Handle the event
+	switch (event.type) {
+		case 'invoice.payment_succeeded':
+			// Used to provision services after the trial has ended.
+			// The status of the invoice will show up as paid. Store the status in your
+			// database to reference when a user accesses your service to avoid hitting rate limits.
+			break;
+		case 'invoice.payment_failed':
+			// If the payment fails or the customer does not have a valid payment method,
+			//  an invoice.payment_failed event is sent, the subscription becomes past_due.
+			// Use this webhook to notify your user that their payment has
+			// failed and to retrieve new card details.
+			break;
+		case 'invoice.finalized':
+			// If you want to manually send out invoices to your customers
+			// or store them locally to reference to avoid hitting Stripe rate limits.
+			break;
+		case 'customer.subscription.deleted':
+			if (event.request != null) {
+				// handle a subscription cancelled by your request
+				// from above.
+			} else {
+				// handle subscription cancelled automatically based
+				// upon your subscription settings.
+			}
+			break;
+		case 'customer.subscription.trial_will_end':
+			if (event.request != null) {
+				// handle a subscription cancelled by your request
+				// from above.
+			} else {
+				// handle subscription cancelled automatically based
+				// upon your subscription settings.
+			}
+			break;
+		default:
+		// Unexpected event type
+	}
+	res.sendStatus(200);
+};
+
+// Updates a user's subscription
+const updateSubscription = async (req, res) => {
+	const priceId = req.body.priceId; // the new subscription
+	const subscription = await stripe.subscriptions.retrieve(
+		req.body.subscriptionId
+	);
+	const updatedSubscription = await stripe.subscriptions.update(
+		req.body.subscriptionId,
+		{
+			cancel_at_period_end: false,
+			items: [
+				{
+					id: subscription.items.data[0].id,
+					price: priceId,
+				},
+			],
+		}
+	);
+	res.send(updatedSubscription);
+};
+
+// Returns the invoice for a subscription id after a user has updated their subscription to a new one
+const retrieveUpcomingInvoice = async (req, res) => {
+	const priceId = req.body.priceId; // the new subscription
+	const subscription = await stripe.subscriptions.retrieve(
+		req.body.subscriptionId
+	);
+	const invoice = await stripe.invoices.retrieveUpcoming({
+		subscription_prorate: true,
+		customer: req.body.customerId,
+		subscription: req.body.subscriptionId,
+		subscription_items: [
+			{
+				id: subscription.items.data[0].id,
+				deleted: true,
+			},
+			{
+				// This price ID is the price you want to change the subscription to.
+				price: priceId,
+				deleted: false,
+			},
+		],
+	});
+	res.send(invoice);
+};
+
+// Returns payment method details for input paymentMethodId
+const retrieveCustomerPaymentMethod = async (req, res) => {
+	const paymentMethod = await stripe.paymentMethods.retrieve(
+		req.body.paymentMethodId
+	);
+	res.send(paymentMethod);
+};
 
 module.exports = {
 	authenticate,
 	createPayment,
 	refundCharge,
 	createCustomer,
+	createSubscription,
+	retryInvoice,
+	cancelSubscription,
+	stripeWebhook,
+	updateSubscription,
+	retrieveUpcomingInvoice,
+	retrieveCustomerPaymentMethod,
+	cancelSubscription,
 };
