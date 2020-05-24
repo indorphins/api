@@ -17,8 +17,8 @@ function connect(callback) {
 		useFindAndModify: false,
     useCreateIndex: index,
     autoIndex: index,
-    connectTimeoutMS: 15000,
-    serverSelectionTimeoutMS: 15000,
+    connectTimeoutMS: 30000,
+    serverSelectionTimeoutMS: 30000,
 	});
 }
 
