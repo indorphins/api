@@ -1,6 +1,6 @@
 {
 	"name": "indorphins-be",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"description": "server code for indorphins",
 	"main": "index.js",
 	"scripts": {
