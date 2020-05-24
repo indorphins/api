@@ -36,6 +36,9 @@ const ClassSchema = new mongoose.Schema({
 	},
 	participants: [UserRef],
 	// Should be UTC date
+	session: {
+		type: String
+	},
 	created_date: {
 		type: Date,
 		required: true,

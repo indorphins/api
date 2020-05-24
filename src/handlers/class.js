@@ -1,6 +1,7 @@
 const uuid = require('uuid');
 const Class = require('../db/Class');
 const User = require('../db/User');
+const opentok = require('./opentok');
 const log = require('../log');
 
 /**
@@ -88,6 +89,19 @@ async function createClass(req, res) {
 	classData.instructor = req.ctx.userData;
 	classData.participants = [];
 
+	if (classData.start_date) {
+		let session;
+		try {
+			session = await opentok.createSession();
+		} catch(err) {
+			log.error(err);
+		}
+
+		log.debug("opentok session", session);
+
+		classData.session = session.sessionId;
+	}
+
 	try {
 		newClass = await Class.create(classData);
 	} catch (err) {
@@ -151,6 +165,18 @@ async function updateClass(req, res) {
 
 	if (data.participants) {
 		delete data.participants;
+	}
+
+	// NOTE: this is a hack
+	if (data.start_date) {
+		let session;
+		try {
+			session = await opentok.createSession();
+		} catch(err) {
+			log.error(err);
+		}
+
+		classData.session = session.sessionId;
 	}
 
 	try {
