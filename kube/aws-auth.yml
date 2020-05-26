@@ -5,11 +5,6 @@ metadata:
   namespace: kube-system
 data:
   mapRoles: |
-    - rolearn: arn:aws:iam::662730807386:group/AdminGroup
-      username: Admin
-      groups:
-        - system:bootstrappers
-        - system:masters
     - rolearn: arn:aws:iam::662730807386:role/EKS-Main
       username: system:node:{{EC2PrivateDNSName}}
       groups:
@@ -20,3 +15,7 @@ data:
       username: indorphins-cicd
       groups:
         - system:masters
+    - userarn: arn:aws:iam::662730807386:user/test-admin
+      username: test-admin
+      groups:
+        - system:masters        

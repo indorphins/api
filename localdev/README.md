@@ -25,3 +25,20 @@ Since Ngrok is started in the background there is a helper script to kill the pr
 ## Docker
 
 The docker image shows the very basic nginx setup required to accomplish this. All nginx does is fetch the ngrok url from the environment using lua and forwards any requests to that url.
+
+Install and setup the Google Cloud CLI
+```
+brew cask install google-cloud-sdk
+```
+
+Build the docker image.
+```
+docker build -t proxy .
+```
+
+Read the google cloud docs on how to deploy the proxy image to [container registry](https://cloud.google.com/container-registry/docs/pushing-and-pulling). Once the image is deployed update the deploy.sh file with the correct image uri.
+
+Run the `env.dev` script in the parent folder to setup all env vars, start ngrok, and deploy a new google cloud proxy.
+```
+source env.dev
+```
