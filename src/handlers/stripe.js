@@ -1,4 +1,14 @@
 const stripe = require('stripe')('sk_test_FO42DhPlwMhJpz8yqf0gpdyM00qA7LvJLJ');
+const redis = require('redis');
+const redisClient = redis.createClient();
+const base64 = require('uuid-base64');
+const { v4: uuidv4 } = require('uuid');
+
+redisClient.on('error', function (error) {
+	console.error(error);
+});
+
+const TTL = 1200; // 20 mins
 
 const authenticate = (req, res) => {
 	const { code, state } = req.query;
@@ -74,8 +84,13 @@ const refundCharge = async (req, res) => {
 	res.status(200).json({ success: true, client_secret: refund.client_secret });
 };
 
-const generateState = () => {
-	return 'sv_53124';
+const generateState = (req, res) => {
+	// Get user from auth token
+
+	// generate state code
+
+	// store in redis as code: user info
+	return base64.encode(uuidv4());
 };
 
 const stateMatches = (state_parameter) => {
@@ -297,4 +312,5 @@ module.exports = {
 	retrieveUpcomingInvoice,
 	retrieveCustomerPaymentMethod,
 	cancelSubscription,
+	generateState,
 };

@@ -15,6 +15,8 @@ stripe.post('/retryInvoice', stripeController.retryInvoice);
 
 stripe.post('/cancelSubscription', stripeController.cancelSubscription);
 
+stripe.post('/state', stripeController.generateState);
+
 stripe.post('/webhook', stripeController.stripeWebhook);
 
 stripe.post('/updateSubscription', stripeController.updateSubscription);
