@@ -1,17 +1,13 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const bunyan = require('bunyan');
-const bformat = require('bunyan-format');
 
-const dailycoRouter = require('./src/routes/dailyco');
-const classesRouter = require('./src/routes/classes');
-const usersRouter = require('./src/routes/users');
-const stripeRouter = require('./src/routes/stripe');
+const classesRouter = require('./src/routes/class');
+const usersRouter = require('./src/routes/user');
+const db = require('./src/db');
+const log = require('./src/log');
 
-const DBCONN = String(process.env.DATABASE_URL).replace(/'|"/gm, '');
 const PORT = process.env.PORT;
 
 var LOG_LEVEL = 30;
@@ -66,6 +62,12 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// create ctx object for middleware data
+app.use(function (req, res, next) {
+	req.ctx = {};
+	next();
+});
+
 // request logging middleware
 app.use(function (req, res, next) {
 	log.info({ message: 'request info', req: req, res: res });
@@ -75,12 +77,21 @@ app.use(function (req, res, next) {
 app.options('*', cors());
 
 // routes
-app.use('/dailyco', dailycoRouter);
-app.use('/classes', classesRouter);
-app.use('/users', usersRouter);
+app.use('/class', classesRouter);
+app.use('/user', usersRouter);
 app.use('/stripe', stripeRouter);
 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');
 	res.status(200).send('Great Success!\n');
+});
+
+app.get('*', (req, res) => {
+	res.status(404).json({
+		message: 'route not supported',
+	});
+});
+
+db.init(() => {
+	app.listen(PORT, () => log.info('App started on port', PORT));
 });

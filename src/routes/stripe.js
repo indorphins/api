@@ -1,7 +1,7 @@
 const express = require('express');
 const stripe = express.Router();
 
-const stripeController = require('../controllers/stripeController');
+const stripeController = require('../handlers/stripe');
 
 stripe.get('/verifyToken', stripeController.authenticate);
 

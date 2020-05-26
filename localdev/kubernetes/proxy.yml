@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dev-proxy
+  namespace: test
+  labels:
+    app: dev-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dev-proxy
+  template:
+    metadata:
+      labels:
+        app: dev-proxy
+    spec:
+      containers:
+      - name: dev-proxy
+        image: 662730807386.dkr.ecr.us-east-1.amazonaws.com/proxy:latest
+        ports:
+        - containerPort: 80
+        envFrom:
+          - configMapRef:
+              name: proxy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dev-proxy
+  namespace: test
+spec:
+  selector:
+    app: dev-proxy
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    name: http
+    port: 80
+    targetPort: 80
+  - protocol: TCP
+    name: https
+    port: 443
+    targetPort: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proxy-config
+  namespace: test
+data:
+  NGROK_URL: "eda94ec1.ngrok.io"
