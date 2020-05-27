@@ -89,18 +89,18 @@ async function createClass(req, res) {
 	classData.instructor = req.ctx.userData;
 	classData.participants = [];
 
-	if (classData.start_date) {
-		let session;
-		try {
-			session = await opentok.createSession();
-		} catch(err) {
-			log.error(err);
-		}
+	// NOTE: this is a hack, needs to support recurring sessions
+	let session;
 
-		log.debug("opentok session", session);
-
-		classData.session = session.sessionId;
+	try {
+		session = await opentok.createSession();
+	} catch(err) {
+		log.error(err);
 	}
+
+	log.debug("opentok session", session);
+
+	classData.session = session.sessionId;
 
 	try {
 		newClass = await Class.create(classData);
@@ -168,7 +168,7 @@ async function updateClass(req, res) {
 	}
 
 	// NOTE: this is a hack
-	if (data.start_date) {
+	if (!data.session) {
 		let session;
 		try {
 			session = await opentok.createSession();
