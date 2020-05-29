@@ -5,56 +5,13 @@ const cors = require('cors');
 
 const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');
+const stripeRouter = require('./src/routes/stripe');
 const db = require('./src/db');
 const log = require('./src/log');
 
 const PORT = process.env.PORT;
 
-var LOG_LEVEL = 30;
-var OUTPUT = 'json';
-
-if (process.env.LOG_LEVEL == 'debug') {
-	LOG_LEVEL = 20;
-	OUTPUT = 'short';
-}
-
 const app = express();
-const log = bunyan.createLogger({
-	name: 'indorphins',
-	serializers: {
-		err: bunyan.stdSerializers.err,
-		req: bunyan.stdSerializers.req,
-		res: bunyan.stdSerializers.res,
-	},
-	level: LOG_LEVEL,
-	stream: bformat({
-		outputMode: OUTPUT,
-		levelInString: true,
-	}),
-});
-
-function listen() {
-	if (app.get('env') === 'test') return;
-	app.listen(PORT, () => log.info(`App started`, 'port', PORT));
-}
-
-function connect() {
-	mongoose.connection.once('open', listen);
-
-	// consider adding autoIndex to false for production
-	return mongoose.connect(DBCONN, {
-		keepAlive: 1,
-		useNewUrlParser: true,
-		useUnifiedTopology: true,
-		useFindAndModify: false,
-		useCreateIndex: true,
-	});
-}
-
-log.info('Connecting to MongoDB', DBCONN);
-connect().catch((err) => {
-	log.fatal({ msg: 'error connecting to database', err: err });
-});
 
 app.use(cors());
 app.use(express.json());

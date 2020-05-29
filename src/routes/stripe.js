@@ -1,31 +1,38 @@
 const express = require('express');
-const stripe = express.Router();
+const router = express.Router();
+const middleware = require('../middleware');
+const stripeMongo = require('../handlers/stripeMongo');
+const stripe = require('../handlers/stripe');
 
-const stripeController = require('../handlers/stripe');
+router.post('/payment', middleware.authentication);
+router.post('/payment', stripe.createPayment);
+router.post('/payment', stripeMongo.createTransaction);
 
-stripe.get('/verifyToken', stripeController.authenticate);
+router.post('/customer', middleware.authentication);
+router.post('/customer', stripe.createCustomer);
+router.post('/customer', stripeMongo.createStripeUser);
 
-stripe.post('/createPayment', stripeController.createPayment);
+router.post('/paymentMethod', middleware.authentication);
+router.post('/paymentMethod', stripe.createCustomer);
+router.post('/paymentMethod', stripeMongo.createPaymentMethod);
 
-stripe.post('/createCustomer', stripeController.createCustomer);
+router.post('/createSubscription', stripe.createSubscription);
 
-stripe.post('/createSubscription', stripeController.createSubscription);
+router.post('/retryInvoice', stripe.retryInvoice);
 
-stripe.post('/retryInvoice', stripeController.retryInvoice);
+router.post('/cancelSubscription', stripe.cancelSubscription);
 
-stripe.post('/cancelSubscription', stripeController.cancelSubscription);
+router.post('/webhook', stripe.stripeWebhook);
 
-stripe.post('/state', stripeController.generateState);
+router.post('/updateSubscription', stripe.updateSubscription);
 
-stripe.post('/webhook', stripeController.stripeWebhook);
+router.post('/getUpcomingInvoice', stripe.retrieveUpcomingInvoice);
 
-stripe.post('/updateSubscription', stripeController.updateSubscription);
+router.post('/getPaymentMethod', stripe.retrieveCustomerPaymentMethod);
 
-stripe.post('/getUpcomingInvoice', stripeController.retrieveUpcomingInvoice);
+router.get('/state', middleware.authentication);
+router.get('/state', stripe.generateState);
 
-stripe.post(
-	'/getPaymentMethod',
-	stripeController.retrieveCustomerPaymentMethod
-);
+router.get('/verify', stripe.authenticate);
 
-module.exports = stripe;
+module.exports = router;

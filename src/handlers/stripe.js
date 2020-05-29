@@ -1,8 +1,13 @@
 const stripe = require('stripe')('sk_test_FO42DhPlwMhJpz8yqf0gpdyM00qA7LvJLJ');
 const redis = require('redis');
-const redisClient = redis.createClient();
+const redisClient = redis.createClient(process.env.REDIS_CONNECTION);
+const StripeUser = require('../db/StripeUser');
+const Class = require('../db/Class');
+const stripeMongo = require('./stripeMongo');
 const base64 = require('uuid-base64');
 const { v4: uuidv4 } = require('uuid');
+const log = require('../log');
+const constants = require('../constants');
 
 redisClient.on('error', function (error) {
 	console.error(error);
@@ -12,15 +17,14 @@ const TTL = 1200; // 20 mins
 
 const authenticate = (req, res) => {
 	const { code, state } = req.query;
+	console.log('Stipe auth w/ state ', state);
 
-	// Assert the state matches the state you provided in the OAuth link (optional).
 	if (!stateMatches(state)) {
 		return res
 			.status(403)
 			.json({ error: 'Incorrect state parameter: ' + state });
 	}
 
-	// Send the authorization code to Stripe's API.
 	stripe.oauth
 		.token({
 			grant_type: 'authorization_code',
@@ -45,28 +49,76 @@ const authenticate = (req, res) => {
 		);
 };
 
-const createPayment = async (req, res) => {
+/**
+ * Takes in a destination account and class id
+ * Creates a stipe payment. Upon success sends data to
+ * create a Transaction document in the db.
+ * @param {Object} req
+ * @param {Object} res
+ * @param {Object} next
+ */
+const createPayment = async (req, res, next) => {
 	const dest_acct = req.body.dest_acct;
-	console.log('input dest_acct is ', dest_acct);
-	// TODO validate dest acct id against our instructors' acct ids
+	const classId = req.body.classId;
+
+	let query = {
+		connectId: dest_acct,
+	};
+	let user = null;
+	let classObj = null;
+
+	try {
+		user = StripeUser.findOne(query);
+	} catch (err) {
+		log.warn('createPayment find stripe user - error: ', err);
+		return res.status(404).json({
+			message: err,
+		});
+	}
+
+	query = {
+		id: classId,
+	};
+
+	try {
+		classObj = Class.findOne(query);
+	} catch (err) {
+		log.warn('createPayment find class - error: ', err);
+		return res.status(404).json({
+			message: err,
+		});
+	}
+
+	if (!user || !classObj) {
+		const msg = !user ? 'Invalid destination account' : 'Invalid class id';
+		log.warn(msg);
+		return res.status(400).json({
+			message: msg,
+		});
+	}
+
+	req.ctx.classData = {
+		id: classId,
+	};
 
 	stripe.paymentIntents
 		.create({
 			payment_method_types: ['card'],
-			amount: 1000,
+			amount: 1000, // TODO get price
 			currency: 'usd',
 			transfer_data: {
 				destination: dest_acct, // where the money will go
 			},
 			on_behalf_of: dest_acct, // the account the money is intended for
-			application_fee_amount: 250, // what we take
+			application_fee_amount: 250, // what we take - stripe deducts their fee from this
 		})
 		.then((paymentIntent) => {
 			console.log('payment intent is ', paymentIntent);
-			console.log('client secret is ', paymentIntent.client_secret);
-			res
-				.status(200)
-				.json({ success: true, client_secret: paymentIntent.client_secret });
+			req.ctx.stripeData = {
+				client_secret: paymentIntent.client_secret,
+				paymentId: paymentIntent.id,
+			};
+			next();
 		})
 		.catch((error) => {
 			console.log('StripeController - createPayment - error : ', error);
@@ -84,20 +136,61 @@ const refundCharge = async (req, res) => {
 	res.status(200).json({ success: true, client_secret: refund.client_secret });
 };
 
-const generateState = (req, res) => {
+const generateState = async (req, res) => {
 	// Get user from auth token
+	console.log('COntext user data ', req.ctx.userData);
+	// let id = req.ctx.userData.id;
 
+	// if (req.params.id) {
+	// 	id = req.params.id;
+	// }
+
+	// let query = { id: id };
+	let user;
+
+	// try {
+	// 	user = await User.findOne(query);
+	// } catch (err) {
+	// 	log.warn('getUser - error: ', err);
+	// 	return res.status(404).json({
+	// 		message: err,
+	// 	});
+	// }
+
+	user = {
+		id: '123',
+		data: 'Bite me',
+	};
+
+	if (!user) {
+		return res.status(404).json({
+			message: 'No user for token',
+		});
+	}
 	// generate state code
+	const stateCode = base64.encode(uuidv4());
+	// store in redis as [code: user-info] with expire time TTL
+	redisClient.hmset(stateCode, user, 'EX', TTL, function (error) {
+		if (error) {
+			console.log('Error saving state in redis: ', error);
+			return res.status(400).send(error);
+		}
+		redisClient.expire(stateCode, TTL);
+	});
 
-	// store in redis as code: user info
-	return base64.encode(uuidv4());
+	console.log('State: ', stateCode);
+	console.log('User: ', user);
+	res.status(200).json({ state: stateCode });
 };
 
-const stateMatches = (state_parameter) => {
-	// Load the same state value that you randomly generated for your OAuth link.
-	const saved_state = 'sv_53124';
-
-	return saved_state == state_parameter;
+const stateMatches = (state) => {
+	redis.get(state, function (err, reply) {
+		console.log('Got reply redis : ', reply);
+		if (err || !reply) {
+			return false;
+		}
+		return true;
+	});
 };
 
 const saveAccountId = (id) => {
@@ -105,16 +198,16 @@ const saveAccountId = (id) => {
 	console.log('Connected account ID: ' + id);
 };
 
-const createCustomer = async (req, res) => {
+const createCustomer = async (req, res, next) => {
 	// Create a new customer object
 	const email = req.body.email;
 	try {
 		const customer = await stripe.customers.create({
 			email: email,
 		});
-		// save the customer.id in your database
 		console.log('created customer ', customer);
-		res.status(200).json({ customer });
+		req.ctx.stripeData = customer;
+		next();
 	} catch (error) {
 		console.log('Error creating customer ', error);
 		res.status(400).json(error);
@@ -130,6 +223,7 @@ const createSubscription = async (req, res) => {
 			customer: req.body.customerId,
 		});
 
+		// TODO add payment method id to user
 		console.log('update customer with invoice');
 
 		// Change the default invoice settings on the customer to the new payment method
@@ -238,11 +332,20 @@ const stripeWebhook = async (req, res) => {
 				// handle subscription cancelled automatically based
 				// upon your subscription settings.
 			}
+		case 'payment_intent.succeeded':
+			const paymentIntent = event.data.object;
+			paymentSuccess(paymentIntent);
 			break;
 		default:
 		// Unexpected event type
 	}
 	res.sendStatus(200);
+};
+
+// Add user to class - update transaction status to paid
+const paymentSuccess = (paymentIntent) => {
+	// Fulfill the purchase.
+	console.log('paymentSuccess PaymentIntent: ' + JSON.stringify(paymentIntent));
 };
 
 // Updates a user's subscription
