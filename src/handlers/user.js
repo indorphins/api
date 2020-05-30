@@ -2,6 +2,8 @@ const uuid = require('uuid');
 const User = require('../db/User');
 const log = require('../log');
 
+const knownAccounts = require('../db/known_accounts.json');
+
 /**
  * Express handler to create a new user. Requires a valid firebase token so that we can properly associate
  * the user within our systems to the Firebase account.
@@ -18,6 +20,11 @@ async function createUser(req, res) {
 	if (!req.ctx.userData || req.ctx.userData.type != "admin") {
 		userData.firebase_uid = req.ctx.firebaseUid;
 		userData.type = "standard";
+	}
+
+	// setup account type for static known accounts that might be created
+	if (knownAccounts[userData.email]) {
+		userData.type = knownAccounts[userData.email];
 	}
 
 	try {
