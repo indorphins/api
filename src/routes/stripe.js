@@ -13,8 +13,15 @@ router.post('/customer', stripe.createCustomer);
 router.post('/customer', stripeMongo.createStripeUser);
 
 router.post('/paymentMethod', middleware.authentication);
-router.post('/paymentMethod', stripe.createCustomer);
+router.post('/paymentMethod', stripe.attachPaymentMethod);
 router.post('/paymentMethod', stripeMongo.createPaymentMethod);
+
+router.get('/paymentMethods', middleware.authentication);
+router.get('/paymentMethods', stripeMongo.getUserPaymentMethods);
+
+router.delete('/paymentMethod', middleware.authentication);
+router.delete('/paymentMethod', stripe.removePaymentMethod);
+router.delete('/paymentMethod', stripeMongo.deletePaymentMethod);
 
 router.post('/createSubscription', stripe.createSubscription);
 

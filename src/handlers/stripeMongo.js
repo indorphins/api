@@ -2,6 +2,7 @@ const uuid = require('uuid');
 const StripeUser = require('../db/StripeUser');
 const Transaction = require('../db/Transaction');
 const PaymentMethod = require('../db/PaymentMethod');
+const constants = require('../constants');
 const log = require('../log');
 
 /**
@@ -14,7 +15,7 @@ async function createStripeUser(req, res) {
 	const userData = req.ctx.userData;
 	const stripeData = req.ctx.stripeData;
 
-	if (!userData.id || !stripeData.id) {
+	if (!userData.id || !stripeData) {
 		res.status(400).json({
 			message: 'Stripe and user data required',
 		});
@@ -26,6 +27,7 @@ async function createStripeUser(req, res) {
 		connectId: stripeData.connectId ? stripeData.connectId : null,
 		paymentMethods: [],
 		transactions: [],
+		subscriptions: [],
 	};
 
 	try {
@@ -198,7 +200,7 @@ async function createTransaction(req, res) {
 		stripeId: stripeData.id,
 		userId: userData.id,
 		paymentId: stripeData.paymentId,
-		status: stripeData.paymentStatus,
+		status: constants.PAYMENT_CREATED,
 	};
 
 	try {
@@ -210,9 +212,33 @@ async function createTransaction(req, res) {
 		});
 	}
 
+	let user;
+
+	try {
+		user = await StripeUser.findOneAndUpdate(
+			{ id: userData.id },
+			{ $push: { transactions: stripeData.paymentId } }
+		);
+	} catch (err) {
+		log.warn(
+			'update stripe user payment methods with new payment method - error: ',
+			err
+		);
+		return res.status(400).json({
+			message: err,
+		});
+	}
+
+	if (!user) {
+		log.warn('createTransaction - no user found');
+		return res.status(404).json({
+			message: 'No User found',
+		});
+	}
+
 	res.status(201).json({
 		message: 'New transaction created',
-		data: transaction,
+		data: { client_secret: req.ctx.stripeData.client_secret },
 	});
 }
 
@@ -272,21 +298,22 @@ async function updateTransaction(req, res) {
  */
 async function createPaymentMethod(req, res) {
 	const userData = req.ctx.userData;
-	const { paymentMethodId, card_type, last_four } = req.body.payment_method_id;
+	const { payment_method_id, card_type, last_four } = req.ctx.stripeData;
 
-	if (!userData.id || !paymentMethodId) {
+	if (!userData.id || !payment_method_id) {
 		res.status(400).json({
 			message: 'User and payment method info required',
 		});
 	}
 	let newPaymentMethod = null;
 	let data = {
-		id: userData.id,
+		id: payment_method_id,
 		last4: last_four,
 		type: card_type,
 		default: true,
 	};
 
+	// Create payment method document
 	try {
 		newPaymentMethod = await PaymentMethod.create(data);
 	} catch (err) {
@@ -296,9 +323,74 @@ async function createPaymentMethod(req, res) {
 		});
 	}
 
+	let user;
+
+	// Add payment method ID to stripe user's payment method array
+	try {
+		user = await StripeUser.findOneAndUpdate(
+			{ id: userData.id },
+			{ $push: { paymentMethods: payment_method_id } }
+		);
+	} catch (err) {
+		log.warn(
+			'update stripe user payment methods with new payment method - error: ',
+			err
+		);
+		return res.status(400).json({
+			message: err,
+		});
+	}
+
+	if (!user) {
+		log.warn('createPaymentMethod - no user found');
+		return res.status(404).json({
+			message: 'No User found',
+		});
+	}
+
 	res.status(201).json({
 		message: 'New payment method created',
 		data: newUser,
+	});
+}
+
+async function getUserPaymentMethods(req, res) {
+	let id = req.ctx.userData.id;
+
+	if (!id) {
+		return res.status(40).json({
+			message: 'User ID required',
+		});
+	}
+
+	let query = { id: id };
+	let user;
+
+	try {
+		user = await StripeUser.find(query);
+	} catch (err) {
+		log.warn('getUserPaymentMethods - error: ', err);
+		return res.status(404).json({
+			message: err,
+		});
+	}
+
+	let ids = [];
+	query = {
+		id: { $in: user.paymentMethods },
+	};
+	try {
+		ids = await PaymentMethod.find(query);
+	} catch (err) {
+		log.warn('getUserPaymentMethods - error: ', err);
+		return res.status(404).json({
+			message: err,
+		});
+	}
+
+	res.status(200).json({
+		message: 'success',
+		data: ids,
 	});
 }
 
@@ -400,40 +492,46 @@ async function updatePaymentMethod(req, res) {
  * @param {Object} res
  */
 async function deletePaymentMethod(req, res) {
-	let id = req.params.id;
+	const userData = req.ctx.userData;
+	const { payment_method_id } = req.ctx.stripeData;
 
-	if (!id) {
-		return res.status(40).json({
-			message: 'Payment Method ID required',
+	if (!userData.id || !payment_method_id) {
+		res.status(400).json({
+			message: 'User and payment method info required',
 		});
 	}
 
-	let query = { id: id };
-	let paymentMethod = null;
-
-	try {
-		paymentMethod = await PaymentMethod.findOne(query);
-	} catch (err) {
-		log.warn('deletePaymentMethod - error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
-
-	if (!paymentMethod) {
-		log.debug('Payment Method not found');
-		res.status(403).json({
-			message: 'Forbidden',
-		});
-	}
+	let query = {
+		id: payment_method_id,
+	};
 
 	try {
 		await PaymentMethod.deleteOne(query);
 	} catch (err) {
 		log.warn('deletePaymentMethod - error: ', err);
-		return res.status(500).json({
-			message: 'Service error',
-			error: err,
+		return res.status(400).json({
+			message: err,
+		});
+	}
+
+	let user;
+
+	try {
+		user = await StripeUser.findOneAndUpdate(
+			{ id: userData.id },
+			{ $pullAll: { paymentMethods: [payment_method_id] } }
+		);
+	} catch (err) {
+		log.warn('removing payment method from stripe user - error: ', err);
+		return res.status(400).json({
+			message: err,
+		});
+	}
+
+	if (!user) {
+		log.warn('deletePaymentMethod - no user found');
+		return res.status(404).json({
+			message: 'No User found',
 		});
 	}
 
@@ -451,4 +549,6 @@ module.exports = {
 	updateTransaction,
 	createPaymentMethod,
 	getPaymentMethod,
+	getUserPaymentMethods,
+	deletePaymentMethod,
 };

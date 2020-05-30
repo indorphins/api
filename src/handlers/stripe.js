@@ -3,6 +3,7 @@ const redis = require('redis');
 const redisClient = redis.createClient(process.env.REDIS_CONNECTION);
 const StripeUser = require('../db/StripeUser');
 const Class = require('../db/Class');
+const Transaction = require('../db/Transaction');
 const stripeMongo = require('./stripeMongo');
 const base64 = require('uuid-base64');
 const { v4: uuidv4 } = require('uuid');
@@ -60,6 +61,7 @@ const authenticate = (req, res) => {
 const createPayment = async (req, res, next) => {
 	const dest_acct = req.body.dest_acct;
 	const classId = req.body.classId;
+	const paymentMethod = req.body.payment_method;
 
 	let query = {
 		connectId: dest_acct,
@@ -106,11 +108,16 @@ const createPayment = async (req, res, next) => {
 			payment_method_types: ['card'],
 			amount: 1000, // TODO get price
 			currency: 'usd',
+			customer: user.customerId,
 			transfer_data: {
 				destination: dest_acct, // where the money will go
 			},
 			on_behalf_of: dest_acct, // the account the money is intended for
 			application_fee_amount: 250, // what we take - stripe deducts their fee from this
+			payment_method: paymentMethod,
+			metadata: {
+				class_id: classId,
+			},
 		})
 		.then((paymentIntent) => {
 			console.log('payment intent is ', paymentIntent);
@@ -198,8 +205,14 @@ const saveAccountId = (id) => {
 	console.log('Connected account ID: ' + id);
 };
 
+/**
+ * Takes in a user's email and creates a customer through stripe apis
+ * Passes the customer data through via req.ctx.stripeData
+ * @param {Object} req
+ * @param {Object} res
+ * @param {Object} next
+ */
 const createCustomer = async (req, res, next) => {
-	// Create a new customer object
 	const email = req.body.email;
 	try {
 		const customer = await stripe.customers.create({
@@ -209,6 +222,60 @@ const createCustomer = async (req, res, next) => {
 		req.ctx.stripeData = customer;
 		next();
 	} catch (error) {
+		console.log('Error creating customer ', error);
+		res.status(400).json(error);
+	}
+};
+
+/**
+ * Takes in a payment method and customer id and attaches it to the customer
+ * Fetches the payment method details and stores relevant data in req.ctx.stripeData
+ * @param {Object} req
+ * @param {Object} res
+ * @param {*} next
+ */
+const attachPaymentMethod = async (req, res, next) => {
+	try {
+		console.log('PAyment method id ', req.body.paymentMethodId);
+		const pMethod = await stripe.paymentMethods.attach(
+			req.body.paymentMethodId,
+			{
+				customer: req.body.customerId,
+			}
+		);
+		req.ctx.stripeData = {
+			payment_method_id: pMethod.id,
+			card_type: pMethod.card.brand,
+			last_four: pMethod.card.last4,
+		};
+		next();
+	} catch (err) {
+		console.log('Error creating customer ', error);
+		res.status(400).json(error);
+	}
+};
+
+/**
+ * Takes in a payment method and customer id and removes it from the customer
+ * Stores the payment method id in req.ctx.stripeData
+ * @param {Object} req
+ * @param {Object} res
+ * @param {*} next
+ */
+const removePaymentMethod = async (req, res, next) => {
+	try {
+		console.log('Payment method id ', req.body.paymentMethodId);
+		const pMethod = await stripe.paymentMethods.detach(
+			req.body.paymentMethodId,
+			{
+				customer: req.body.customerId,
+			}
+		);
+		req.ctx.stripeData = {
+			payment_method_id: pMethod.id,
+		};
+		next();
+	} catch (err) {
 		console.log('Error creating customer ', error);
 		res.status(400).json(error);
 	}
@@ -287,7 +354,7 @@ const stripeWebhook = async (req, res) => {
 		event = stripe.webhooks.constructEvent(
 			req.body,
 			req.headers['stripe-signature'],
-			process.env.STRIPE_WEBHOOK_SECRET
+			process.env.STRIPE_WEBHOOK_SECRET // TODO add this
 		);
 		console.log('Stripe webhook event: ', event);
 	} catch (err) {
@@ -301,9 +368,17 @@ const stripeWebhook = async (req, res) => {
 	// Handle the event
 	switch (event.type) {
 		case 'invoice.payment_succeeded':
-			// Used to provision services after the trial has ended.
-			// The status of the invoice will show up as paid. Store the status in your
-			// database to reference when a user accesses your service to avoid hitting rate limits.
+			updateTransactionStatus(dataObject.id, constants.PAYMENT_PAID)
+				.then((transaction) => {
+					// TODO determine how we're storing class id
+					// return addUserToClass(dataObject.metadata.class_id, dataObject.customer);
+				})
+				.catch((error) => {
+					log.warn('Stripe Webhook error - payment_intent.succeeded - ', error);
+					return res.status(400).json({
+						message: error,
+					});
+				});
 			break;
 		case 'invoice.payment_failed':
 			// If the payment fails or the customer does not have a valid payment method,
@@ -333,8 +408,19 @@ const stripeWebhook = async (req, res) => {
 				// upon your subscription settings.
 			}
 		case 'payment_intent.succeeded':
-			const paymentIntent = event.data.object;
-			paymentSuccess(paymentIntent);
+			updateTransactionStatus(dataObject.id, constants.PAYMENT_PAID)
+				.then((transaction) => {
+					return addUserToClass(
+						dataObject.metadata.class_id,
+						dataObject.customer
+					);
+				})
+				.catch((error) => {
+					log.warn('Stripe Webhook error - payment_intent.succeeded - ', error);
+					return res.status(400).json({
+						message: error,
+					});
+				});
 			break;
 		default:
 		// Unexpected event type
@@ -342,10 +428,89 @@ const stripeWebhook = async (req, res) => {
 	res.sendStatus(200);
 };
 
-// Add user to class - update transaction status to paid
-const paymentSuccess = (paymentIntent) => {
-	// Fulfill the purchase.
-	console.log('paymentSuccess PaymentIntent: ' + JSON.stringify(paymentIntent));
+/**
+ * Updates a transaction status with input status string
+ * Returns the updated transaction
+ * @param {String} paymentId
+ * @param {String} status
+ */
+const updateTransactionStatus = async (paymentId, status) => {
+	const query = {
+		id: paymentId,
+	};
+	try {
+		const transaction = await Transaction.findOneAndUpdate(query, {
+			status: status,
+		});
+	} catch (err) {
+		log.warn('updateTransactionStatus - update transaction error: ', error);
+		return res.status(404).json({
+			message: err,
+		});
+	}
+
+	if (!transaction) {
+		log.warn('updateTransactionStatus - no transaction found');
+		return res.status(404).json({
+			message: 'No transaction found',
+		});
+	}
+
+	return transaction;
+};
+
+/**
+ * Adds a user to a class' participants array
+ * Called after successful payment of participant for class
+ * Sends response with class object
+ * @param {String} classId
+ * @param {String} stripeId
+ */
+const addUserToClass = async (classId, stripeId) => {
+	console.log(
+		'addUserToClass w/ class id: ',
+		classId,
+		' + stripe id ',
+		stripeId
+	);
+	let query = {
+		customerId: stripeId,
+	};
+	let user;
+
+	try {
+		user = StripeUser.findOne(query);
+	} catch (err) {
+		log.warn('addUserToClass find stripe user error: ', err);
+		return req.status(404).json({
+			message: err,
+		});
+	}
+
+	let c;
+	try {
+		c = await Class.findByIdAndUpdate(
+			{ id: classId },
+			{ $push: { participants: user.id } }
+		);
+	} catch (err) {
+		log.warn('addUserToClass add user to class error: ', err);
+		return req.status(404).json({
+			message: err,
+		});
+	}
+
+	if (!c || !user) {
+		log.warn('addUserToClass - User or Class not found');
+		return req.send(404).json({
+			message: 'User or Class not found',
+		});
+	}
+
+	res.status(200).json({
+		message: 'success',
+		data: c,
+	});
 };
 
 // Updates a user's subscription
@@ -416,4 +581,6 @@ module.exports = {
 	retrieveCustomerPaymentMethod,
 	cancelSubscription,
 	generateState,
+	attachPaymentMethod,
+	removePaymentMethod,
 };

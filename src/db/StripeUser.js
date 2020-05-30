@@ -20,6 +20,7 @@ const StripeUser = new mongoose.Schema({
 	},
 	subscriptions: {
 		type: Array,
+		required: true,
 	},
 	transactions: {
 		type: Array,
