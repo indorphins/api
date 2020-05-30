@@ -45,7 +45,7 @@ const User = new mongoose.Schema({
 		required: true,
 		unique: true,
 	},
-	profile_img: {
+	photo_url: {
 		type: String,
 		required: false,
 	},

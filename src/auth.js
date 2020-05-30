@@ -1,9 +1,9 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('../groupfit-auth-firebase-adminsdk-ovr16-697a0631ce.json');
+const serviceAccount = require('../indo-e071f-firebase-adminsdk-ihibr-09411c503d.json');
 
 admin.initializeApp({
-	credential: admin.credential.cert(serviceAccount),
-	databaseURL: 'https://groupfit-auth.firebaseio.com',
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://indo-e071f.firebaseio.com"
 });
 
 function verifyToken(token) {

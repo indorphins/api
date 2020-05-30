@@ -1,6 +1,5 @@
 const uuid = require('uuid');
 const User = require('../db/User');
-const Class = require('../db/Class');
 const log = require('../log');
 
 /**
@@ -42,6 +41,13 @@ async function createUser(req, res) {
  * @param {Object} res - http response object
  */
 async function getUser(req, res) {
+
+	if (!req.ctx.userData) {
+		log.warn('valid token but user does not exist in db');
+		return res.status(404).json({
+			message: "user does not exist"
+		});
+	}
 
 	let id = req.ctx.userData.id;
 
