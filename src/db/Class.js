@@ -69,6 +69,9 @@ const ClassSchema = new mongoose.Schema({
 		type: Number,
 		required: true,
 		default: 20.00,
+	},
+	photo_url: {
+		type: String,
 	}
 });
 

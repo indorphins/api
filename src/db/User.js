@@ -24,6 +24,9 @@ const User = new mongoose.Schema({
 	state: {
 		type: String,
 	},
+	bio: {
+		type: String,
+	},
 	email: {
 		type: String,
 		required: true,
