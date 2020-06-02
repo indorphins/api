@@ -106,7 +106,7 @@ kubectl create configmap indorphins-config --from-env-file=../env/prod.env
 Change VERSION to the docker image tag version to deploy
 
 ```
-kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:VERSION
+kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:VERSION
 ```
 
 For the latest version simply use "latest" as the VERSION.
