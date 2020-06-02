@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');
+const instructorsRouter = require('./src/routes/instructor');
 const db = require('./src/db');
 const log = require('./src/log');
 
@@ -35,6 +36,7 @@ app.options('*', cors());
 // routes
 app.use('/class', classesRouter);
 app.use('/user', usersRouter);
+app.use('/instructor', instructorsRouter);
 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');
