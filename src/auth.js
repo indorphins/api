@@ -1,9 +1,8 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('../indo-e071f-firebase-adminsdk-ihibr-09411c503d.json');
+const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://indo-e071f.firebaseio.com"
 });
 
 function verifyToken(token) {

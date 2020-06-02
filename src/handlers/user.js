@@ -24,7 +24,12 @@ async function createUser(req, res) {
 
 	// setup account type for static known accounts that might be created
 	if (knownAccounts[userData.email]) {
-		userData.type = knownAccounts[userData.email];
+		if (typeof knownAccounts[userData.email] === "object") {
+			userData.type = knownAccounts[userData.email].type;
+			userData.photo_url = knownAccounts[userData.email].photo_url
+		} else {
+			userData.type = knownAccounts[userData.email];
+		}
 	}
 
 	try {
