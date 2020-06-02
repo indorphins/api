@@ -6,6 +6,7 @@ const cors = require('cors');
 const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');
 const instructorsRouter = require('./src/routes/instructor');
+const auth = require('./src/auth');
 const db = require('./src/db');
 const log = require('./src/log');
 
@@ -50,5 +51,6 @@ app.get('*', (req, res) => {
 })
 
 db.init(() => {
+  auth.init();
 	app.listen(PORT, () => log.info("App started on port", PORT));
 });

@@ -1,17 +1,17 @@
 const admin = require('firebase-admin');
 const configString = process.env.FIREBASE_CONFIG;
 
-let serviceAccount;
+async function init() {
+	let serviceAccount;
 
-if (configString.charAt(0) === "'") {
-	serviceAccount = JSON.parse(configString.replace("'", ""));
-} else {
-	serviceAccount = JSON.parse(configString);
+	let buff = Buffer.from(configString, 'base64');
+	let decoded = buff.toString('utf-8');
+	serviceAccount = JSON.parse(decoded);
+
+	return admin.initializeApp({
+		credential: admin.credential.cert(serviceAccount),
+	});
 }
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
 
 function verifyToken(token) {
 	return admin
@@ -23,5 +23,6 @@ function verifyToken(token) {
 }
 
 module.exports = {
-	verifyToken,
+	init: init,
+	verifyToken: verifyToken,
 };
