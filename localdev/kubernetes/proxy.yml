@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: dev-proxy
-        image: 662730807386.dkr.ecr.us-east-1.amazonaws.com/proxy:latest
+        image: 586425846122.dkr.ecr.us-east-1.amazonaws.com/proxy:latest
         ports:
         - containerPort: 80
         envFrom:
