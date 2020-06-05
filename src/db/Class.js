@@ -74,9 +74,10 @@ const ClassSchema = new mongoose.Schema({
 	}
 });
 
-ClassSchema.index({ participants: 1 });
-ClassSchema.index({ start_date: -1 });
-ClassSchema.index({ end_date: -1 });
+ClassSchema.index({ participants: -1 });
+ClassSchema.index({ start_date: 1 });
+ClassSchema.index({ end_date: 1 });
+ClassSchema.index({ recurring: 1 });
 ClassSchema.index({ available_spots: -1 });
 ClassSchema.index({ type: 1 });
 ClassSchema.index({ duration: 1 });
