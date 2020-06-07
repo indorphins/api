@@ -8,6 +8,14 @@ router.post('/payment', middleware.authentication);
 router.post('/payment', stripe.createPayment);
 router.post('/payment', stripeMongo.createTransaction);
 
+router.post('/refund', middleware.authentication);
+router.post('/refund', stripe.refundCharge);
+router.post('/refund', stripeMongo.updateTransaction);
+
+router.post('/confirmPayment', middleware.authentication);
+router.post('/confirmPayment', stripe.confirmPayment);
+router.post('/confirmPayment', stripeMongo.updateTransaction);
+
 router.post('/customer', middleware.authentication);
 router.post('/customer', stripe.createCustomer);
 router.post('/customer', stripeMongo.createStripeUser);
@@ -23,6 +31,12 @@ router.delete('/paymentMethod', middleware.authentication);
 router.delete('/paymentMethod', stripe.removePaymentMethod);
 router.delete('/paymentMethod', stripeMongo.deletePaymentMethod);
 
+router.get('/accountRedirect', middleware.authentication);
+router.get('/accountRedirect', stripe.generateState);
+router.get('/accountRedirect', stripe.connectAccountRedirect);
+
+// TODO - add subscription flows behind authentication
+
 router.post('/createSubscription', stripe.createSubscription);
 
 router.post('/retryInvoice', stripe.retryInvoice);
@@ -36,10 +50,5 @@ router.post('/updateSubscription', stripe.updateSubscription);
 router.post('/getUpcomingInvoice', stripe.retrieveUpcomingInvoice);
 
 router.post('/getPaymentMethod', stripe.retrieveCustomerPaymentMethod);
-
-router.get('/state', middleware.authentication);
-router.get('/state', stripe.generateState);
-
-router.get('/verify', stripe.authenticate);
 
 module.exports = router;

@@ -23,4 +23,6 @@ const Transaction = new mongoose.Schema({
 	},
 });
 
+Transaction.index({ classId: 1, userId: 1 });
+
 module.exports = mongoose.model('Transaction', Transaction);

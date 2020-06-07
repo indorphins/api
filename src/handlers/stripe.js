@@ -4,7 +4,6 @@ const redisClient = redis.createClient(process.env.REDIS_CONNECTION);
 const StripeUser = require('../db/StripeUser');
 const Class = require('../db/Class');
 const Transaction = require('../db/Transaction');
-const stripeMongo = require('./stripeMongo');
 const base64 = require('uuid-base64');
 const { v4: uuidv4 } = require('uuid');
 const log = require('../log');
@@ -16,15 +15,30 @@ redisClient.on('error', function (error) {
 
 const TTL = 1200; // 20 mins
 
+/**
+ * Verifies state matches in redis, and stripe code is verified by stripe
+ * Then creates a Stripe User with new connect ID. Redirects user back to profile page
+ * With success or error message in query params
+ * @param {Object} req
+ * @param {Object} res
+ */
 const authenticate = (req, res) => {
 	const { code, state } = req.query;
+	const PROFILE_REDIRECT = 'https://app.indorphins.com/profile';
+	let userData;
+
 	console.log('Stipe auth w/ state ', state);
 
-	if (!stateMatches(state)) {
-		return res
-			.status(403)
-			.json({ error: 'Incorrect state parameter: ' + state });
-	}
+	// TODO on error redirect to page
+
+	redisClient.hgetall(state, function (err, reply) {
+		log.info('Got reply redis : ', reply);
+		if (err || !reply) {
+			res.query;
+			return res.redirect(PROFILE_REDIRECT + '?error=no_user_found');
+		}
+		userData = reply;
+	});
 
 	stripe.oauth
 		.token({
@@ -34,17 +48,20 @@ const authenticate = (req, res) => {
 		.then(
 			(response) => {
 				var connected_account_id = response.stripe_user_id;
-				saveAccountId(connected_account_id);
-
-				res.status(200).json({ success: true });
+				saveAccountId(connected_account_id, userData)
+					.then(() => {
+						console.log('Saved account id ');
+						res.redirect(PROFILE_REDIRECT);
+					})
+					.catch((err) => {
+						res.redirect(PROFILE_REDIRECT + '?error=create_account_failed');
+					});
 			},
 			(err) => {
 				if (err.type === 'StripeInvalidGrantError') {
-					res
-						.status(400)
-						.json({ error: 'Invalid authorization code: ' + code });
+					res.redirect(PROFILE_REDIRECT + '?error=invalid_auth_code');
 				} else {
-					res.status(500).json({ error: 'An unknown error occurred.' });
+					res.redirect(PROFILE_REDIRECT + '?error=unknown_error');
 				}
 			}
 		);
@@ -59,20 +76,40 @@ const authenticate = (req, res) => {
  * @param {Object} next
  */
 const createPayment = async (req, res, next) => {
-	const dest_acct = req.body.dest_acct;
-	const classId = req.body.classId;
+	const instructorId = req.body.insructor_id;
+	const classId = req.body.class_id;
 	const paymentMethod = req.body.payment_method;
+	const userId = req.ctx.userData.id;
+
+	if (!instructorId || !classId || paymentMethod || userId) {
+		return res.status(400).json({
+			success: false,
+			message: 'Missing input parameters',
+		});
+	}
 
 	let query = {
-		connectId: dest_acct,
+		id: instructorId,
 	};
-	let user = null;
-	let classObj = null;
+	let instructor;
+	let user;
+	let classObj;
+
+	try {
+		instructor = StripeUser.findOne(query);
+	} catch (err) {
+		log.warn('createPayment find instructor stripe user - error: ', err);
+		return res.status(404).json({
+			message: err,
+		});
+	}
+
+	query.id = userId;
 
 	try {
 		user = StripeUser.findOne(query);
 	} catch (err) {
-		log.warn('createPayment find stripe user - error: ', err);
+		log.warn('createPayment find customer stripe user - error: ', err);
 		return res.status(404).json({
 			message: err,
 		});
@@ -91,10 +128,15 @@ const createPayment = async (req, res, next) => {
 		});
 	}
 
-	if (!user || !classObj) {
-		const msg = !user ? 'Invalid destination account' : 'Invalid class id';
+	if (!user.customerId || !classObj || !instructor.connectId) {
+		const msg = !instructor.connectId
+			? 'Invalid destination account'
+			: !user.customerId
+			? 'Invalid customer account'
+			: 'Invalid class id';
 		log.warn(msg);
 		return res.status(400).json({
+			success: false,
 			message: msg,
 		});
 	}
@@ -110,9 +152,9 @@ const createPayment = async (req, res, next) => {
 			currency: 'usd',
 			customer: user.customerId,
 			transfer_data: {
-				destination: dest_acct, // where the money will go
+				destination: instructor.connectId, // where the money will go
 			},
-			on_behalf_of: dest_acct, // the account the money is intended for
+			on_behalf_of: instructor.connectId, // the account the money is intended for
 			application_fee_amount: 250, // what we take - stripe deducts their fee from this
 			payment_method: paymentMethod,
 			metadata: {
@@ -133,76 +175,151 @@ const createPayment = async (req, res, next) => {
 		});
 };
 
-const refundCharge = async (req, res) => {
-	// How do we verify the charge is valid
-	const refund = await stripe.refunds.create({
-		charge: '{CHARGE_ID}',
-		reverse_transfer: true,
-		refund_application_fee: true, // Gives back the platform fee
-	});
-	res.status(200).json({ success: true, client_secret: refund.client_secret });
+/**
+ * Takes in a class id. Finds transaction using userId and classId
+ * If transaction found and refund successful removes the user from class participant list
+ * Stores refund data to req.ctx to update the transaction's status
+ * @param {Object} req
+ * @param {Object} res
+ * @param {Function} next
+ */
+const refundCharge = async (req, res, next) => {
+	const classId = req.body.class_id;
+	const userId = req.ctx.userData.id;
+
+	let query = { classId: classId, userId: userId };
+	let transaction, classObj;
+
+	try {
+		transaction = await Transaction.findOne(query);
+	} catch (err) {
+		log.warn('Stripe - refundCharge find transaction error: ', err);
+		return res.status(400).json({
+			message: err,
+		});
+	}
+
+	if (!transaction) {
+		return res.status(404).json({
+			success: false,
+			message: 'No transaction found',
+		});
+	}
+
+	query = {
+		id: classId,
+	};
+
+	try {
+		classObj = Class.findOne(query);
+	} catch (err) {
+		log.warn('Stripe - refundCharge find class error: ', err);
+		return res.status(404).json({
+			message: err,
+		});
+	}
+
+	if (!classObj) {
+		return res.status(404).json({
+			success: false,
+			message: 'No class found',
+		});
+	}
+
+	try {
+		const refund = await stripe.refunds.create({
+			charge: transaction.paymentId,
+			reverse_transfer: true,
+			refund_application_fee: true, // Gives back the platform fee
+		});
+		req.ctx.stripeData = {
+			refund: refund,
+			status: constants.PAYMENT_REFUNDED,
+			paymentId: transaction.paymentId,
+		};
+		next();
+	} catch (err) {
+		log.warn('Stripe - refundCharge create refund error: ', err);
+		return res.status(400).json({
+			success: false,
+		});
+	}
 };
 
-const generateState = async (req, res) => {
-	// Get user from auth token
-	console.log('COntext user data ', req.ctx.userData);
-	// let id = req.ctx.userData.id;
+/**
+ * Generate state code. Store in redis.
+ * Also store in req.ctx to pass along to next call.
+ * @param {Object} req
+ * @param {Object} res
+ * @param {Function} next
+ */
+const generateState = async (req, res, next) => {
+	let id = req.ctx.userData.id;
 
-	// if (req.params.id) {
-	// 	id = req.params.id;
-	// }
+	if (req.params.id) {
+		id = req.params.id;
+	}
 
-	// let query = { id: id };
-	let user;
+	let query = { id: id };
 
-	// try {
-	// 	user = await User.findOne(query);
-	// } catch (err) {
-	// 	log.warn('getUser - error: ', err);
-	// 	return res.status(404).json({
-	// 		message: err,
-	// 	});
-	// }
-
-	user = {
-		id: '123',
-		data: 'Bite me',
-	};
+	try {
+		user = await User.findOne(query);
+	} catch (err) {
+		log.warn('getUser - error: ', err);
+		return res.status(404).json({
+			message: err,
+		});
+	}
 
 	if (!user) {
 		return res.status(404).json({
 			message: 'No user for token',
 		});
 	}
-	// generate state code
+
+	// store state code in redis as [code: user-info] with expire time TTL
 	const stateCode = base64.encode(uuidv4());
-	// store in redis as [code: user-info] with expire time TTL
-	redisClient.hmset(stateCode, user, 'EX', TTL, function (error) {
+	redisClient.hmset(stateCode, user, function (error) {
 		if (error) {
 			console.log('Error saving state in redis: ', error);
 			return res.status(400).send(error);
 		}
 		redisClient.expire(stateCode, TTL);
-	});
-
-	console.log('State: ', stateCode);
-	console.log('User: ', user);
-	res.status(200).json({ state: stateCode });
-};
-
-const stateMatches = (state) => {
-	redis.get(state, function (err, reply) {
-		console.log('Got reply redis : ', reply);
-		if (err || !reply) {
-			return false;
-		}
-		return true;
+		req.ctx.state = stateCode;
+		next();
 	});
 };
 
-const saveAccountId = (id) => {
-	// Save the connected account ID from the response to your database.
-	console.log('Connected account ID: ' + id);
+/**
+ * Creates the redirect url with a state code for
+ * setup of stripe connect account and redirects to it.
+ * @param {Object} req
+ * @param {Object} res
+ */
+const connectAccountRedirect = (req, res) => {
+	const TEST_CLIENT_ID = 'ca_H6FI1hBlXQUv8wAMFBvSxGTNZUy7RiT1'; // TODO Maybe pass this in from Front End?
+	const state = req.ctx.state;
+	if (!state) {
+		log.warn('getConnectAccountRedirectUrl - state code not found'); // TODO replace with client
+		return res.status(400).json({
+			success: false,
+			message: 'No state code for redirect',
+		});
+	}
+	const uri = `https://connect.stripe.com/express/oauth/authorize?client_id=${TEST_CLIENT_ID}&state=${state}&suggested_capabilities[]=card_payments&suggested_capabilities[]=transfers&stipe_user[]=`;
+	res.redirect(uri);
+};
+
+// Save the connected account ID from the response to your database.
+const saveAccountId = async (id, userData) => {
+	try {
+		const user = await StripeUser.create({ connectId: id, id: userData.id });
+		console.log('Created user : ', user);
+		return user;
+	} catch (err) {
+		log.warn('Sripe - saveAccountId error: ', err);
+		throw err;
+	}
 };
 
 /**
@@ -228,7 +345,7 @@ const createCustomer = async (req, res, next) => {
 };
 
 /**
- * Takes in a payment method and customer id and attaches it to the customer
+ * Takes in a payment method ID and customer id and attaches it to the customer
  * Fetches the payment method details and stores relevant data in req.ctx.stripeData
  * @param {Object} req
  * @param {Object} res
@@ -236,13 +353,35 @@ const createCustomer = async (req, res, next) => {
  */
 const attachPaymentMethod = async (req, res, next) => {
 	try {
-		console.log('PAyment method id ', req.body.paymentMethodId);
-		const pMethod = await stripe.paymentMethods.attach(
-			req.body.paymentMethodId,
-			{
-				customer: req.body.customerId,
-			}
-		);
+		const pMethodId = req.body.paymentMethodId;
+		const userId = req.ctx.userData.id;
+
+		if (!pMethodId || userId) {
+			const msg =
+				'Payment method ID and user ID required to attach payment method';
+			log.warn(`attachPaymentMethod - ${msg}`);
+			res.status(400).json({
+				success: false,
+				message: msg,
+			});
+		}
+
+		const query = { id: userId };
+		let user;
+
+		try {
+			user = await StripeUser.findOne(query);
+		} catch (err) {
+			log.warn(err);
+			return res.status(404).json({
+				success: false,
+				message: err,
+			});
+		}
+
+		const pMethod = await stripe.paymentMethods.attach(pMethodId, {
+			customer: user.customerId,
+		});
 		req.ctx.stripeData = {
 			payment_method_id: pMethod.id,
 			card_type: pMethod.card.brand,
@@ -250,13 +389,13 @@ const attachPaymentMethod = async (req, res, next) => {
 		};
 		next();
 	} catch (err) {
-		console.log('Error creating customer ', error);
+		log.warn('Error attaching payment method ', error);
 		res.status(400).json(error);
 	}
 };
 
 /**
- * Takes in a payment method and customer id and removes it from the customer
+ * Takes in a payment method id and customer id and removes it from the customer
  * Stores the payment method id in req.ctx.stripeData
  * @param {Object} req
  * @param {Object} res
@@ -264,11 +403,38 @@ const attachPaymentMethod = async (req, res, next) => {
  */
 const removePaymentMethod = async (req, res, next) => {
 	try {
-		console.log('Payment method id ', req.body.paymentMethodId);
+		const pMethodId = req.body.payment_method_id;
+		const userId = req.ctx.userData.id;
+
+		if (!pMethodId || userId) {
+			const msg =
+				'Payment method ID and user ID required to remove payment method';
+			log.warn(`removePaymentMethod - ${msg}`);
+			res.status(400).json({
+				success: false,
+				message: msg,
+			});
+		}
+
+		let user;
+		const query = {
+			id: userId,
+		};
+
+		try {
+			user = await StripeUser.findOne(query);
+		} catch (err) {
+			log.warn(err);
+			return res.status(404).json({
+				success: false,
+				message: err,
+			});
+		}
+
 		const pMethod = await stripe.paymentMethods.detach(
 			req.body.paymentMethodId,
 			{
-				customer: req.body.customerId,
+				customer: user.customerId,
 			}
 		);
 		req.ctx.stripeData = {
@@ -347,6 +513,12 @@ const cancelSubscription = async (req, res) => {
 	res.send(deletedSubscription);
 };
 
+/**
+ * Webhook for stripe event handling
+ * receives an event and the relevant payment object
+ * @param {Object} req
+ * @param {Object} res
+ */
 const stripeWebhook = async (req, res) => {
 	// Retrieve the event by verifying the signature using the raw body and secret.
 	let event;
@@ -489,7 +661,7 @@ const addUserToClass = async (classId, stripeId) => {
 
 	let c;
 	try {
-		c = await Class.findByIdAndUpdate(
+		c = await Class.findOneAndUpdate(
 			{ id: classId },
 			{ $push: { participants: user.id } }
 		);
@@ -567,6 +739,44 @@ const retrieveCustomerPaymentMethod = async (req, res) => {
 	res.send(paymentMethod);
 };
 
+/**
+ * Finds transaction with input class ID and user ID
+ * Confirms the payment intent and sets the stripe data in req.ctx
+ * to update the Transaction status
+ * @param {Object} req
+ * @param {Object} res
+ * @param {*} next
+ */
+const confirmPayment = async (req, res, next) => {
+	const classId = req.body.class_id;
+	const userId = req.ctx.userData.id;
+
+	let query = { classId: classId, userId: userId };
+	let transaction;
+
+	try {
+		transaction = await Transaction.findOne(query);
+	} catch (err) {
+		log.warn('Stripe - refundCharge find transaction error: ', err);
+		return res.status(400).json({
+			message: err,
+		});
+	}
+
+	if (!transaction) {
+		return res.status(404).json({
+			success: false,
+			message: 'No transaction found',
+		});
+	}
+	// TODO eventually move payment confirmation to backend (currently happens on client side)
+	req.ctx.stripeData = {
+		paymentId: transaction.paymentId,
+		status: constants.PAYMENT_PAID,
+	};
+	next();
+};
+
 module.exports = {
 	authenticate,
 	createPayment,
@@ -583,4 +793,6 @@ module.exports = {
 	generateState,
 	attachPaymentMethod,
 	removePaymentMethod,
+	confirmPayment,
+	connectAccountRedirect,
 };

@@ -6,6 +6,8 @@ const CLASS_STATUS_SCHEDULED = 'scheduled';
 const PAYMENT_PAID = 'fulfilled';
 const PAYMENT_FAILED = 'failed';
 const PAYMENT_CREATED = 'pending';
+const PAYMENT_CANCELLED = 'cancelled';
+const PAYMENT_REFUNDED = 'refunded';
 
 module.exports = {
 	CLASSES_DB,
@@ -15,4 +17,6 @@ module.exports = {
 	PAYMENT_CREATED,
 	PAYMENT_FAILED,
 	PAYMENT_PAID,
+	PAYMENT_CANCELLED,
+	PAYMENT_REFUNDED,
 };

@@ -120,7 +120,7 @@ async function updateStripeUser(req, res) {
 	}
 
 	try {
-		await StripeUser.update(query, data, {
+		await StripeUser.findOneAndUpdate(query, data, {
 			upsert: true,
 			new: false,
 		});
@@ -242,41 +242,36 @@ async function createTransaction(req, res) {
 	});
 }
 
+/**
+ * Updates a transactions status using data stored in req.ctx.stripeData
+ * All other fields should never change. Sends back the client secret
+ * associated with the payment id
+ * @param {Object} req
+ * @param {Object} res
+ */
 async function updateTransaction(req, res) {
-	const id = req.params.id ? req.params.id : null;
-	const query = { id: id };
-	let transaction = null;
-
-	try {
-		transaction = await Transaction.findOne(query);
-	} catch (err) {
-		log.warn('updateStripeUser - error: ', err);
+	const id = req.ctx.stripeData.paymentId;
+	if (!id) {
 		return res.status(500).json({
 			message: 'Service error',
 			error: err,
 		});
 	}
 
-	if (!transaction) {
-		log.debug('Transaction not found');
-		res.status(403).json({
-			message: 'Forbidden',
-		});
-	}
-
-	let data = req.body;
-
-	if (req.ctx.userData.type != 'admin') {
-		return res.status(400).json({
-			message: 'Only Admins can update transactions',
-		});
-	}
+	const query = { paymentId: id };
+	const status = req.stripeData.status;
+	const refund = req.stripeData.refund;
+	let transaction;
 
 	try {
-		await Transaction.update(query, data, {
-			upsert: true,
-			new: false,
-		});
+		transaction = await Transaction.findOneAndUpdate(
+			query,
+			{ status: status },
+			{
+				upsert: true,
+				new: false,
+			}
+		);
 	} catch (err) {
 		log.warn('error updating transaction record', transaction);
 		return res.status(400).json({
@@ -285,9 +280,7 @@ async function updateTransaction(req, res) {
 		});
 	}
 
-	res.status(200).json({
-		message: 'Transaction updated',
-	});
+	res.status(200).json({ success: true, client_secret: refund.client_secret });
 }
 
 /**
@@ -305,7 +298,7 @@ async function createPaymentMethod(req, res) {
 			message: 'User and payment method info required',
 		});
 	}
-	let newPaymentMethod = null;
+	let newPaymentMethod;
 	let data = {
 		id: payment_method_id,
 		last4: last_four,
@@ -350,7 +343,7 @@ async function createPaymentMethod(req, res) {
 
 	res.status(201).json({
 		message: 'New payment method created',
-		data: newUser,
+		data: newPaymentMethod,
 	});
 }
 
@@ -403,7 +396,7 @@ async function getPaymentMethod(req, res) {
 	let id = req.params.id;
 
 	if (!id) {
-		return res.status(40).json({
+		return res.status(400).json({
 			message: 'Payment Method ID required',
 		});
 	}
@@ -440,7 +433,7 @@ async function updatePaymentMethod(req, res) {
 	let id = req.params.id;
 
 	if (!id) {
-		return res.status(40).json({
+		return res.status(400).json({
 			message: 'Payment Method ID required',
 		});
 	}
@@ -468,7 +461,7 @@ async function updatePaymentMethod(req, res) {
 	let data = req.body;
 
 	try {
-		await PaymentMethod.update(query, data, {
+		await PaymentMethod.findOneAndUpdate(query, data, {
 			upsert: true,
 			new: false,
 		});
@@ -536,6 +529,7 @@ async function deletePaymentMethod(req, res) {
 	}
 
 	res.status(200).json({
+		success: true,
 		message: 'Payment method removed',
 	});
 }
