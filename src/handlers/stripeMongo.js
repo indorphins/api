@@ -23,7 +23,7 @@ async function createStripeUser(req, res) {
 	let newUser = null;
 	let data = {
 		id: userData.id,
-		customerId: stripeData.customerId ? stripeData.customerId : null,
+		customerId: stripeData.id ? stripeData.id : null,
 		connectId: stripeData.connectId ? stripeData.connectId : null,
 		paymentMethods: [],
 		transactions: [],
@@ -40,6 +40,7 @@ async function createStripeUser(req, res) {
 	}
 
 	res.status(201).json({
+		success: true,
 		message: 'New stripe user created',
 		data: newUser,
 	});
@@ -77,6 +78,7 @@ async function getStripeUser(req, res) {
 	}
 
 	res.status(200).json({
+		success: true,
 		data: user,
 	});
 }
@@ -189,15 +191,15 @@ async function createTransaction(req, res) {
 	const userData = req.ctx.userData;
 	const classData = req.ctx.classData;
 
-	if (!userData.id || !stripeData.id || !classData.id) {
-		res.status(400).json({
+	if (!userData.id || !stripeData.paymentId || !classData.id) {
+		return res.status(400).json({
 			message: 'Stripe, class, and user data required',
 		});
 	}
-	let transaction = null;
+	let transaction;
 	let data = {
 		classId: classData.id,
-		stripeId: stripeData.id,
+		stripeId: stripeData.paymentId,
 		userId: userData.id,
 		paymentId: stripeData.paymentId,
 		status: constants.PAYMENT_CREATED,
@@ -294,7 +296,7 @@ async function createPaymentMethod(req, res) {
 	const { payment_method_id, card_type, last_four } = req.ctx.stripeData;
 
 	if (!userData.id || !payment_method_id) {
-		res.status(400).json({
+		return res.status(400).json({
 			message: 'User and payment method info required',
 		});
 	}
@@ -341,8 +343,8 @@ async function createPaymentMethod(req, res) {
 		});
 	}
 
-	res.status(201).json({
-		message: 'New payment method created',
+	res.status(200).json({
+		success: true,
 		data: newPaymentMethod,
 	});
 }

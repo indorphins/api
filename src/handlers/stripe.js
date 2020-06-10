@@ -2,6 +2,7 @@ const stripe = require('stripe')('sk_test_FO42DhPlwMhJpz8yqf0gpdyM00qA7LvJLJ');
 const redis = require('redis');
 const redisClient = redis.createClient(process.env.REDIS_CONNECTION);
 const StripeUser = require('../db/StripeUser');
+const User = require('../db/User');
 const Class = require('../db/Class');
 const Transaction = require('../db/Transaction');
 const base64 = require('uuid-base64');
@@ -27,17 +28,13 @@ const authenticate = (req, res) => {
 	const PROFILE_REDIRECT = 'https://app.indorphins.com/profile';
 	let userData;
 
-	console.log('Stipe auth w/ state ', state);
-
-	// TODO on error redirect to page
-
-	redisClient.hgetall(state, function (err, reply) {
+	redisClient.get(state, function (err, reply) {
 		log.info('Got reply redis : ', reply);
 		if (err || !reply) {
 			res.query;
 			return res.redirect(PROFILE_REDIRECT + '?error=no_user_found');
 		}
-		userData = reply;
+		userData = JSON.parse(reply);
 	});
 
 	stripe.oauth
@@ -48,9 +45,9 @@ const authenticate = (req, res) => {
 		.then(
 			(response) => {
 				var connected_account_id = response.stripe_user_id;
-				saveAccountId(connected_account_id, userData)
+
+				createStripeUserConnectAcct(connected_account_id, userData)
 					.then(() => {
-						console.log('Saved account id ');
 						res.redirect(PROFILE_REDIRECT);
 					})
 					.catch((err) => {
@@ -76,12 +73,12 @@ const authenticate = (req, res) => {
  * @param {Object} next
  */
 const createPayment = async (req, res, next) => {
-	const instructorId = req.body.insructor_id;
+	const instructorId = req.body.instructor_id;
 	const classId = req.body.class_id;
 	const paymentMethod = req.body.payment_method;
 	const userId = req.ctx.userData.id;
 
-	if (!instructorId || !classId || paymentMethod || userId) {
+	if (!instructorId || !classId || !paymentMethod || !userId) {
 		return res.status(400).json({
 			success: false,
 			message: 'Missing input parameters',
@@ -96,7 +93,7 @@ const createPayment = async (req, res, next) => {
 	let classObj;
 
 	try {
-		instructor = StripeUser.findOne(query);
+		instructor = await StripeUser.findOne(query);
 	} catch (err) {
 		log.warn('createPayment find instructor stripe user - error: ', err);
 		return res.status(404).json({
@@ -107,7 +104,7 @@ const createPayment = async (req, res, next) => {
 	query.id = userId;
 
 	try {
-		user = StripeUser.findOne(query);
+		user = await StripeUser.findOne(query);
 	} catch (err) {
 		log.warn('createPayment find customer stripe user - error: ', err);
 		return res.status(404).json({
@@ -120,7 +117,7 @@ const createPayment = async (req, res, next) => {
 	};
 
 	try {
-		classObj = Class.findOne(query);
+		classObj = await Class.findOne(query);
 	} catch (err) {
 		log.warn('createPayment find class - error: ', err);
 		return res.status(404).json({
@@ -162,7 +159,6 @@ const createPayment = async (req, res, next) => {
 			},
 		})
 		.then((paymentIntent) => {
-			console.log('payment intent is ', paymentIntent);
 			req.ctx.stripeData = {
 				client_secret: paymentIntent.client_secret,
 				paymentId: paymentIntent.id,
@@ -170,7 +166,7 @@ const createPayment = async (req, res, next) => {
 			next();
 		})
 		.catch((error) => {
-			console.log('StripeController - createPayment - error : ', error);
+			log.warn('StripeController - createPayment - error : ', error);
 			res.status(400).send(error);
 		});
 };
@@ -279,9 +275,9 @@ const generateState = async (req, res, next) => {
 
 	// store state code in redis as [code: user-info] with expire time TTL
 	const stateCode = base64.encode(uuidv4());
-	redisClient.hmset(stateCode, user, function (error) {
+	redisClient.set(stateCode, JSON.stringify(user), function (error) {
 		if (error) {
-			console.log('Error saving state in redis: ', error);
+			log.warn('Error saving state in redis: ', error);
 			return res.status(400).send(error);
 		}
 		redisClient.expire(stateCode, TTL);
@@ -307,14 +303,17 @@ const connectAccountRedirect = (req, res) => {
 		});
 	}
 	const uri = `https://connect.stripe.com/express/oauth/authorize?client_id=${TEST_CLIENT_ID}&state=${state}&suggested_capabilities[]=card_payments&suggested_capabilities[]=transfers&stipe_user[]=`;
-	res.redirect(uri);
+	// res.status(301).redirect(uri);
+	res.status(200).json({
+		success: true,
+		redirectUrl: uri,
+	});
 };
 
 // Save the connected account ID from the response to your database.
-const saveAccountId = async (id, userData) => {
+const createStripeUserConnectAcct = async (id, userData) => {
 	try {
 		const user = await StripeUser.create({ connectId: id, id: userData.id });
-		console.log('Created user : ', user);
 		return user;
 	} catch (err) {
 		log.warn('Sripe - saveAccountId error: ', err);
@@ -335,11 +334,10 @@ const createCustomer = async (req, res, next) => {
 		const customer = await stripe.customers.create({
 			email: email,
 		});
-		console.log('created customer ', customer);
 		req.ctx.stripeData = customer;
 		next();
 	} catch (error) {
-		console.log('Error creating customer ', error);
+		log.warn('Error creating customer ', error);
 		res.status(400).json(error);
 	}
 };
@@ -349,18 +347,18 @@ const createCustomer = async (req, res, next) => {
  * Fetches the payment method details and stores relevant data in req.ctx.stripeData
  * @param {Object} req
  * @param {Object} res
- * @param {*} next
+ * @param {Function} next
  */
 const attachPaymentMethod = async (req, res, next) => {
 	try {
-		const pMethodId = req.body.paymentMethodId;
+		const pMethodId = req.body.payment_method_id;
 		const userId = req.ctx.userData.id;
 
-		if (!pMethodId || userId) {
+		if (!pMethodId || !userId) {
 			const msg =
 				'Payment method ID and user ID required to attach payment method';
 			log.warn(`attachPaymentMethod - ${msg}`);
-			res.status(400).json({
+			return res.status(400).json({
 				success: false,
 				message: msg,
 			});
@@ -389,8 +387,8 @@ const attachPaymentMethod = async (req, res, next) => {
 		};
 		next();
 	} catch (err) {
-		log.warn('Error attaching payment method ', error);
-		res.status(400).json(error);
+		log.warn('Error attaching payment method ', err);
+		res.status(400).json(err);
 	}
 };
 
@@ -442,22 +440,17 @@ const removePaymentMethod = async (req, res, next) => {
 		};
 		next();
 	} catch (err) {
-		console.log('Error creating customer ', error);
+		log.warn('Error creating customer ', error);
 		res.status(400).json(error);
 	}
 };
 
 const createSubscription = async (req, res) => {
-	console.log('REQ BODY IS ', req.body);
 	// Attach the payment method to the customer
 	try {
-		console.log('PAyment method id ', req.body.paymentMethodId);
 		await stripe.paymentMethods.attach(req.body.paymentMethodId, {
 			customer: req.body.customerId,
 		});
-
-		// TODO add payment method id to user
-		console.log('update customer with invoice');
 
 		// Change the default invoice settings on the customer to the new payment method
 		await stripe.customers.update(req.body.customerId, {
@@ -465,8 +458,6 @@ const createSubscription = async (req, res) => {
 				default_payment_method: req.body.paymentMethodId,
 			},
 		});
-
-		console.log('create subscription');
 
 		// Create the subscription
 		const subscription = await stripe.subscriptions.create({
@@ -639,12 +630,6 @@ const updateTransactionStatus = async (paymentId, status) => {
  * @param {String} stripeId
  */
 const addUserToClass = async (classId, stripeId) => {
-	console.log(
-		'addUserToClass w/ class id: ',
-		classId,
-		' + stripe id ',
-		stripeId
-	);
 	let query = {
 		customerId: stripeId,
 	};

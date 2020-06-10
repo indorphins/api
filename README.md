@@ -164,7 +164,7 @@ Now start the service and curl it with your new public endpoint.
 
 ```
 npm start
-curl -i http://a1ed885fa1c444b0c8be09faceea9b8b-153737915.us-east-1.elb.amazonaws.com/healthy 
+curl -i http://aadeb486ae1ac42b3a7763e674e8df91-780442730.us-east-1.elb.amazonaws.com/healthy
 ```
 
 If you need to retrieve the proxy service url use kubectl.

@@ -11,11 +11,13 @@ const StripeUser = new mongoose.Schema({
 	customerId: {
 		type: String,
 		unique: true,
+		sparse: true,
 	},
 	// stripe id given when connect account created (receives payments)
 	connectId: {
 		type: String,
 		unique: true,
+		sparse: true,
 	},
 	paymentMethods: {
 		type: Array,

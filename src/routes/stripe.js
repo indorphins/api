@@ -20,6 +20,9 @@ router.post('/customer', middleware.authentication);
 router.post('/customer', stripe.createCustomer);
 router.post('/customer', stripeMongo.createStripeUser);
 
+router.get('/customer', middleware.authentication);
+router.get('/customer', stripeMongo.getStripeUser);
+
 router.post('/paymentMethod', middleware.authentication);
 router.post('/paymentMethod', stripe.attachPaymentMethod);
 router.post('/paymentMethod', stripeMongo.createPaymentMethod);
@@ -31,9 +34,11 @@ router.delete('/paymentMethod', middleware.authentication);
 router.delete('/paymentMethod', stripe.removePaymentMethod);
 router.delete('/paymentMethod', stripeMongo.deletePaymentMethod);
 
-router.get('/accountRedirect', middleware.authentication);
-router.get('/accountRedirect', stripe.generateState);
-router.get('/accountRedirect', stripe.connectAccountRedirect);
+router.post('/accountRedirect', middleware.authentication);
+router.post('/accountRedirect', stripe.generateState);
+router.post('/accountRedirect', stripe.connectAccountRedirect);
+
+router.get('/verify', stripe.authenticate);
 
 // TODO - add subscription flows behind authentication
 

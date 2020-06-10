@@ -9,7 +9,6 @@ const PaymentMethod = new mongoose.Schema({
 	last4: {
 		type: String,
 		required: true,
-		unique: true,
 	},
 	type: {
 		type: String,
