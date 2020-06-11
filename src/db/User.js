@@ -24,6 +24,9 @@ const User = new mongoose.Schema({
 	state: {
 		type: String,
 	},
+	bio: {
+		type: String,
+	},
 	email: {
 		type: String,
 		required: true,
@@ -33,7 +36,6 @@ const User = new mongoose.Schema({
 	phone_number: {
 		type: String,
 		required: false,
-		unique: true, 
 		sparse: true,
 	},
 	type: {
@@ -45,7 +47,7 @@ const User = new mongoose.Schema({
 		required: true,
 		unique: true,
 	},
-	profile_img: {
+	photo_url: {
 		type: String,
 		required: false,
 	},

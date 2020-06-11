@@ -6,6 +6,8 @@ const cors = require('cors');
 const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');
 const stripeRouter = require('./src/routes/stripe');
+const instructorsRouter = require('./src/routes/instructor');
+const auth = require('./src/auth');
 const db = require('./src/db');
 const log = require('./src/log');
 
@@ -37,6 +39,8 @@ app.options('*', cors());
 app.use('/class', classesRouter);
 app.use('/user', usersRouter);
 app.use('/stripe', stripeRouter);
+app.use('/instructor', instructorsRouter);
+
 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');
@@ -50,5 +54,6 @@ app.get('*', (req, res) => {
 });
 
 db.init(() => {
-	app.listen(PORT, () => log.info('App started on port', PORT));
+  auth.init();
+	app.listen(PORT, () => log.info("App started on port", PORT));
 });

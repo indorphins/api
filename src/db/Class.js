@@ -19,7 +19,6 @@ const ClassSchema = new mongoose.Schema({
 	},
 	title: {
 		type: String,
-		unique: true,
 		required: true,
 	},
 	description: {
@@ -69,6 +68,9 @@ const ClassSchema = new mongoose.Schema({
 		type: Number,
 		required: true,
 		default: 20.00,
+	},
+	photo_url: {
+		type: String,
 	}
 });
 

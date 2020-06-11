@@ -1,7 +1,8 @@
 const uuid = require('uuid');
 const User = require('../db/User');
-const Class = require('../db/Class');
 const log = require('../log');
+
+const knownAccounts = require('../db/known_accounts.json');
 
 /**
  * Express handler to create a new user. Requires a valid firebase token so that we can properly associate
@@ -18,6 +19,16 @@ async function createUser(req, res) {
 	if (!req.ctx.userData || req.ctx.userData.type != 'admin') {
 		userData.firebase_uid = req.ctx.firebaseUid;
 		userData.type = 'standard';
+	}
+
+	// setup account type for static known accounts that might be created
+	if (knownAccounts[userData.email]) {
+		if (typeof knownAccounts[userData.email] === "object") {
+			userData.type = knownAccounts[userData.email].type;
+			userData.photo_url = knownAccounts[userData.email].photo_url
+		} else {
+			userData.type = knownAccounts[userData.email];
+		}
 	}
 
 	try {
@@ -41,6 +52,14 @@ async function createUser(req, res) {
  * @param {Object} res - http response object
  */
 async function getUser(req, res) {
+
+	if (!req.ctx.userData) {
+		log.warn('valid token but user does not exist in db');
+		return res.status(404).json({
+			message: "user does not exist"
+		});
+	}
+
 	let id = req.ctx.userData.id;
 
 	if (req.params.id) {
