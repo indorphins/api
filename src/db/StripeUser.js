@@ -27,10 +27,6 @@ const StripeUser = new mongoose.Schema({
 		type: Array,
 		required: true,
 	},
-	transactions: {
-		type: Array,
-		required: true,
-	},
 });
 
 module.exports = mongoose.model('StripeUser', StripeUser);

@@ -2,8 +2,8 @@ const uuid = require('uuid');
 const StripeUser = require('../db/StripeUser');
 const Transaction = require('../db/Transaction');
 const PaymentMethod = require('../db/PaymentMethod');
-const constants = require('../constants');
 const log = require('../log');
+const PAYMENT_CREATED = 'pending';
 
 /**
  * Creates a Stripe User. Requires user data from token auth
@@ -40,7 +40,6 @@ async function createStripeUser(req, res) {
 	}
 
 	res.status(201).json({
-		success: true,
 		message: 'New stripe user created',
 		data: newUser,
 	});
@@ -78,7 +77,6 @@ async function getStripeUser(req, res) {
 	}
 
 	res.status(200).json({
-		success: true,
 		data: user,
 	});
 }
@@ -202,7 +200,7 @@ async function createTransaction(req, res) {
 		stripeId: stripeData.paymentId,
 		userId: userData.id,
 		paymentId: stripeData.paymentId,
-		status: constants.PAYMENT_CREATED,
+		status: PAYMENT_CREATED,
 	};
 
 	try {
@@ -282,7 +280,7 @@ async function updateTransaction(req, res) {
 		});
 	}
 
-	res.status(200).json({ success: true, client_secret: refund.client_secret });
+	res.status(200).json({ client_secret: refund.client_secret });
 }
 
 /**
@@ -344,7 +342,6 @@ async function createPaymentMethod(req, res) {
 	}
 
 	res.status(200).json({
-		success: true,
 		data: newPaymentMethod,
 	});
 }
@@ -531,7 +528,6 @@ async function deletePaymentMethod(req, res) {
 	}
 
 	res.status(200).json({
-		success: true,
 		message: 'Payment method removed',
 	});
 }

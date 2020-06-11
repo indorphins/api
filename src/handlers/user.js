@@ -30,7 +30,6 @@ async function createUser(req, res) {
 	}
 
 	res.status(201).json({
-		success: true,
 		message: 'New user created',
 		data: newUser,
 	});
@@ -67,7 +66,6 @@ async function getUser(req, res) {
 	}
 
 	res.status(200).json({
-		success: true,
 		data: user,
 	});
 }
@@ -124,7 +122,6 @@ async function updateUser(req, res) {
 	}
 
 	res.status(200).json({
-		success: true,
 		message: 'User data updated',
 	});
 }
@@ -175,7 +172,6 @@ async function deleteUser(req, res) {
 	}
 
 	res.status(200).json({
-		success: true,
 		message: 'User removed',
 	});
 }
