@@ -40,6 +40,8 @@ router.post('/accountRedirect', stripe.connectAccountRedirect);
 
 router.get('/verify', stripe.authenticate);
 
+router.post('/classSku', stripe.createClassSku);
+
 // TODO - add subscription flows behind authentication
 
 router.post('/createSubscription', stripe.createSubscription);

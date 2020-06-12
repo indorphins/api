@@ -12,6 +12,8 @@ const PAYMENT_PAID = 'fulfilled';
 const PAYMENT_FAILED = 'failed';
 const PAYMENT_CANCELLED = 'cancelled';
 const PAYMENT_REFUNDED = 'refunded';
+const ONE_TIME_CLASS_PRICE = 'price_1Gt1klG2VM6YY0SVf1lvBEBq';
+const RECURRING_CLASS_PRICE = 'price_1Gt1kmG2VM6YY0SVdXNBeMSJ';
 
 redisClient.on('error', function (error) {
 	console.error(error);
@@ -751,6 +753,110 @@ async function confirmPayment(req, res, next) {
 	next();
 }
 
+/**
+ * Gets the stripe price object for a given price ID
+ * Returns the JSON price object from stripe
+ * @param {*} id
+ */
+async function getPrice(id) {
+	try {
+		const price = await stripe.prices.retrieve(id);
+		log.info('Fetched stripe price for id: ', price);
+		return price;
+	} catch (err) {
+		log.warn('Stripe get price error ', err);
+		throw err;
+	}
+}
+
+/**
+ * Creates a price with cost "unitCost" and ties it to the product at "productSku"
+ * Returns the JSON price object from stripe
+ * @param {String} unitCost 1000 represents $10
+ * @param {String} productSku
+ * @param {Boolean} billingInterval
+ */
+async function createPrice(unitCost, productSku, recurring) {
+	const options = {
+		unit_amount_decimal: unitCost,
+		currency: 'usd',
+		product: productSku,
+		billing_scheme: 'per_unit',
+		nickname: `one-time payment for ${productSku}`,
+	};
+
+	// If recurring price - set up weekly billing
+	if (recurring) {
+		options.recurring = {
+			interval: 'week',
+		};
+		options.nickname = `recurring payment for ${productSku}`;
+	}
+
+	try {
+		const price = await stripe.prices.create(options);
+		log.info('Created stripe price object ', price);
+		return price;
+	} catch (err) {
+		log.warn('error creating stripe price object ', err);
+		throw err;
+	}
+}
+
+/**
+ * Creates a product sku for a fitness class id. Pulls the price data from
+ * the stripe price IDs set up as "Master Prices". Adds our Mongo Class ID to
+ * the product's metadata. Can eventually add "name" and "statement_descriptor" fields
+ * to better distinguish products once we have a good idea of the integration with classes.
+ * Next function call should store the product sku with the Mongo Class.
+ * @param {Object} req
+ * @param {Object} res
+ * @param {Function} next
+ */
+async function createClassSku(req, res, next) {
+	const classId = req.body.class_id;
+	const options = {
+		name: classId,
+		metadata: {
+			class_id: classId,
+		},
+	};
+
+	stripe.products.create(options, function (err, product) {
+		if (err) {
+			return res.status(400).json({
+				message: err,
+			});
+		}
+		log.debug('Created new product sku ', product);
+
+		// Fetch master prices for one-time and recurring payments & create duplicates to attach to new sku
+		return getPrice(ONE_TIME_CLASS_PRICE)
+			.then((priceObj) => {
+				return createPrice(priceObj.unit_amount_decimal, product.id, false);
+			})
+			.then((priceObj) => {
+				return getPrice(RECURRING_CLASS_PRICE);
+			})
+			.then((priceObj) => {
+				return createPrice(priceObj.unit_amount_decimal, product.id, true);
+			})
+			.then((priceObj) => {
+				log.info(
+					'Successfully created new stripe product sku for class ',
+					classId
+				);
+				next();
+			})
+			.catch((err) => {
+				log.warn('CreateClassSku error : ', err);
+				res.status(400).json({
+					message: err,
+				});
+			});
+	});
+}
+
 module.exports = {
 	authenticate,
 	createPayment,
@@ -769,4 +875,5 @@ module.exports = {
 	removePaymentMethod,
 	confirmPayment,
 	connectAccountRedirect,
+	createClassSku,
 };
