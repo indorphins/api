@@ -92,9 +92,7 @@ async function createPayment(req, res, next) {
 	let query = {
 		id: instructorId,
 	};
-	let instructor;
-	let user;
-	let classObj;
+	let instructor, user, classObj, price;
 
 	try {
 		instructor = await StripeUser.findOne(query);
@@ -145,10 +143,28 @@ async function createPayment(req, res, next) {
 		id: classId,
 	};
 
+	// Fetch the one-time payment cost - subscriptions handle recurring payment costs
+	try {
+		price = await getProductPrices(classObj.product_sku);
+	} catch (err) {
+		log.warn('CreatePayment - error fetching one-time price ', err);
+		return res.status(400).json({
+			message: 'Payment intent failure - invalid price',
+		});
+	}
+
+	if (!price || !price[0]) {
+		log.warn('CreatePaymentIntent - no prices for product found');
+		return res.status(404).json({
+			message: 'No price data found',
+		});
+	}
+
+	// TODO how do we define application fee (what we take) and where?
 	stripe.paymentIntents
 		.create({
 			payment_method_types: ['card'],
-			amount: 1000, // TODO get price
+			amount: price[0].unit_amount,
 			currency: 'usd',
 			customer: user.customerId,
 			transfer_data: {
@@ -754,6 +770,27 @@ async function confirmPayment(req, res, next) {
 }
 
 /**
+ * Fetches the recurring/one-time prices associated with a product sku
+ * Returns an array of price objects
+ * @param {String} sku
+ * @param {Boolean} recurring
+ */
+async function getProductPrices(sku, recurring) {
+	try {
+		const options = {
+			product: sku,
+			type: recurring ? 'recurring' : 'one_time',
+		};
+		const prices = await stripe.prices.list(options);
+		log.info('Fetched stripe prices for sku ', sku);
+		return prices.data;
+	} catch (err) {
+		log.warn('Stripe getProductPrices error : ', err);
+		throw err;
+	}
+}
+
+/**
  * Gets the stripe price object for a given price ID
  * Returns the JSON price object from stripe
  * @param {*} id
@@ -841,11 +878,15 @@ async function createClassSku(req, res, next) {
 			.then((priceObj) => {
 				return createPrice(priceObj.unit_amount_decimal, product.id, true);
 			})
-			.then((priceObj) => {
+			.then(async (priceObj) => {
 				log.info(
 					'Successfully created new stripe product sku for class ',
 					classId
 				);
+				const oneTime = await getProductPrices(product.id, false);
+				const recur = await getProductPrices(product.id, true);
+				console.log('RECURRING prices for product are ', recur);
+				console.log('ONE TIME prices for product are ', oneTime);
 				next();
 			})
 			.catch((err) => {
