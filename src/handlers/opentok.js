@@ -35,9 +35,10 @@ function getPrevDate(rule, count, refDate) {
   return later.schedule(sched).prev(count, refDate);
 }
 
-function makeClientToken(sessionid, role, expire) {
+function makeClientToken(sessionid, role, expire, data) {
   let options = {
     role: role,
+    data: data,
   };
 
   if (expire) {
@@ -176,8 +177,17 @@ async function joinSession(req, res) {
     tokenType = "moderator";
   }
 
+  let data = {
+    username: user.username,
+    instructor: false,
+  };
+
+  if (user._id.toString() == c.instructor.toString()) {
+    data.instructor = true;
+  }
+
   try {
-    token = await makeClientToken(sessionId, tokenType, endWindow);
+    token = await makeClientToken(sessionId, tokenType, endWindow, JSON.stringify(data));
   } catch(err) {
     log.error("error generating session token", err)
     return res.status(500).json({
@@ -188,7 +198,7 @@ async function joinSession(req, res) {
   res.status(200).json({
     sessionId: sessionId,
     token: token,
-    apiKey: APIKey
+    apiKey: APIKey,
   });
 }
 
