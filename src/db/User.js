@@ -12,11 +12,9 @@ const User = new mongoose.Schema({
 	},
 	first_name: {
 		type: String,
-		required: true,
 	},
 	last_name: {
 		type: String,
-		required: true,
 	},
 	city: {
 		type: String,
@@ -49,12 +47,14 @@ const User = new mongoose.Schema({
 	},
 	photo_url: {
 		type: String,
-		required: false,
 	},
 	created_date: {
 		type: Date,
 		required: true,
 	},
+	social: {
+		type: Object,
+	}
 });
 
 User.index({ username: 1 });

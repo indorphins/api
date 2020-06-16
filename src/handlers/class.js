@@ -1,7 +1,6 @@
 const uuid = require('uuid');
 const Class = require('../db/Class');
 const User = require('../db/User');
-const opentok = require('./opentok');
 const log = require('../log');
 
 /**
@@ -89,19 +88,6 @@ async function createClass(req, res) {
 	classData.available_spots = classData.total_spots;
 	classData.instructor = req.ctx.userData;
 	classData.participants = [];
-
-	// NOTE: this is a hack, needs to support recurring sessions
-	let session;
-
-	try {
-		session = await opentok.createSession();
-	} catch(err) {
-		log.error(err);
-	}
-
-	log.debug("opentok session", session);
-
-	classData.session = session.sessionId;
 
 	try {
 		newClass = await Class.create(classData);

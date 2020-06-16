@@ -43,7 +43,7 @@ router.delete('/:id/participants/:user_id', middleware.authentication);
 router.delete('/:id/participants/:user_id', middleware.adminAuthorized);
 router.delete('/:id/participants/:user_id', classHandlers.removeParticipant);
 
-//router.get('/:id/session', middleware.authentication);
+router.get('/:id/session', middleware.authentication);
 router.get('/:id/session', opentokHandlers.joinSession);
 
 module.exports = router;
