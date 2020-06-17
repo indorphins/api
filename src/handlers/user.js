@@ -13,13 +13,12 @@ const knownAccounts = require('../db/known_accounts.json');
 async function createUser(req, res) {
 	let userData = req.body;
 	let newUser = null;
-	
 	userData.id = uuid.v1();
 	userData.created_date = new Date().toISOString();
 
-	if (!req.ctx.userData || req.ctx.userData.type != "admin") {
+	if (!req.ctx.userData || req.ctx.userData.type != 'admin') {
 		userData.firebase_uid = req.ctx.firebaseUid;
-		userData.type = "standard";
+		userData.type = 'standard';
 	}
 
 	// setup account type for static known accounts that might be created
@@ -42,10 +41,10 @@ async function createUser(req, res) {
 	}
 
 	res.status(201).json({
-	  message: "New user created",
+		message: 'New user created',
 		data: newUser,
 	});
-};
+}
 
 /**
  * Express handler to get a new user. Only authorized for the actual user.
@@ -71,7 +70,7 @@ async function getUser(req, res) {
 	let user;
 
 	try {
-		user = await User.findOne(query)
+		user = await User.findOne(query);
 	} catch (err) {
 		log.warn('getUser - error: ', err);
 		return res.status(404).json({
@@ -81,14 +80,14 @@ async function getUser(req, res) {
 
 	if (!user) {
 		return res.status(404).json({
-			message: "User not found",
+			message: 'User not found',
 		});
 	}
 
 	res.status(200).json({
 		data: user,
 	});
-};
+}
 
 /**
  * Express handler to update a user record. Only authorized for the actual user.
@@ -96,13 +95,12 @@ async function getUser(req, res) {
  * @param {Object} res - http response object
  */
 async function updateUser(req, res) {
-
 	let id = req.ctx.userData.id;
 
 	if (req.params.id) {
 		id = req.params.id;
 	}
-	
+
 	let query = { id: id };
 	let user = null;
 
@@ -111,7 +109,7 @@ async function updateUser(req, res) {
 	} catch (err) {
 		log.warn('updateUser - error: ', err);
 		return res.status(500).json({
-			message: "Service error",
+			message: 'Service error',
 			error: err,
 		});
 	}
@@ -119,13 +117,13 @@ async function updateUser(req, res) {
 	if (!user) {
 		log.debug('User not found');
 		res.status(403).json({
-			message: "Forbidden",
+			message: 'Forbidden',
 		});
 	}
 
 	let data = req.body;
 
-	if (data.type && req.ctx.userData.type != "admin") {
+	if (data.type && req.ctx.userData.type != 'admin') {
 		delete data.type;
 	}
 
@@ -134,18 +132,18 @@ async function updateUser(req, res) {
 			upsert: true,
 			new: false,
 		});
-	} catch(err) {
-		log.warn("error updating user record", user);
+	} catch (err) {
+		log.warn('error updating user record', user);
 		return res.status(400).json({
-			message: "Issue updating data",
+			message: 'Issue updating data',
 			error: err,
-		})
+		});
 	}
 
 	res.status(200).json({
-		message: "User data updated"
+		message: 'User data updated',
 	});
-};
+}
 
 /**
  * Express handler to delete a user record. Only removes the user from the user collection, not any
@@ -157,14 +155,13 @@ async function updateUser(req, res) {
  * @param {Object} res - http response object
  */
 async function deleteUser(req, res) {
-
 	let id = req.ctx.userData.id;
 
 	if (req.params.id) {
 		id = req.params.id;
 	}
 
-	let query = {id: id};
+	let query = { id: id };
 	let user = null;
 
 	try {
@@ -179,24 +176,24 @@ async function deleteUser(req, res) {
 	if (!user) {
 		log.debug('User not found');
 		res.status(403).json({
-			message: "Forbidden",
+			message: 'Forbidden',
 		});
 	}
 
 	try {
 		await User.deleteOne(query);
-	} catch(err) {
+	} catch (err) {
 		log.warn('deleteUser - error: ', err);
 		return res.status(500).json({
-			message: "Service error",
+			message: 'Service error',
 			error: err,
 		});
 	}
 
 	res.status(200).json({
-		message: "User removed",
+		message: 'User removed',
 	});
-};
+}
 
 module.exports = {
 	deleteUser,

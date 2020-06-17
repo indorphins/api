@@ -8,8 +8,8 @@ const UserRef = new mongoose.Schema({
 	username: {
 		type: String,
 		required: true,
-	}
-})
+	},
+});
 
 const ClassSchema = new mongoose.Schema({
 	id: {
@@ -29,8 +29,8 @@ const ClassSchema = new mongoose.Schema({
 		type: String,
 		required: true,
 	},
-	instructor: { 
-		type: mongoose.Schema.ObjectId, 
+	instructor: {
+		type: mongoose.Schema.ObjectId,
 		ref: 'User',
 	},
 	participants: [UserRef],
@@ -54,11 +54,11 @@ const ClassSchema = new mongoose.Schema({
 	},
 	duration: {
 		type: Number,
-		required: true
+		required: true,
 	},
 	total_spots: {
 		type: Number,
-		required: true
+		required: true,
 	},
 	available_spots: {
 		type: Number,
@@ -67,11 +67,14 @@ const ClassSchema = new mongoose.Schema({
 	cost: {
 		type: Number,
 		required: true,
-		default: 20.00,
+		default: 20.0,
 	},
 	photo_url: {
 		type: String,
-	}
+	},
+	product_sku: {
+		type: String,
+	},
 });
 
 ClassSchema.index({ participants: -1 });

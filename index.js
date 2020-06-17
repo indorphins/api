@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');
+const stripeRouter = require('./src/routes/stripe');
 const instructorsRouter = require('./src/routes/instructor');
 const auth = require('./src/auth');
 const db = require('./src/db');
@@ -22,14 +23,14 @@ app.use(cookieParser());
 
 // create ctx object for middleware data
 app.use(function (req, res, next) {
-  req.ctx = {};
-  next();
+	req.ctx = {};
+	next();
 });
 
 // request logging middleware
 app.use(function (req, res, next) {
-  log.info({message: "request info", req: req, res: res});
-  next();
+	log.info({ message: 'request info', req: req, res: res });
+	next();
 });
 
 app.options('*', cors());
@@ -37,7 +38,9 @@ app.options('*', cors());
 // routes
 app.use('/class', classesRouter);
 app.use('/user', usersRouter);
+app.use('/stripe', stripeRouter);
 app.use('/instructor', instructorsRouter);
+
 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');
@@ -45,10 +48,10 @@ app.get('/healthy', (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  res.status(404).json({
-		message: "route not supported"
+	res.status(404).json({
+		message: 'route not supported',
 	});
-})
+});
 
 db.init(() => {
   auth.init();
