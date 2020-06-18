@@ -42,20 +42,19 @@ router.get('/verify', stripe.authenticate);
 
 router.post('/classSku', stripe.createClassSku);
 
-// TODO - add subscription flows behind authentication
+router.post('/subscription', middleware.authentication);
+router.post('/subscription', stripe.createSubscription);
+router.post('/subscription', stripeMongo.createTransaction);
 
-router.post('/createSubscription', stripe.createSubscription);
+router.delete('/subscription', middleware.authentication);
+router.delete('/subscription', stripe.cancelSubscription);
+
+// unused routes
+
+router.post('/invoices', stripe.invoiceWebhook);
 
 router.post('/retryInvoice', stripe.retryInvoice);
 
-router.post('/cancelSubscription', stripe.cancelSubscription);
-
-router.post('/webhook', stripe.stripeWebhook);
-
 router.post('/updateSubscription', stripe.updateSubscription);
-
-router.post('/getUpcomingInvoice', stripe.retrieveUpcomingInvoice);
-
-router.post('/getPaymentMethod', stripe.retrieveCustomerPaymentMethod);
 
 module.exports = router;
