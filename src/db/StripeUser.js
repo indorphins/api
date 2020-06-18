@@ -23,10 +23,6 @@ const StripeUser = new mongoose.Schema({
 		type: Array,
 		required: true,
 	},
-	subscriptions: {
-		type: Array,
-		required: true,
-	},
 });
 
 module.exports = mongoose.model('StripeUser', StripeUser);

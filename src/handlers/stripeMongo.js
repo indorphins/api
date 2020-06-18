@@ -27,7 +27,6 @@ async function createStripeUser(req, res) {
 		connectId: stripeData.connectId ? stripeData.connectId : null,
 		paymentMethods: [],
 		transactions: [],
-		subscriptions: [],
 	};
 
 	try {
@@ -189,7 +188,11 @@ async function createTransaction(req, res) {
 	const userData = req.ctx.userData;
 	const classData = req.ctx.classData;
 
-	if (!userData.id || !stripeData.paymentId || !classData.id) {
+	if (
+		!userData.id ||
+		(!stripeData.paymentId && !stripeData.subscription) ||
+		!classData.id
+	) {
 		return res.status(400).json({
 			message: 'Stripe, class, and user data required',
 		});
@@ -199,9 +202,15 @@ async function createTransaction(req, res) {
 		classId: classData.id,
 		stripeId: stripeData.paymentId,
 		userId: userData.id,
-		paymentId: stripeData.paymentId,
 		status: PAYMENT_CREATED,
+		type: stripeData.type,
 	};
+
+	if (stripeData.paymentId) {
+		data.paymentId = stripeData.paymentId;
+	} else if (stripeData.subscription) {
+		data.subscriptionId = stripeData.subscription.id;
+	}
 
 	try {
 		transaction = await Transaction.create(data);
@@ -301,6 +310,7 @@ async function createPaymentMethod(req, res) {
 	let newPaymentMethod;
 	let data = {
 		id: payment_method_id,
+		userId: userData.id,
 		last4: last_four,
 		type: card_type,
 		default: true,

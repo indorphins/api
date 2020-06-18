@@ -6,6 +6,10 @@ const PaymentMethod = new mongoose.Schema({
 		required: true,
 		unique: true,
 	},
+	userId: {
+		type: String,
+		required: true,
+	},
 	last4: {
 		type: String,
 		required: true,
@@ -19,5 +23,7 @@ const PaymentMethod = new mongoose.Schema({
 		required: true,
 	},
 });
+
+PaymentMethod.index({ userId: 1, default: 1 });
 
 module.exports = mongoose.model('PaymentMethod', PaymentMethod);
