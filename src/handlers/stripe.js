@@ -19,15 +19,15 @@ const RECURRING_CLASS_PRICE = 'price_1Gt1kmG2VM6YY0SVdXNBeMSJ';
 const APPLICATION_FEE_PERCENT = 20;
 
 redisClient.on('error', function (error) {
-	console.error(error);
+  console.error(error);
 });
 
 const TTL = 1200; // 20 mins
 
 function getNextDate(rule, count, refDate) {
-	later.date.UTC();
-	let sched = later.parse.cron(rule);
-	return later.schedule(sched).next(count, refDate);
+  later.date.UTC();
+  let sched = later.parse.cron(rule);
+  return later.schedule(sched).next(count, refDate);
 }
 
 /**
@@ -35,7 +35,7 @@ function getNextDate(rule, count, refDate) {
  * @param {Date} utcDate
  */
 function toTimestamp(utcDate) {
-	return utcDate.getTime() / 1000;
+  return utcDate.getTime() / 1000;
 }
 
 /** Takes in a stripe price object's unit decimal value and a decimalPercent
@@ -43,7 +43,7 @@ function toTimestamp(utcDate) {
  * Stripe price object's unit_amount value of 1000 equals $10 US
  */
 function getApplicationFeeAmount(price, decimalPercent) {
-	return price * decimalPercent;
+  return price * decimalPercent;
 }
 
 /**
@@ -54,44 +54,44 @@ function getApplicationFeeAmount(price, decimalPercent) {
  * @param {Object} res
  */
 async function authenticate(req, res) {
-	const { code, state } = req.query;
-	const PROFILE_REDIRECT = 'https://app.indorphins.com/profile';
-	let userData;
+  const { code, state } = req.query;
+  const PROFILE_REDIRECT = 'https://app.indorphins.com/profile';
+  let userData;
 
-	redisClient.get(state, function (err, reply) {
-		log.info('Got reply redis : ', reply);
-		if (err || !reply) {
-			res.query;
-			return res.redirect(PROFILE_REDIRECT + '?error=no_user_found');
-		}
-		userData = JSON.parse(reply);
-	});
+  redisClient.get(state, function (err, reply) {
+    log.info('Got reply redis : ', reply);
+    if (err || !reply) {
+      res.query;
+      return res.redirect(PROFILE_REDIRECT + '?error=no_user_found');
+    }
+    userData = JSON.parse(reply);
+  });
 
-	stripe.oauth
-		.token({
-			grant_type: 'authorization_code',
-			code,
-		})
-		.then(
-			(response) => {
-				var connected_account_id = response.stripe_user_id;
+  stripe.oauth
+    .token({
+      grant_type: 'authorization_code',
+      code,
+    })
+    .then(
+      (response) => {
+        var connected_account_id = response.stripe_user_id;
 
-				createStripeUserConnectAcct(connected_account_id, userData)
-					.then(() => {
-						res.redirect(PROFILE_REDIRECT);
-					})
-					.catch((err) => {
-						res.redirect(PROFILE_REDIRECT + '?error=create_account_failed');
-					});
-			},
-			(err) => {
-				if (err.type === 'StripeInvalidGrantError') {
-					res.redirect(PROFILE_REDIRECT + '?error=invalid_auth_code');
-				} else {
-					res.redirect(PROFILE_REDIRECT + '?error=unknown_error');
-				}
-			}
-		);
+        createStripeUserConnectAcct(connected_account_id, userData)
+          .then(() => {
+            res.redirect(PROFILE_REDIRECT);
+          })
+          .catch((err) => {
+            res.redirect(PROFILE_REDIRECT + '?error=create_account_failed');
+          });
+      },
+      (err) => {
+        if (err.type === 'StripeInvalidGrantError') {
+          res.redirect(PROFILE_REDIRECT + '?error=invalid_auth_code');
+        } else {
+          res.redirect(PROFILE_REDIRECT + '?error=unknown_error');
+        }
+      }
+    );
 }
 
 /**
@@ -103,120 +103,120 @@ async function authenticate(req, res) {
  * @param {Object} next
  */
 async function createPayment(req, res, next) {
-	const instructorId = req.body.instructor_id;
-	const classId = req.body.class_id;
-	const paymentMethod = req.body.payment_method;
-	const userId = req.ctx.userData.id;
+  const instructorId = req.body.instructor_id;
+  const classId = req.body.class_id;
+  const paymentMethod = req.body.payment_method;
+  const userId = req.ctx.userData.id;
 
-	if (!instructorId || !classId || !paymentMethod || !userId) {
-		return res.status(400).json({
-			message: 'Missing input parameters',
-		});
-	}
+  if (!instructorId || !classId || !paymentMethod || !userId) {
+    return res.status(400).json({
+      message: 'Missing input parameters',
+    });
+  }
 
-	let query = {
-		id: instructorId,
-	};
-	let instructor, user, classObj, price;
+  let query = {
+    id: instructorId,
+  };
+  let instructor, user, classObj, price;
 
-	try {
-		instructor = await StripeUser.findOne(query);
-	} catch (err) {
-		log.warn('createPayment find instructor stripe user - error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  try {
+    instructor = await StripeUser.findOne(query);
+  } catch (err) {
+    log.warn('createPayment find instructor stripe user - error: ', err);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	query.id = userId;
+  query.id = userId;
 
-	try {
-		user = await StripeUser.findOne(query);
-	} catch (err) {
-		log.warn('createPayment find customer stripe user - error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  try {
+    user = await StripeUser.findOne(query);
+  } catch (err) {
+    log.warn('createPayment find customer stripe user - error: ', err);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	query = {
-		id: classId,
-	};
+  query = {
+    id: classId,
+  };
 
-	try {
-		classObj = await Class.findOne(query);
-	} catch (err) {
-		log.warn('createPayment find class - error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  try {
+    classObj = await Class.findOne(query);
+  } catch (err) {
+    log.warn('createPayment find class - error: ', err);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	if (!user.customerId || !classObj || !instructor.connectId) {
-		const msg = !instructor.connectId
-			? 'Invalid destination account'
-			: !user.customerId
-			? 'Invalid customer account'
-			: 'Invalid class id';
-		log.warn(msg);
-		return res.status(400).json({
-			message: msg,
-		});
-	}
+  if (!user.customerId || !classObj || !instructor.connectId) {
+    const msg = !instructor.connectId
+      ? 'Invalid destination account'
+      : !user.customerId
+        ? 'Invalid customer account'
+        : 'Invalid class id';
+    log.warn(msg);
+    return res.status(400).json({
+      message: msg,
+    });
+  }
 
-	req.ctx.classData = {
-		id: classId,
-	};
+  req.ctx.classData = {
+    id: classId,
+  };
 
-	// Fetch the one-time payment cost - subscriptions handle recurring payment costs
-	try {
-		price = await getProductPrices(classObj.product_sku);
-	} catch (err) {
-		log.warn('CreatePayment - error fetching one-time price ', err);
-		return res.status(400).json({
-			message: 'Payment intent failure - invalid price',
-		});
-	}
+  // Fetch the one-time payment cost - subscriptions handle recurring payment costs
+  try {
+    price = await getProductPrices(classObj.product_sku);
+  } catch (err) {
+    log.warn('CreatePayment - error fetching one-time price ', err);
+    return res.status(400).json({
+      message: 'Payment intent failure - invalid price',
+    });
+  }
 
-	if (!price || !price[0]) {
-		log.warn('CreatePaymentIntent - no prices for product found');
-		return res.status(404).json({
-			message: 'No price data found',
-		});
-	}
+  if (!price || !price[0]) {
+    log.warn('CreatePaymentIntent - no prices for product found');
+    return res.status(404).json({
+      message: 'No price data found',
+    });
+  }
 
-	// TODO how do we define application fee (what we take) and where?
-	stripe.paymentIntents
-		.create({
-			payment_method_types: ['card'],
-			amount: price[0].unit_amount,
-			currency: 'usd',
-			customer: user.customerId,
-			transfer_data: {
-				destination: instructor.connectId, // where the money will go
-			},
-			on_behalf_of: instructor.connectId, // the account the money is intended for
-			application_fee_amount: getApplicationFeeAmount(
-				price[0].unit_amount,
-				APPLICATION_FEE_PERCENT / 100
-			), // what we take - stripe deducts their fee from this
-			payment_method: paymentMethod,
-			metadata: {
-				class_id: classId,
-			},
-		})
-		.then((paymentIntent) => {
-			req.ctx.stripeData = {
-				client_secret: paymentIntent.client_secret,
-				paymentId: paymentIntent.id,
-				type: 'payment',
-			};
-			next();
-		})
-		.catch((error) => {
-			log.warn('StripeController - createPayment - error : ', error);
-			res.status(400).send(error);
-		});
+  // TODO how do we define application fee (what we take) and where?
+  stripe.paymentIntents
+    .create({
+      payment_method_types: ['card'],
+      amount: price[0].unit_amount,
+      currency: 'usd',
+      customer: user.customerId,
+      transfer_data: {
+        destination: instructor.connectId, // where the money will go
+      },
+      on_behalf_of: instructor.connectId, // the account the money is intended for
+      application_fee_amount: getApplicationFeeAmount(
+        price[0].unit_amount,
+        APPLICATION_FEE_PERCENT / 100
+      ), // what we take - stripe deducts their fee from this
+      payment_method: paymentMethod,
+      metadata: {
+        class_id: classId,
+      },
+    })
+    .then((paymentIntent) => {
+      req.ctx.stripeData = {
+        client_secret: paymentIntent.client_secret,
+        paymentId: paymentIntent.id,
+        type: 'payment',
+      };
+      next();
+    })
+    .catch((error) => {
+      log.warn('StripeController - createPayment - error : ', error);
+      res.status(400).send(error);
+    });
 }
 
 /**
@@ -228,64 +228,64 @@ async function createPayment(req, res, next) {
  * @param {Function} next
  */
 async function refundCharge(req, res, next) {
-	const classId = req.body.class_id;
-	const userId = req.ctx.userData.id;
+  const classId = req.body.class_id;
+  const userId = req.ctx.userData.id;
 
-	let query = { classId: classId, userId: userId };
-	let transaction, classObj;
+  let query = { classId: classId, userId: userId };
+  let transaction, classObj;
 
-	try {
-		transaction = await Transaction.findOne(query);
-	} catch (err) {
-		log.warn('Stripe - refundCharge find transaction error: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    transaction = await Transaction.findOne(query);
+  } catch (err) {
+    log.warn('Stripe - refundCharge find transaction error: ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!transaction) {
-		return res.status(404).json({
-			message: 'No transaction found',
-		});
-	}
+  if (!transaction) {
+    return res.status(404).json({
+      message: 'No transaction found',
+    });
+  }
 
-	query = {
-		id: classId,
-	};
+  query = {
+    id: classId,
+  };
 
-	try {
-		classObj = Class.findOne(query);
-	} catch (err) {
-		log.warn('Stripe - refundCharge find class error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  try {
+    classObj = Class.findOne(query);
+  } catch (err) {
+    log.warn('Stripe - refundCharge find class error: ', err);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	if (!classObj) {
-		return res.status(404).json({
-			message: 'No class found',
-		});
-	}
+  if (!classObj) {
+    return res.status(404).json({
+      message: 'No class found',
+    });
+  }
 
-	try {
-		const refund = await stripe.refunds.create({
-			charge: transaction.paymentId,
-			reverse_transfer: true,
-			refund_application_fee: true, // Gives back the platform fee
-		});
-		req.ctx.stripeData = {
-			refund: refund,
-			status: PAYMENT_REFUNDED,
-			paymentId: transaction.paymentId,
-		};
-		next();
-	} catch (err) {
-		log.warn('Stripe - refundCharge create refund error: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    const refund = await stripe.refunds.create({
+      charge: transaction.paymentId,
+      reverse_transfer: true,
+      refund_application_fee: true, // Gives back the platform fee
+    });
+    req.ctx.stripeData = {
+      refund: refund,
+      status: PAYMENT_REFUNDED,
+      paymentId: transaction.paymentId,
+    };
+    next();
+  } catch (err) {
+    log.warn('Stripe - refundCharge create refund error: ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 }
 
 /**
@@ -296,40 +296,40 @@ async function refundCharge(req, res, next) {
  * @param {Function} next
  */
 async function generateState(req, res, next) {
-	let id = req.ctx.userData.id;
+  let id = req.ctx.userData.id;
 
-	if (req.params.id) {
-		id = req.params.id;
-	}
+  if (req.params.id) {
+    id = req.params.id;
+  }
 
-	let query = { id: id };
+  let query = { id: id };
 
-	try {
-		user = await User.findOne(query);
-	} catch (err) {
-		log.warn('getUser - error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  try {
+    user = await User.findOne(query);
+  } catch (err) {
+    log.warn('getUser - error: ', err);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	if (!user) {
-		return res.status(404).json({
-			message: 'No user for token',
-		});
-	}
+  if (!user) {
+    return res.status(404).json({
+      message: 'No user for token',
+    });
+  }
 
-	// store state code in redis as [code: user-info] with expire time TTL
-	const stateCode = base64.encode(uuidv4());
-	redisClient.set(stateCode, JSON.stringify(user), function (error) {
-		if (error) {
-			log.warn('Error saving state in redis: ', error);
-			return res.status(400).send(error);
-		}
-		redisClient.expire(stateCode, TTL);
-		req.ctx.state = stateCode;
-		next();
-	});
+  // store state code in redis as [code: user-info] with expire time TTL
+  const stateCode = base64.encode(uuidv4());
+  redisClient.set(stateCode, JSON.stringify(user), function (error) {
+    if (error) {
+      log.warn('Error saving state in redis: ', error);
+      return res.status(400).send(error);
+    }
+    redisClient.expire(stateCode, TTL);
+    req.ctx.state = stateCode;
+    next();
+  });
 }
 
 /**
@@ -339,30 +339,30 @@ async function generateState(req, res, next) {
  * @param {Object} res
  */
 async function connectAccountRedirect(req, res) {
-	const TEST_CLIENT_ID = 'ca_H6FI1hBlXQUv8wAMFBvSxGTNZUy7RiT1'; // TODO Maybe pass this in from Front End?
-	const state = req.ctx.state;
-	if (!state) {
-		log.warn('getConnectAccountRedirectUrl - state code not found'); // TODO replace with client
-		return res.status(400).json({
-			message: 'No state code for redirect',
-		});
-	}
-	const uri = `https://connect.stripe.com/express/oauth/authorize?client_id=${TEST_CLIENT_ID}&state=${state}&suggested_capabilities[]=card_payments&suggested_capabilities[]=transfers&stipe_user[]=`;
-	// res.status(301).redirect(uri);
-	res.status(200).json({
-		redirectUrl: uri,
-	});
+  const TEST_CLIENT_ID = 'ca_H6FI1hBlXQUv8wAMFBvSxGTNZUy7RiT1'; // TODO Maybe pass this in from Front End?
+  const state = req.ctx.state;
+  if (!state) {
+    log.warn('getConnectAccountRedirectUrl - state code not found'); // TODO replace with client
+    return res.status(400).json({
+      message: 'No state code for redirect',
+    });
+  }
+  const uri = `https://connect.stripe.com/express/oauth/authorize?client_id=${TEST_CLIENT_ID}&state=${state}&suggested_capabilities[]=card_payments&suggested_capabilities[]=transfers&stipe_user[]=`;
+  // res.status(301).redirect(uri);
+  res.status(200).json({
+    redirectUrl: uri,
+  });
 }
 
 // Save the connected account ID from the response to your database.
 async function createStripeUserConnectAcct(id, userData) {
-	try {
-		const user = await StripeUser.create({ connectId: id, id: userData.id });
-		return user;
-	} catch (err) {
-		log.warn('Sripe - saveAccountId error: ', err);
-		throw err;
-	}
+  try {
+    const user = await StripeUser.create({ connectId: id, id: userData.id });
+    return user;
+  } catch (err) {
+    log.warn('Sripe - saveAccountId error: ', err);
+    throw err;
+  }
 }
 
 /**
@@ -373,17 +373,37 @@ async function createStripeUserConnectAcct(id, userData) {
  * @param {Object} next
  */
 async function createCustomer(req, res, next) {
-	const email = req.body.email;
-	try {
-		const customer = await stripe.customers.create({
-			email: email,
-		});
-		req.ctx.stripeData = customer;
-		next();
-	} catch (error) {
-		log.warn('Error creating customer ', error);
-		res.status(400).json(error);
-	}
+  const id = req.ctx.userData.id
+  const email = req.body.email;
+
+  if (!id || !email) {
+    log.warn('CreateCustomer stripe handler no id or email');
+    return res.status(400).json({
+      message: 'Invalid user email or id'
+    })
+  }
+
+  try {
+    const query = {
+      id: id
+    }
+    const user = await StripeUser.findOne(query);
+    if (user) {
+      log.info("CreateCustomer stripe handler - customer exists");
+      return res.status(200).json({
+        data: user,
+        message: 'Stripe customer already exists'
+      })
+    }
+    const customer = await stripe.customers.create({
+      email: email,
+    });
+    req.ctx.stripeData = customer;
+    next();
+  } catch (error) {
+    log.warn('Error creating customer ', error);
+    res.status(400).json(error);
+  }
 }
 
 /**
@@ -394,44 +414,44 @@ async function createCustomer(req, res, next) {
  * @param {Function} next
  */
 async function attachPaymentMethod(req, res, next) {
-	try {
-		const pMethodId = req.body.payment_method_id;
-		const userId = req.ctx.userData.id;
+  try {
+    const pMethodId = req.body.payment_method_id;
+    const userId = req.ctx.userData.id;
 
-		if (!pMethodId || !userId) {
-			const msg =
-				'Payment method ID and user ID required to attach payment method';
-			log.warn(`attachPaymentMethod - ${msg}`);
-			return res.status(400).json({
-				message: msg,
-			});
-		}
+    if (!pMethodId || !userId) {
+      const msg =
+        'Payment method ID and user ID required to attach payment method';
+      log.warn(`attachPaymentMethod - ${msg}`);
+      return res.status(400).json({
+        message: msg,
+      });
+    }
 
-		const query = { id: userId };
-		let user;
+    const query = { id: userId };
+    let user;
 
-		try {
-			user = await StripeUser.findOne(query);
-		} catch (err) {
-			log.warn(err);
-			return res.status(404).json({
-				message: err,
-			});
-		}
+    try {
+      user = await StripeUser.findOne(query);
+    } catch (err) {
+      log.warn(err);
+      return res.status(404).json({
+        message: err,
+      });
+    }
 
-		const pMethod = await stripe.paymentMethods.attach(pMethodId, {
-			customer: user.customerId,
-		});
-		req.ctx.stripeData = {
-			payment_method_id: pMethod.id,
-			card_type: pMethod.card.brand,
-			last_four: pMethod.card.last4,
-		};
-		next();
-	} catch (err) {
-		log.warn('Error attaching payment method ', err);
-		res.status(400).json(err);
-	}
+    const pMethod = await stripe.paymentMethods.attach(pMethodId, {
+      customer: user.customerId,
+    });
+    req.ctx.stripeData = {
+      payment_method_id: pMethod.id,
+      card_type: pMethod.card.brand,
+      last_four: pMethod.card.last4,
+    };
+    next();
+  } catch (err) {
+    log.warn('Error attaching payment method ', err);
+    res.status(400).json(err);
+  }
 }
 
 /**
@@ -442,195 +462,195 @@ async function attachPaymentMethod(req, res, next) {
  * @param {*} next
  */
 async function removePaymentMethod(req, res, next) {
-	try {
-		const pMethodId = req.body.payment_method_id;
-		const userId = req.ctx.userData.id;
+  try {
+    const pMethodId = req.body.payment_method_id;
+    const userId = req.ctx.userData.id;
 
-		if (!pMethodId || userId) {
-			const msg =
-				'Payment method ID and user ID required to remove payment method';
-			log.warn(`removePaymentMethod - ${msg}`);
-			res.status(400).json({
-				message: msg,
-			});
-		}
+    if (!pMethodId || userId) {
+      const msg =
+        'Payment method ID and user ID required to remove payment method';
+      log.warn(`removePaymentMethod - ${msg}`);
+      res.status(400).json({
+        message: msg,
+      });
+    }
 
-		let user;
-		const query = {
-			id: userId,
-		};
+    let user;
+    const query = {
+      id: userId,
+    };
 
-		try {
-			user = await StripeUser.findOne(query);
-		} catch (err) {
-			log.warn(err);
-			return res.status(404).json({
-				message: err,
-			});
-		}
+    try {
+      user = await StripeUser.findOne(query);
+    } catch (err) {
+      log.warn(err);
+      return res.status(404).json({
+        message: err,
+      });
+    }
 
-		const pMethod = await stripe.paymentMethods.detach(
-			req.body.paymentMethodId,
-			{
-				customer: user.customerId,
-			}
-		);
-		req.ctx.stripeData = {
-			payment_method_id: pMethod.id,
-		};
-		next();
-	} catch (err) {
-		log.warn('Error creating customer ', error);
-		res.status(400).json(error);
-	}
+    const pMethod = await stripe.paymentMethods.detach(
+      req.body.paymentMethodId,
+      {
+        customer: user.customerId,
+      }
+    );
+    req.ctx.stripeData = {
+      payment_method_id: pMethod.id,
+    };
+    next();
+  } catch (err) {
+    log.warn('Error creating customer ', error);
+    res.status(400).json(error);
+  }
 }
 
 async function createSubscription(req, res) {
-	const classId = req.body.class_id;
-	const userId = req.ctx.userData.id;
-	let c, user, price, instructor, defaultPaymentMethod;
+  const classId = req.body.class_id;
+  const userId = req.ctx.userData.id;
+  let c, user, price, instructor, defaultPaymentMethod;
 
-	let query = {
-		id: classId,
-	};
+  let query = {
+    id: classId,
+  };
 
-	try {
-		c = await Class.findOne(query);
-	} catch (err) {
-		log.warn('CreateSubscription - fetch class error: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    c = await Class.findOne(query);
+  } catch (err) {
+    log.warn('CreateSubscription - fetch class error: ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!c || !c.product_sku || !c.instructor || !c.start_date) {
-		log.warn('CreateSubscription - no class data or sku');
-		return res.status(404).json({
-			message: 'Invalid class data',
-		});
-	}
+  if (!c || !c.product_sku || !c.instructor || !c.start_date) {
+    log.warn('CreateSubscription - no class data or sku');
+    return res.status(404).json({
+      message: 'Invalid class data',
+    });
+  }
 
-	// Get 24 hours before the next class date as a timestamp for invoices to be generated
-	const now = new Date();
-	const nextDate = getNextDate(c.recurring, 1, now);
-	nextDate.setDate(newDate.getDate() - 1);
-	const nextTimestamp = toTimestamp(nextDate);
-	log.debug('Next Timestamp is ', nextTimestamp);
+  // Get 24 hours before the next class date as a timestamp for invoices to be generated
+  const now = new Date();
+  const nextDate = getNextDate(c.recurring, 1, now);
+  nextDate.setDate(newDate.getDate() - 1);
+  const nextTimestamp = toTimestamp(nextDate);
+  log.debug('Next Timestamp is ', nextTimestamp);
 
-	try {
-		instructor = await User.findById(c.instructor);
-	} catch (err) {
-		log.warn('CreateSubscription - error fetching instructor');
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    instructor = await User.findById(c.instructor);
+  } catch (err) {
+    log.warn('CreateSubscription - error fetching instructor');
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!instructor || !instructor.id) {
-		log.warn('CreateSubscription - instructor not found');
-		return res.status(404).json({
-			message: 'Invalid instructor data',
-		});
-	}
+  if (!instructor || !instructor.id) {
+    log.warn('CreateSubscription - instructor not found');
+    return res.status(404).json({
+      message: 'Invalid instructor data',
+    });
+  }
 
-	query.id = instructor.id;
+  query.id = instructor.id;
 
-	try {
-		instructor = await StripeUser.findOne(query);
-	} catch (err) {
-		log.warn('CreateSubscription - error fetching instructor stripe data');
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    instructor = await StripeUser.findOne(query);
+  } catch (err) {
+    log.warn('CreateSubscription - error fetching instructor stripe data');
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!instructor || !instructor.connectId) {
-		log.warn('CreateSubscription - instructor stripe user not found');
-		return res.status(404).json({
-			message: 'Invalid instructor data',
-		});
-	}
+  if (!instructor || !instructor.connectId) {
+    log.warn('CreateSubscription - instructor stripe user not found');
+    return res.status(404).json({
+      message: 'Invalid instructor data',
+    });
+  }
 
-	query.id = userId;
+  query.id = userId;
 
-	try {
-		user = await StripeUser.findOne(query);
-	} catch (err) {
-		log.warn('CreateSubscription - fetch user error: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    user = await StripeUser.findOne(query);
+  } catch (err) {
+    log.warn('CreateSubscription - fetch user error: ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!user) {
-		log.warn('CreateSubscription - no stripe user found ');
-		return res.status(404).json({
-			message: 'No stripe user found',
-		});
-	}
+  if (!user) {
+    log.warn('CreateSubscription - no stripe user found ');
+    return res.status(404).json({
+      message: 'No stripe user found',
+    });
+  }
 
-	query = {
-		userId: user.id,
-		default: true,
-	};
+  query = {
+    userId: user.id,
+    default: true,
+  };
 
-	try {
-		defaultPaymentMethod = await PaymentMethod.findOne(query);
-	} catch (err) {
-		log.warn('CreateSubscription - error fetching payment method ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    defaultPaymentMethod = await PaymentMethod.findOne(query);
+  } catch (err) {
+    log.warn('CreateSubscription - error fetching payment method ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	try {
-		price = await getProductPrices(c.product_sku, true);
-	} catch (err) {
-		log.warn('CreateSubscription - error fetching product price');
-		return res.status(400).json({
-			message: 'Invalid price data',
-		});
-	}
+  try {
+    price = await getProductPrices(c.product_sku, true);
+  } catch (err) {
+    log.warn('CreateSubscription - error fetching product price');
+    return res.status(400).json({
+      message: 'Invalid price data',
+    });
+  }
 
-	if (!price || !price[0]) {
-		log.warn('CreateSubscription - Product price data not found');
-		return res.status(404).json({
-			message: 'Product price data not found',
-		});
-	}
+  if (!price || !price[0]) {
+    log.warn('CreateSubscription - Product price data not found');
+    return res.status(404).json({
+      message: 'Product price data not found',
+    });
+  }
 
-	try {
-		// Change the default invoice settings on the customer to the payment method associated with them
-		await stripe.customers.update(user.customerId, {
-			invoice_settings: {
-				default_payment_method: defaultPaymentMethod.id,
-			},
-		});
+  try {
+    // Change the default invoice settings on the customer to the payment method associated with them
+    await stripe.customers.update(user.customerId, {
+      invoice_settings: {
+        default_payment_method: defaultPaymentMethod.id,
+      },
+    });
 
-		// Create the subscription
-		const subscription = await stripe.subscriptions.create({
-			customer: user.customerId,
-			items: [{ price: price[0] }],
-			expand: ['latest_invoice.payment_intent'],
-			application_fee_percent: APPLICATION_FEE_PERCENT, // Percentage we take TODO bake in
-			transfer_data: {
-				destination: instructor.connectId, // Instructor's Connect Account
-			},
-			billing_cycle_anchor: nextTimestamp,
-			metadata: {
-				class_id: classId,
-			},
-		});
+    // Create the subscription
+    const subscription = await stripe.subscriptions.create({
+      customer: user.customerId,
+      items: [{ price: price[0] }],
+      expand: ['latest_invoice.payment_intent'],
+      application_fee_percent: APPLICATION_FEE_PERCENT, // Percentage we take TODO bake in
+      transfer_data: {
+        destination: instructor.connectId, // Instructor's Connect Account
+      },
+      billing_cycle_anchor: nextTimestamp,
+      metadata: {
+        class_id: classId,
+      },
+    });
 
-		req.ctx.stripeData = {
-			subscription: subscription,
-			type: 'subscription',
-		};
+    req.ctx.stripeData = {
+      subscription: subscription,
+      type: 'subscription',
+    };
 
-		next();
-	} catch (error) {
-		return res.status(402).send({ error: error });
-	}
+    next();
+  } catch (error) {
+    return res.status(402).send({ error: error });
+  }
 }
 
 /**
@@ -639,48 +659,48 @@ async function createSubscription(req, res) {
  * @param {Object} res
  */
 async function retryInvoice(req, res) {
-	const userData = req.ctx.userData;
-	let user;
+  const userData = req.ctx.userData;
+  let user;
 
-	if (!userData.id) {
-		return res.status(400).json({
-			message: 'Invalid user data',
-		});
-	}
+  if (!userData.id) {
+    return res.status(400).json({
+      message: 'Invalid user data',
+    });
+  }
 
-	let query = {
-		id: userData.id,
-	};
+  let query = {
+    id: userData.id,
+  };
 
-	try {
-		user = await StripeUser.findOne(query);
-	} catch (err) {
-		log.warn('RetryInvoice - error fetching stripe user ', user);
-		return res.status(400).json({
-			message: 'Error fetching user data',
-		});
-	}
+  try {
+    user = await StripeUser.findOne(query);
+  } catch (err) {
+    log.warn('RetryInvoice - error fetching stripe user ', user);
+    return res.status(400).json({
+      message: 'Error fetching user data',
+    });
+  }
 
-	// Set the default payment method on the customer
-	try {
-		await stripe.paymentMethods.attach(req.body.payment_method_id, {
-			customer: user.customerId,
-		});
-		await stripe.customers.update(req.body.customerId, {
-			invoice_settings: {
-				default_payment_method: req.body.payment_method_id,
-			},
-		});
-		const invoice = await stripe.invoices.retrieve(req.body.invoiceId, {
-			expand: ['payment_intent'],
-		});
-		res.send(invoice);
-	} catch (error) {
-		// in case card_decline error
-		return res
-			.status('402')
-			.send({ result: { error: { message: error.message } } });
-	}
+  // Set the default payment method on the customer
+  try {
+    await stripe.paymentMethods.attach(req.body.payment_method_id, {
+      customer: user.customerId,
+    });
+    await stripe.customers.update(req.body.customerId, {
+      invoice_settings: {
+        default_payment_method: req.body.payment_method_id,
+      },
+    });
+    const invoice = await stripe.invoices.retrieve(req.body.invoiceId, {
+      expand: ['payment_intent'],
+    });
+    res.send(invoice);
+  } catch (error) {
+    // in case card_decline error
+    return res
+      .status('402')
+      .send({ result: { error: { message: error.message } } });
+  }
 }
 
 /**
@@ -690,53 +710,53 @@ async function retryInvoice(req, res) {
  * @param {Object} res
  */
 async function cancelSubscription(req, res) {
-	const userData = req.ctx.userData;
-	const classId = req.body.class_id;
-	let transaction;
+  const userData = req.ctx.userData;
+  const classId = req.body.class_id;
+  let transaction;
 
-	if (!userData.id || !classId) {
-		log.warn('CancelSubscription - No user ID or class ID passed');
-		return res.status(400).json({
-			message: 'No IDs passed',
-		});
-	}
+  if (!userData.id || !classId) {
+    log.warn('CancelSubscription - No user ID or class ID passed');
+    return res.status(400).json({
+      message: 'No IDs passed',
+    });
+  }
 
-	let query = {
-		userId: userData.id,
-		classId: classId,
-		type: 'subscription',
-	};
+  let query = {
+    userId: userData.id,
+    classId: classId,
+    type: 'subscription',
+  };
 
-	try {
-		transaction = await Transaction.findOne(query);
-	} catch (err) {
-		log.warn('CancelSubscription - error finding transaction: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    transaction = await Transaction.findOne(query);
+  } catch (err) {
+    log.warn('CancelSubscription - error finding transaction: ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!transaction.subscriptionId) {
-		log.warn('CancelSubscription - this transaction has no subscription ID');
-		return res.status(400).json({
-			message: 'No subscription to cancel',
-		});
-	}
+  if (!transaction.subscriptionId) {
+    log.warn('CancelSubscription - this transaction has no subscription ID');
+    return res.status(400).json({
+      message: 'No subscription to cancel',
+    });
+  }
 
-	try {
-		// Delete the subscription
-		const deletedSubscription = await stripe.subscriptions.del(
-			transaction.subscriptionId
-		);
-		res.status(200).json({
-			message: 'Deleted Subscription',
-			data: deletedSubscription,
-		});
-	} catch (err) {
-		res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    // Delete the subscription
+    const deletedSubscription = await stripe.subscriptions.del(
+      transaction.subscriptionId
+    );
+    res.status(200).json({
+      message: 'Deleted Subscription',
+      data: deletedSubscription,
+    });
+  } catch (err) {
+    res.status(400).json({
+      message: err,
+    });
+  }
 }
 
 /**
@@ -746,74 +766,74 @@ async function cancelSubscription(req, res) {
  * @param {Object} res
  */
 async function invoiceWebhook(req, res) {
-	// Retrieve the event by verifying the signature using the raw body and secret.
-	let event;
-	try {
-		event = stripe.webhooks.constructEvent(
-			req.body,
-			req.headers['stripe-signature'],
-			process.env.STRIPE_WEBHOOK_SECRET // TODO add this
-		);
-		log.info('Stripe webhook event: ', event);
-	} catch (err) {
-		log.warn('Stripe Webhook error: ', err);
-		return res.sendStatus(400);
-	}
-	const dataObject = event.data.object;
+  // Retrieve the event by verifying the signature using the raw body and secret.
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      req.headers['stripe-signature'],
+      process.env.STRIPE_WEBHOOK_SECRET // TODO add this
+    );
+    log.info('Stripe webhook event: ', event);
+  } catch (err) {
+    log.warn('Stripe Webhook error: ', err);
+    return res.sendStatus(400);
+  }
+  const dataObject = event.data.object;
 
-	if (event.type === 'invoice.payment_succeeded') {
-		updateInvoiceStatus(dataObject, PAYMENT_PAID)
-			.then((transaction) => {
-				return addUserToClass(
-					dataObject.metadata.class_id,
-					dataObject.customer
-				);
-			})
-			.catch((error) => {
-				log.warn('Stripe Webhook error - invoice.payment_succeeded - ', error);
-				return res.status(400).json({
-					message: error,
-				});
-			});
-	}
-	if (
-		event.type === 'invoice.payment_failed' ||
-		event.type === 'invoice.voided' ||
-		event.type === 'invoice.marked_uncollectible'
-	) {
-		updateInvoiceStatus(dataObject, PAYMENT_FAILED)
-			.then((transaction) => {
-				return removeUserFromClass(
-					dataObject.metadata.class_id,
-					dataObject.customer
-				).then((result) => {
-					// TODO notify user of failed invoice
-					stripe.subscriptions
-						.del(transaction.subscriptionId)
-						.then((deletedSub) => {
-							updateSubscriptionStatus(deletedSub, PAYMENT_CANCELLED).then(
-								(transaction) => {
-									res.status(200).json({
-										message: 'Invoice Failed - Cancelled Subscription',
-										data: deletedSubscription,
-									});
-								}
-							);
-						});
-				});
-			})
-			.catch((error) => {
-				log.warn('Stripe Webhook error - invoice.payment_failed - ', error);
-				return res.status(400).json({
-					message: error,
-				});
-			});
-	} else {
-		res.status(400).json({
-			message: 'Unhandled stripe webhook event',
-		});
-	}
-	res.sendStatus(200);
+  if (event.type === 'invoice.payment_succeeded') {
+    updateInvoiceStatus(dataObject, PAYMENT_PAID)
+      .then((transaction) => {
+        return addUserToClass(
+          dataObject.metadata.class_id,
+          dataObject.customer
+        );
+      })
+      .catch((error) => {
+        log.warn('Stripe Webhook error - invoice.payment_succeeded - ', error);
+        return res.status(400).json({
+          message: error,
+        });
+      });
+  }
+  if (
+    event.type === 'invoice.payment_failed' ||
+    event.type === 'invoice.voided' ||
+    event.type === 'invoice.marked_uncollectible'
+  ) {
+    updateInvoiceStatus(dataObject, PAYMENT_FAILED)
+      .then((transaction) => {
+        return removeUserFromClass(
+          dataObject.metadata.class_id,
+          dataObject.customer
+        ).then((result) => {
+          // TODO notify user of failed invoice
+          stripe.subscriptions
+            .del(transaction.subscriptionId)
+            .then((deletedSub) => {
+              updateSubscriptionStatus(deletedSub, PAYMENT_CANCELLED).then(
+                (transaction) => {
+                  res.status(200).json({
+                    message: 'Invoice Failed - Cancelled Subscription',
+                    data: deletedSubscription,
+                  });
+                }
+              );
+            });
+        });
+      })
+      .catch((error) => {
+        log.warn('Stripe Webhook error - invoice.payment_failed - ', error);
+        return res.status(400).json({
+          message: error,
+        });
+      });
+  } else {
+    res.status(400).json({
+      message: 'Unhandled stripe webhook event',
+    });
+  }
+  res.sendStatus(200);
 }
 
 /**
@@ -824,55 +844,55 @@ async function invoiceWebhook(req, res) {
  * @param {String} status
  */
 async function updateInvoiceStatus(invoice, status) {
-	let query = {
-		paymentId: invoice.id,
-	};
-	let transaction;
-	try {
-		transaction = await Transaction.findOneAndUpdate(query, {
-			status: status,
-		});
-	} catch (err) {
-		log.warn('updateInvoiceStatus - update transaction error: ', error);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  let query = {
+    paymentId: invoice.id,
+  };
+  let transaction;
+  try {
+    transaction = await Transaction.findOneAndUpdate(query, {
+      status: status,
+    });
+  } catch (err) {
+    log.warn('updateInvoiceStatus - update transaction error: ', error);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	// If no transaction found create one for the invoice as it is being processed by us for the first time
-	if (!transaction) {
-		let user;
-		query = {
-			customerId: invoice.customer,
-		};
-		try {
-			user = await StripeUser.findOne(query);
-		} catch (err) {
-			log.warn('updateInvoiceStatus - failed to find stripe user');
-			return res.status(404).json({
-				message: 'No Stripe user found',
-			});
-		}
-		let data = {
-			classId: metadata.class_id,
-			userId: user.id,
-			stripeId: invoice.customer,
-			paymentId: invoice.id,
-			subscriptionId: invoice.subscription,
-			status: status,
-			type: 'invoice',
-		};
-		try {
-			transaction = await Transaction.create(data);
-		} catch (err) {
-			log.warn('updateInvoiceStatus - error creating transaction ', err);
-			return res.status(400).json({
-				message: 'Error creating transaction',
-			});
-		}
-	}
+  // If no transaction found create one for the invoice as it is being processed by us for the first time
+  if (!transaction) {
+    let user;
+    query = {
+      customerId: invoice.customer,
+    };
+    try {
+      user = await StripeUser.findOne(query);
+    } catch (err) {
+      log.warn('updateInvoiceStatus - failed to find stripe user');
+      return res.status(404).json({
+        message: 'No Stripe user found',
+      });
+    }
+    let data = {
+      classId: metadata.class_id,
+      userId: user.id,
+      stripeId: invoice.customer,
+      paymentId: invoice.id,
+      subscriptionId: invoice.subscription,
+      status: status,
+      type: 'invoice',
+    };
+    try {
+      transaction = await Transaction.create(data);
+    } catch (err) {
+      log.warn('updateInvoiceStatus - error creating transaction ', err);
+      return res.status(400).json({
+        message: 'Error creating transaction',
+      });
+    }
+  }
 
-	return transaction;
+  return transaction;
 }
 
 /**
@@ -884,56 +904,56 @@ async function updateInvoiceStatus(invoice, status) {
  * @param {String} status
  */
 async function updateSubscriptionStatus(subscription, status) {
-	let query = {
-		subscriptionId: subscription.id,
-	};
-	let transaction;
-	try {
-		transaction = await Transaction.findOneAndUpdate(query, {
-			status: status,
-		});
-	} catch (err) {
-		log.warn('updateSubscriptionStatus - update transaction error: ', error);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  let query = {
+    subscriptionId: subscription.id,
+  };
+  let transaction;
+  try {
+    transaction = await Transaction.findOneAndUpdate(query, {
+      status: status,
+    });
+  } catch (err) {
+    log.warn('updateSubscriptionStatus - update transaction error: ', error);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	// If no transaction found create one for the invoice as it is being processed by us for the first time
-	// (though subscriptions should be already created and if not its probably a mistake on our end)
-	if (!transaction) {
-		let user;
-		query = {
-			customerId: invoice.customer,
-		};
-		try {
-			user = await StripeUser.findOne(query);
-		} catch (err) {
-			log.warn('updateSubscriptionStatus - failed to find stripe user');
-			return res.status(404).json({
-				message: 'No Stripe user found',
-			});
-		}
-		let data = {
-			classId: metadata.class_id,
-			userId: user.id,
-			stripeId: invoice.customer,
-			paymentId: '',
-			subscriptionId: invoice.subscription,
-			status: status,
-			type: 'subscription',
-		};
-		try {
-			transaction = await Transaction.create(data);
-		} catch (err) {
-			log.warn('updateSubscriptionStatus - error creating transaction ', err);
-			return res.status(400).json({
-				message: 'Error creating transaction',
-			});
-		}
-	}
+  // If no transaction found create one for the invoice as it is being processed by us for the first time
+  // (though subscriptions should be already created and if not its probably a mistake on our end)
+  if (!transaction) {
+    let user;
+    query = {
+      customerId: invoice.customer,
+    };
+    try {
+      user = await StripeUser.findOne(query);
+    } catch (err) {
+      log.warn('updateSubscriptionStatus - failed to find stripe user');
+      return res.status(404).json({
+        message: 'No Stripe user found',
+      });
+    }
+    let data = {
+      classId: metadata.class_id,
+      userId: user.id,
+      stripeId: invoice.customer,
+      paymentId: '',
+      subscriptionId: invoice.subscription,
+      status: status,
+      type: 'subscription',
+    };
+    try {
+      transaction = await Transaction.create(data);
+    } catch (err) {
+      log.warn('updateSubscriptionStatus - error creating transaction ', err);
+      return res.status(400).json({
+        message: 'Error creating transaction',
+      });
+    }
+  }
 
-	return transaction;
+  return transaction;
 }
 
 /**
@@ -944,52 +964,52 @@ async function updateSubscriptionStatus(subscription, status) {
  * @param {String} stripeId
  */
 async function addUserToClass(classId, stripeId) {
-	let query = {
-		customerId: stripeId,
-	};
-	let user;
+  let query = {
+    customerId: stripeId,
+  };
+  let user;
 
-	try {
-		user = StripeUser.findOne(query);
-	} catch (err) {
-		log.warn('addUserToClass find stripe user error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  try {
+    user = StripeUser.findOne(query);
+  } catch (err) {
+    log.warn('addUserToClass find stripe user error: ', err);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	if (!user) {
-		log.warn('addUserToClass no stripe user found');
-		return res.status(404).json({
-			message: 'No user found',
-		});
-	}
+  if (!user) {
+    log.warn('addUserToClass no stripe user found');
+    return res.status(404).json({
+      message: 'No user found',
+    });
+  }
 
-	let c;
-	// Add user to class if not already a participant
-	try {
-		c = await Class.findOneAndUpdate(
-			{ id: classId, participants: { $ne: user.id } },
-			{ $push: { participants: user.id } }
-		);
-	} catch (err) {
-		log.warn('addUserToClass add user to class error: ', err);
-		return res.status(404).json({
-			message: err,
-		});
-	}
+  let c;
+  // Add user to class if not already a participant
+  try {
+    c = await Class.findOneAndUpdate(
+      { id: classId, participants: { $ne: user.id } },
+      { $push: { participants: user.id } }
+    );
+  } catch (err) {
+    log.warn('addUserToClass add user to class error: ', err);
+    return res.status(404).json({
+      message: err,
+    });
+  }
 
-	if (!c || !user) {
-		log.warn('addUserToClass - User or Class not found');
-		return res.send(404).json({
-			message: 'User or Class not found',
-		});
-	}
+  if (!c || !user) {
+    log.warn('addUserToClass - User or Class not found');
+    return res.send(404).json({
+      message: 'User or Class not found',
+    });
+  }
 
-	res.status(200).json({
-		message: 'success',
-		data: c,
-	});
+  res.status(200).json({
+    message: 'success',
+    data: c,
+  });
 }
 
 /**
@@ -1001,49 +1021,49 @@ async function addUserToClass(classId, stripeId) {
  * @returns {Object} class
  */
 async function removeUserFromClass(classId, stripeId) {
-	let query = {
-		customerId: stripeId,
-	};
-	let user;
+  let query = {
+    customerId: stripeId,
+  };
+  let user;
 
-	try {
-		user = StripeUser.findOne(query);
-	} catch (err) {
-		log.warn('removeUserFromClass find stripe user error: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    user = StripeUser.findOne(query);
+  } catch (err) {
+    log.warn('removeUserFromClass find stripe user error: ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!user) {
-		log.warn('removeUserFromClass no stripe user found ');
-		return res.status(404).json({
-			message: 'No user found',
-		});
-	}
+  if (!user) {
+    log.warn('removeUserFromClass no stripe user found ');
+    return res.status(404).json({
+      message: 'No user found',
+    });
+  }
 
-	let c;
-	// Remove any users that match this user's ID
-	try {
-		c = await Class.findOneAndUpdate(
-			{ id: classId },
-			{ $pullAll: { participants: user.id } }
-		);
-	} catch (err) {
-		log.warn('removeUserFromClass remove user from class error: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  let c;
+  // Remove any users that match this user's ID
+  try {
+    c = await Class.findOneAndUpdate(
+      { id: classId },
+      { $pullAll: { participants: user.id } }
+    );
+  } catch (err) {
+    log.warn('removeUserFromClass remove user from class error: ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!c || !user) {
-		log.warn('removeUserFromClass - User or Class not found');
-		return res.send(404).json({
-			message: 'User or Class not found',
-		});
-	}
+  if (!c || !user) {
+    log.warn('removeUserFromClass - User or Class not found');
+    return res.send(404).json({
+      message: 'User or Class not found',
+    });
+  }
 
-	return c;
+  return c;
 }
 
 /**
@@ -1055,32 +1075,32 @@ async function removeUserFromClass(classId, stripeId) {
  * @param {*} next
  */
 async function confirmPayment(req, res, next) {
-	const classId = req.body.class_id;
-	const userId = req.ctx.userData.id;
+  const classId = req.body.class_id;
+  const userId = req.ctx.userData.id;
 
-	let query = { classId: classId, userId: userId };
-	let transaction;
+  let query = { classId: classId, userId: userId };
+  let transaction;
 
-	try {
-		transaction = await Transaction.findOne(query);
-	} catch (err) {
-		log.warn('Stripe - confirmPayment find transaction error: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-	}
+  try {
+    transaction = await Transaction.findOne(query);
+  } catch (err) {
+    log.warn('Stripe - confirmPayment find transaction error: ', err);
+    return res.status(400).json({
+      message: err,
+    });
+  }
 
-	if (!transaction) {
-		return res.status(404).json({
-			message: 'No transaction found',
-		});
-	}
-	// TODO eventually move payment confirmation to backend (currently happens on client side)
-	req.ctx.stripeData = {
-		paymentId: transaction.paymentId,
-		status: PAYMENT_PAID,
-	};
-	next();
+  if (!transaction) {
+    return res.status(404).json({
+      message: 'No transaction found',
+    });
+  }
+  // TODO eventually move payment confirmation to backend (currently happens on client side)
+  req.ctx.stripeData = {
+    paymentId: transaction.paymentId,
+    status: PAYMENT_PAID,
+  };
+  next();
 }
 
 /**
@@ -1090,18 +1110,18 @@ async function confirmPayment(req, res, next) {
  * @param {Boolean} recurring
  */
 async function getProductPrices(sku, recurring) {
-	try {
-		const options = {
-			product: sku,
-			type: recurring ? 'recurring' : 'one_time',
-		};
-		const prices = await stripe.prices.list(options);
-		log.info('Fetched stripe prices for sku ', sku);
-		return prices.data;
-	} catch (err) {
-		log.warn('Stripe getProductPrices error : ', err);
-		throw err;
-	}
+  try {
+    const options = {
+      product: sku,
+      type: recurring ? 'recurring' : 'one_time',
+    };
+    const prices = await stripe.prices.list(options);
+    log.info('Fetched stripe prices for sku ', sku);
+    return prices.data;
+  } catch (err) {
+    log.warn('Stripe getProductPrices error : ', err);
+    throw err;
+  }
 }
 
 /**
@@ -1110,14 +1130,14 @@ async function getProductPrices(sku, recurring) {
  * @param {*} id
  */
 async function getPrice(id) {
-	try {
-		const price = await stripe.prices.retrieve(id);
-		log.info('Fetched stripe price for id: ', price);
-		return price;
-	} catch (err) {
-		log.warn('Stripe get price error ', err);
-		throw err;
-	}
+  try {
+    const price = await stripe.prices.retrieve(id);
+    log.info('Fetched stripe price for id: ', price);
+    return price;
+  } catch (err) {
+    log.warn('Stripe get price error ', err);
+    throw err;
+  }
 }
 
 /**
@@ -1128,30 +1148,30 @@ async function getPrice(id) {
  * @param {Boolean} billingInterval
  */
 async function createPrice(unitCost, productSku, recurring) {
-	const options = {
-		unit_amount_decimal: unitCost,
-		currency: 'usd',
-		product: productSku,
-		billing_scheme: 'per_unit',
-		nickname: `one-time payment for ${productSku}`,
-	};
+  const options = {
+    unit_amount_decimal: unitCost,
+    currency: 'usd',
+    product: productSku,
+    billing_scheme: 'per_unit',
+    nickname: `one-time payment for ${productSku}`,
+  };
 
-	// If recurring price - set up weekly billing
-	if (recurring) {
-		options.recurring = {
-			interval: 'week',
-		};
-		options.nickname = `recurring payment for ${productSku}`;
-	}
+  // If recurring price - set up weekly billing
+  if (recurring) {
+    options.recurring = {
+      interval: 'week',
+    };
+    options.nickname = `recurring payment for ${productSku}`;
+  }
 
-	try {
-		const price = await stripe.prices.create(options);
-		log.info('Created stripe price object ', price);
-		return price;
-	} catch (err) {
-		log.warn('error creating stripe price object ', err);
-		throw err;
-	}
+  try {
+    const price = await stripe.prices.create(options);
+    log.info('Created stripe price object ', price);
+    return price;
+  } catch (err) {
+    log.warn('error creating stripe price object ', err);
+    throw err;
+  }
 }
 
 /**
@@ -1165,125 +1185,123 @@ async function createPrice(unitCost, productSku, recurring) {
  * @param {Function} next
  */
 async function createClassSku(req, res, next) {
-	const classId = req.body.class_id;
-	const options = {
-		name: classId,
-		metadata: {
-			class_id: classId,
-		},
-	};
+  const classId = req.body.class_id;
+  const options = {
+    name: classId,
+    metadata: {
+      class_id: classId,
+    },
+  };
 
-	stripe.products.create(options, function (err, product) {
-		if (err) {
-			return res.status(400).json({
-				message: err,
-			});
-		}
-		log.debug('Created new product sku ', product);
+  stripe.products.create(options, function (err, product) {
+    if (err) {
+      return res.status(400).json({
+        message: err,
+      });
+    }
+    log.debug('Created new product sku ', product);
 
-		// Fetch master prices for one-time and recurring payments & create duplicates to attach to new sku
-		return getPrice(ONE_TIME_CLASS_PRICE)
-			.then((priceObj) => {
-				return createPrice(priceObj.unit_amount_decimal, product.id, false);
-			})
-			.then((priceObj) => {
-				return getPrice(RECURRING_CLASS_PRICE);
-			})
-			.then((priceObj) => {
-				return createPrice(priceObj.unit_amount_decimal, product.id, true);
-			})
-			.then(async (priceObj) => {
-				log.info(
-					'Successfully created new stripe product sku for class ',
-					classId
-				);
-				const oneTime = await getProductPrices(product.id, false);
-				const recur = await getProductPrices(product.id, true);
-				console.log('RECURRING prices for product are ', recur);
-				console.log('ONE TIME prices for product are ', oneTime);
-				next();
-			})
-			.catch((err) => {
-				log.warn('CreateClassSku error : ', err);
-				res.status(400).json({
-					message: err,
-				});
-			});
-	});
+    // Fetch master prices for one-time and recurring payments & create duplicates to attach to new sku
+    return getPrice(ONE_TIME_CLASS_PRICE)
+      .then((priceObj) => {
+        return createPrice(priceObj.unit_amount_decimal, product.id, false);
+      })
+      .then((priceObj) => {
+        return getPrice(RECURRING_CLASS_PRICE);
+      })
+      .then((priceObj) => {
+        return createPrice(priceObj.unit_amount_decimal, product.id, true);
+      })
+      .then(async (priceObj) => {
+        log.info(
+          'Successfully created new stripe product sku for class ',
+          classId
+        );
+        const oneTime = await getProductPrices(product.id, false);
+        const recur = await getProductPrices(product.id, true);
+        next();
+      })
+      .catch((err) => {
+        log.warn('CreateClassSku error : ', err);
+        res.status(400).json({
+          message: err,
+        });
+      });
+  });
 }
 
 //------Unused Methods------//
 
 // Returns the invoice for a subscription id after a user has updated their subscription to a new one
 async function retrieveUpcomingInvoice(req, res) {
-	const priceId = req.body.priceId; // the new subscription
-	const subscription = await stripe.subscriptions.retrieve(
-		req.body.subscriptionId
-	);
-	const invoice = await stripe.invoices.retrieveUpcoming({
-		subscription_prorate: true,
-		customer: req.body.customerId,
-		subscription: req.body.subscriptionId,
-		subscription_items: [
-			{
-				id: subscription.items.data[0].id,
-				deleted: true,
-			},
-			{
-				// This price ID is the price you want to change the subscription to.
-				price: priceId,
-				deleted: false,
-			},
-		],
-	});
-	res.send(invoice);
+  const priceId = req.body.priceId; // the new subscription
+  const subscription = await stripe.subscriptions.retrieve(
+    req.body.subscriptionId
+  );
+  const invoice = await stripe.invoices.retrieveUpcoming({
+    subscription_prorate: true,
+    customer: req.body.customerId,
+    subscription: req.body.subscriptionId,
+    subscription_items: [
+      {
+        id: subscription.items.data[0].id,
+        deleted: true,
+      },
+      {
+        // This price ID is the price you want to change the subscription to.
+        price: priceId,
+        deleted: false,
+      },
+    ],
+  });
+  res.send(invoice);
 }
 
 // Returns payment method details for input paymentMethodId
 async function retrieveCustomerPaymentMethod(req, res) {
-	const paymentMethod = await stripe.paymentMethods.retrieve(
-		req.body.paymentMethodId
-	);
-	res.send(paymentMethod);
+  const paymentMethod = await stripe.paymentMethods.retrieve(
+    req.body.paymentMethodId
+  );
+  res.send(paymentMethod);
 }
 
 // Updates a user's subscription
 async function updateSubscription(req, res) {
-	const priceId = req.body.priceId; // the new subscription
-	const subscription = await stripe.subscriptions.retrieve(
-		req.body.subscriptionId
-	);
-	const updatedSubscription = await stripe.subscriptions.update(
-		req.body.subscriptionId,
-		{
-			cancel_at_period_end: false,
-			items: [
-				{
-					id: subscription.items.data[0].id,
-					price: priceId,
-				},
-			],
-		}
-	);
-	res.send(updatedSubscription);
+  const priceId = req.body.priceId; // the new subscription
+  const subscription = await stripe.subscriptions.retrieve(
+    req.body.subscriptionId
+  );
+  const updatedSubscription = await stripe.subscriptions.update(
+    req.body.subscriptionId,
+    {
+      cancel_at_period_end: false,
+      items: [
+        {
+          id: subscription.items.data[0].id,
+          price: priceId,
+        },
+      ],
+    }
+  );
+  res.send(updatedSubscription);
 }
 
 module.exports = {
-	authenticate,
-	createPayment,
-	refundCharge,
-	createCustomer,
-	createSubscription,
-	retryInvoice,
-	invoiceWebhook,
-	updateSubscription,
-	retrieveUpcomingInvoice,
-	retrieveCustomerPaymentMethod,
-	cancelSubscription,
-	generateState,
-	attachPaymentMethod,
-	removePaymentMethod,
-	confirmPayment,
-	connectAccountRedirect,
-	createClassSku,
+  authenticate,
+  createPayment,
+  refundCharge,
+  createCustomer,
+  createSubscription,
+  retryInvoice,
+  invoiceWebhook,
+  updateSubscription,
+  retrieveUpcomingInvoice,
+  retrieveCustomerPaymentMethod,
+  cancelSubscription,
+  generateState,
+  attachPaymentMethod,
+  removePaymentMethod,
+  confirmPayment,
+  connectAccountRedirect,
+  createClassSku,
 };
