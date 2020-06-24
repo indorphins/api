@@ -320,16 +320,6 @@ async function createPaymentMethod(req, res) {
     default: true,
   };
 
-  // Create payment method document
-  try {
-    newPaymentMethod = await PaymentMethod.create(data);
-  } catch (err) {
-    log.warn('createPaymentMethod - error: ', err);
-    return res.status(400).json({
-      message: err,
-    });
-  }
-
   let user;
 
   // Add payment method ID to stripe user's payment method array
@@ -343,6 +333,29 @@ async function createPaymentMethod(req, res) {
       'update stripe user payment methods with new payment method - error: ',
       err
     );
+    return res.status(400).json({
+      message: err,
+    });
+  }
+
+  // Set any other default cards to false
+  let query = {
+    id: { $in: user.paymentMethods },
+  };
+  try {
+    user = await PaymentMethod.updateMany(query, { default: false });
+  } catch (err) {
+    log.warn("createPaymentMethod - find and update defauly payment methods error: ", err);
+    return res.status(400).json({
+      message: err
+    })
+  }
+
+  // Create payment method document
+  try {
+    newPaymentMethod = await PaymentMethod.create(data);
+  } catch (err) {
+    log.warn('createPaymentMethod - error: ', err);
     return res.status(400).json({
       message: err,
     });

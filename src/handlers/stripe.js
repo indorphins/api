@@ -466,11 +466,11 @@ async function removePaymentMethod(req, res, next) {
     const pMethodId = req.body.payment_method_id;
     const userId = req.ctx.userData.id;
 
-    if (!pMethodId || userId) {
+    if (!pMethodId || !userId) {
       const msg =
         'Payment method ID and user ID required to remove payment method';
       log.warn(`removePaymentMethod - ${msg}`);
-      res.status(400).json({
+      return res.status(400).json({
         message: msg,
       });
     }
@@ -489,19 +489,23 @@ async function removePaymentMethod(req, res, next) {
       });
     }
 
-    const pMethod = await stripe.paymentMethods.detach(
-      req.body.paymentMethodId,
-      {
-        customer: user.customerId,
-      }
-    );
+    if (!user || !user.customerId) {
+      log.warn("RemovePaymentMethod stripe handler - no Stripe user found");
+      return res.status(404).json({
+        message: 'No stripe user found'
+      })
+    }
+
+    const pMethod = await stripe.paymentMethods.detach(pMethodId);
     req.ctx.stripeData = {
       payment_method_id: pMethod.id,
     };
     next();
   } catch (err) {
-    log.warn('Error creating customer ', error);
-    res.status(400).json(error);
+    log.warn('Error creating customer ', err);
+    res.status(400).json({
+      err
+    });
   }
 }
 
