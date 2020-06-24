@@ -49,9 +49,9 @@ router.post('/subscription', stripeMongo.createTransaction);
 router.delete('/subscription', middleware.authentication);
 router.delete('/subscription', stripe.cancelSubscription);
 
-// unused routes
-
 router.post('/invoices', stripe.invoiceWebhook);
+
+// unused routes
 
 router.post('/retryInvoice', stripe.retryInvoice);
 

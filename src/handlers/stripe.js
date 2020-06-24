@@ -339,10 +339,10 @@ async function generateState(req, res, next) {
  * @param {Object} res
  */
 async function connectAccountRedirect(req, res) {
-  const TEST_CLIENT_ID = 'ca_H6FI1hBlXQUv8wAMFBvSxGTNZUy7RiT1'; // TODO Maybe pass this in from Front End?
+  const TEST_CLIENT_ID = process.env.CONNECT_ACCT_CLIENT_KEY;
   const state = req.ctx.state;
   if (!state) {
-    log.warn('getConnectAccountRedirectUrl - state code not found'); // TODO replace with client
+    log.warn('getConnectAccountRedirectUrl - state code not found');
     return res.status(400).json({
       message: 'No state code for redirect',
     });
