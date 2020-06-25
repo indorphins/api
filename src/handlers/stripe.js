@@ -10,6 +10,7 @@ const base64 = require('uuid-base64');
 const later = require('later');
 const { v4: uuidv4 } = require('uuid');
 const log = require('../log');
+const user = require('./user');
 const PAYMENT_PAID = 'fulfilled';
 const PAYMENT_FAILED = 'failed';
 const PAYMENT_CANCELLED = 'cancelled';
@@ -19,7 +20,7 @@ const RECURRING_CLASS_PRICE = 'price_1Gt1kmG2VM6YY0SVdXNBeMSJ';
 const APPLICATION_FEE_PERCENT = 20;
 
 redisClient.on('error', function (error) {
-  console.error(error);
+  log.warn("Redis Client Error: ", error);
 });
 
 const TTL = 1200; // 20 mins
@@ -55,8 +56,7 @@ function getApplicationFeeAmount(price, decimalPercent) {
  */
 async function authenticate(req, res) {
   const { code, state } = req.query;
-  const PROFILE_REDIRECT = 'https://app.indorphins.com/profile';
-  let userData;
+  let userData, returnUrl, redisValue;
 
   redisClient.get(state, function (err, reply) {
     log.info('Got reply redis : ', reply);
@@ -64,7 +64,9 @@ async function authenticate(req, res) {
       res.query;
       return res.redirect(PROFILE_REDIRECT + '?error=no_user_found');
     }
-    userData = JSON.parse(reply);
+    redisValue = JSON.parse(reply);
+    userData = redisValue.user;
+    returnUrl = redisValue.return_url;
   });
 
   stripe.oauth
@@ -78,17 +80,17 @@ async function authenticate(req, res) {
 
         createStripeUserConnectAcct(connected_account_id, userData)
           .then(() => {
-            res.redirect(PROFILE_REDIRECT);
+            res.redirect(returnUrl);
           })
           .catch((err) => {
-            res.redirect(PROFILE_REDIRECT + '?error=create_account_failed');
+            res.redirect(returnUrl + '?error=create_account_failed');
           });
       },
       (err) => {
         if (err.type === 'StripeInvalidGrantError') {
-          res.redirect(PROFILE_REDIRECT + '?error=invalid_auth_code');
+          res.redirect(returnUrl + '?error=invalid_auth_code');
         } else {
-          res.redirect(PROFILE_REDIRECT + '?error=unknown_error');
+          res.redirect(returnUrl + '?error=unknown_error');
         }
       }
     );
@@ -296,10 +298,15 @@ async function refundCharge(req, res, next) {
  * @param {Function} next
  */
 async function generateState(req, res, next) {
-  let id = req.ctx.userData.id;
+  const return_url = req.body.return_url
+  const id = req.ctx.userData.id;
+  let user, redisValue;
 
-  if (req.params.id) {
-    id = req.params.id;
+  if (!id || !return_url) {
+    log.warn("GenerateState - invalid input parameters");
+    return res.status(400).json({
+      message: "Invalid input parameters"
+    })
   }
 
   let query = { id: id };
@@ -319,9 +326,14 @@ async function generateState(req, res, next) {
     });
   }
 
+  redisValue = {
+    user: user,
+    return_url: return_url
+  }
+
   // store state code in redis as [code: user-info] with expire time TTL
   const stateCode = base64.encode(uuidv4());
-  redisClient.set(stateCode, JSON.stringify(user), function (error) {
+  redisClient.set(stateCode, JSON.stringify(redisValue), function (error) {
     if (error) {
       log.warn('Error saving state in redis: ', error);
       return res.status(400).send(error);
@@ -356,9 +368,23 @@ async function connectAccountRedirect(req, res) {
 
 // Save the connected account ID from the response to your database.
 async function createStripeUserConnectAcct(id, userData) {
+  const userId = userData.id
+  let user;
+
+  if (!id || !userId) {
+    log.warn("createStripeUserConnectAcct - invalid input parameters")
+    throw Error("No connect or user ID");
+  }
+
   try {
-    const user = await StripeUser.create({ connectId: id, id: userData.id });
-    return user;
+    // Check if user exists already and update if so
+    user = await StripeUser.findOneAndUpdate({ id: userId }, { connectId: id }, { new: true })
+    if (user) {
+      return user;
+    } else {
+      user = await StripeUser.create({ connectId: id, id: userData.id });
+      return user;
+    }
   } catch (err) {
     log.warn('Sripe - saveAccountId error: ', err);
     throw err;
