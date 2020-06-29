@@ -178,6 +178,7 @@ async function joinSession(req, res) {
   }
 
   let data = {
+    id: user.id,
     username: user.username,
     instructor: false,
   };
