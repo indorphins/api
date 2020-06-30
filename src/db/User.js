@@ -1,20 +1,29 @@
-const uuid = require('uuid');
 const mongoose = require('mongoose');
 
 const User = new mongoose.Schema({
-	// user_id	created_at	first_name	last_name	email	phone_number	password	user_type	venmo_handle	following	friends	classes	stripe_user_id	my_buddy_code	active_buddy_code	bio	insta_handle
-	user_id: {
+	id: {
 		type: String,
 		required: true,
-		default: uuid.v4(),
+		unique: true,
+	},
+	username: {
+		type: String,
+		required: true,
 	},
 	first_name: {
 		type: String,
-		required: true,
 	},
 	last_name: {
 		type: String,
-		required: true,
+	},
+	city: {
+		type: String,
+	},
+	state: {
+		type: String,
+	},
+	bio: {
+		type: String,
 	},
 	email: {
 		type: String,
@@ -24,23 +33,30 @@ const User = new mongoose.Schema({
 	},
 	phone_number: {
 		type: String,
+		required: false,
+		sparse: true,
+	},
+	type: {
+		type: String,
 		required: true,
 	},
-	user_type: {
-		type: Number,
-		required: true,
-	},
-	classes: [{ type: mongoose.Schema.ObjectId, ref: 'Class' }],
 	firebase_uid: {
 		type: String,
 		required: true,
 		unique: true,
 	},
-	created_at: {
+	photo_url: {
+		type: String,
+	},
+	created_date: {
 		type: Date,
 		required: true,
-		default: Date.now,
 	},
+	social: {
+		type: Object,
+	}
 });
+
+User.index({ username: 1 });
 
 module.exports = mongoose.model('User', User);

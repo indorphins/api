@@ -5,18 +5,21 @@ metadata:
   namespace: kube-system
 data:
   mapRoles: |
-    - rolearn: arn:aws:iam::662730807386:group/AdminGroup
-      username: Admin
-      groups:
-        - system:bootstrappers
-        - system:masters
-    - rolearn: arn:aws:iam::662730807386:role/EKS-Main
+    - rolearn: arn:aws:iam::586425846122:role/EKS-Main
       username: system:node:{{EC2PrivateDNSName}}
       groups:
         - system:bootstrappers
         - system:nodes
   mapUsers: |
-    - userarn: arn:aws:iam::662730807386:user/indorphins-cicd
+    - userarn: arn:aws:iam::586425846122:user/indorphins-cicd
       username: indorphins-cicd
       groups:
         - system:masters
+    - userarn: arn:aws:iam::586425846122:user/aloesch
+      username: aloesch
+      groups:
+        - system:masters
+    - userarn: arn:aws:iam::586425846122:user/alindsay
+      username: alindsay
+      groups:
+        - system:masters    

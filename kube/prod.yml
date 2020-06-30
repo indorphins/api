@@ -9,9 +9,9 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: indorphins-be
-  minReplicas: 1
+  minReplicas: 2
   maxReplicas: 10
-  targetCPUUtilizationPercentage: 50
+  targetCPUUtilizationPercentage: 75
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
       - name: indorphins-be
-        image: 662730807386.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest
+        image: 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest
         ports:
         - containerPort: 3001
         envFrom:
@@ -44,11 +44,20 @@ kind: Service
 metadata:
   name: indorphins-be
   namespace: default
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:us-east-1:586425846122:certificate/dea12efd-8e53-49cb-bd83-d09f5d46f1b6
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
 spec:
   selector:
     app: indorphins-be
   type: LoadBalancer
   ports:
   - protocol: TCP
+    name: http
     port: 80
+    targetPort: 3001
+  - protocol: TCP
+    name: https
+    port: 443
     targetPort: 3001

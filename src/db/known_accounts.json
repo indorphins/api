@@ -1,0 +1,34 @@
+{
+  "andrew@indorphins.com": "admin",
+  "alex@indorphins.com": "admin",
+  "nick@indorphins.com": "admin",
+  "camdeanh@gmail.com": "instructor",
+  "chirsch0619@gmail.com": "instructor",
+  "toginnylee@gmail.com": "instructor",
+  "annielynch.umd@gmail.com": "instructor",
+  "hasenfussv@gmail.com": "instructor",
+  "leo@noreply.com": {
+    "type": "instructor",
+    "photo_url": "https://www.telegraph.co.uk/content/dam/films/2018/09/21/TELEMMGLPICT000027014340_trans_NvBQzQNjv4BqM37qcIWR9CtrqmiMdQVx7HKcsGtiuU_lafizKj4PQO0.jpeg?imwidth=1400"
+  },
+  "portman@noreply.com": {
+    "type": "instructor",
+    "photo_url": "https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/natalie-portman-1558430184.jpg?crop=1xw:1xh;center,top&resize=980:*"
+  },
+  "scarjo@noreply.com": {
+    "type": "instructor",
+    "photo_url": "https://preview.redd.it/pv7j7b46ut831.jpg?width=960&crop=smart&auto=webp&s=516554ba7a8bf922bb72b658529c08577ebe2058"
+  },
+  "will@noreply.com": {
+    "type": "instructor",
+    "photo_url": "https://media.vanityfair.com/photos/5c77ed2fad0a3b2abd03f2bb/master/w_2560%2Cc_limit/GettyImages-585714752.jpg"
+  },
+  "jlo@noreply.com": {
+    "type": "instructor",
+    "photo_url": "https://www.usmagazine.com/wp-content/uploads/2020/05/Jennifer-Lopez-Manicurist-Tom-Bachik-01.jpg?w=1320"
+  },
+  "bradpitt@noreply.com": {
+    "type": "instructor",
+    "photo_url": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Brad_Pitt_2019_by_Glenn_Francis.jpg"
+  }
+}
