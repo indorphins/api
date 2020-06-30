@@ -56,10 +56,14 @@ async function createStripeUser(req, res) {
  * @param {Object} res
  */
 async function getStripeUser(req, res) {
-  let id =
-    req.ctx.stripeData && req.ctx.stripeData.id
-      ? req.ctx.stripeData.id
-      : req.ctx.userData.id;
+  let id = req.ctx.userData.id;
+
+  if (!id) {
+    log.warn("getStripeUser - error no user id");
+    return res.status(404).json({
+      message: "User ID not found"
+    })
+  }
 
   let query = { id: id };
   let user;
@@ -219,7 +223,7 @@ async function createTransaction(req, res) {
   try {
     transaction = await Transaction.create(data);
   } catch (err) {
-    log.warn('createStripeUser - error: ', err);
+    log.warn('createTransaction - error: ', err);
     return res.status(400).json({
       message: err,
     });
@@ -272,8 +276,8 @@ async function updateTransaction(req, res) {
   }
 
   const query = { paymentId: id };
-  const status = req.stripeData.status;
-  const refund = req.stripeData.refund;
+  const status = req.ctx.stripeData.status;
+  const refund = req.ctx.stripeData.refund;
   let transaction;
 
   try {
@@ -293,7 +297,13 @@ async function updateTransaction(req, res) {
     });
   }
 
-  res.status(200).json({ client_secret: refund.client_secret });
+  let response = {
+    paymentId: id
+  };
+  if (refund && refund.client_secret) {
+    response.client_secret = refund.client_secret
+  }
+  res.status(200).json({ message: 'Transaction Updated', data: response });
 }
 
 /**

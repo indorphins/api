@@ -108,6 +108,7 @@ async function createPayment(req, res, next) {
   const instructorId = req.body.instructor_id;
   const classId = req.body.class_id;
   const paymentMethod = req.body.payment_method;
+  const recurring = req.body.recurring;
   const userId = req.ctx.userData.id;
 
   if (!instructorId || !classId || !paymentMethod || !userId) {
@@ -172,7 +173,7 @@ async function createPayment(req, res, next) {
 
   // Fetch the one-time payment cost - subscriptions handle recurring payment costs
   try {
-    price = await getProductPrices(classObj.product_sku);
+    price = await getProductPrices(classObj.product_sku, recurring);
   } catch (err) {
     log.warn('CreatePayment - error fetching one-time price ', err);
     return res.status(400).json({
@@ -180,12 +181,13 @@ async function createPayment(req, res, next) {
     });
   }
 
-  if (!price || !price[0]) {
+  if (!Array.isArray(price) || !price[0]) {
     log.warn('CreatePaymentIntent - no prices for product found');
     return res.status(404).json({
       message: 'No price data found',
     });
   }
+
 
   // TODO how do we define application fee (what we take) and where?
   stripe.paymentIntents
@@ -662,7 +664,7 @@ async function createSubscription(req, res) {
       customer: user.customerId,
       items: [{ price: price[0] }],
       expand: ['latest_invoice.payment_intent'],
-      application_fee_percent: APPLICATION_FEE_PERCENT, // Percentage we take TODO bake in
+      application_fee_percent: APPLICATION_FEE_PERCENT, // Percentage we take
       transfer_data: {
         destination: instructor.connectId, // Instructor's Connect Account
       },
@@ -1105,10 +1107,9 @@ async function removeUserFromClass(classId, stripeId) {
  * @param {*} next
  */
 async function confirmPayment(req, res, next) {
-  const classId = req.body.class_id;
-  const userId = req.ctx.userData.id;
+  const paymentId = req.body.payment_id;
 
-  let query = { classId: classId, userId: userId };
+  let query = { paymentId: paymentId };
   let transaction;
 
   try {
@@ -1127,7 +1128,7 @@ async function confirmPayment(req, res, next) {
   }
   // TODO eventually move payment confirmation to backend (currently happens on client side)
   req.ctx.stripeData = {
-    paymentId: transaction.paymentId,
+    paymentId: paymentId,
     status: PAYMENT_PAID,
   };
   next();
@@ -1247,8 +1248,10 @@ async function createClassSku(req, res, next) {
           'Successfully created new stripe product sku for class ',
           classId
         );
-        const oneTime = await getProductPrices(product.id, false);
-        const recur = await getProductPrices(product.id, true);
+        req.body = {
+          product_sku: product.id
+        }
+        req.ctx.classId = classId;
         next();
       })
       .catch((err) => {

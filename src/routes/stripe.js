@@ -3,6 +3,7 @@ const router = express.Router();
 const middleware = require('../middleware');
 const stripeMongo = require('../handlers/stripeMongo');
 const stripe = require('../handlers/stripe');
+const c = require('../handlers/class');
 
 router.post('/payment', middleware.authentication);
 router.post('/payment', stripe.createPayment);
@@ -40,7 +41,9 @@ router.post('/accountRedirect', stripe.connectAccountRedirect);
 
 router.get('/verify', stripe.authenticate);
 
+router.post('/classSku', middleware.authentication);
 router.post('/classSku', stripe.createClassSku);
+router.post('/classSku', c.updateClass);
 
 router.post('/subscription', middleware.authentication);
 router.post('/subscription', stripe.createSubscription);
