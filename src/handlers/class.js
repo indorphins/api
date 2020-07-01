@@ -137,8 +137,6 @@ async function getClass(req, res) {
 
   c.instructor = i;
 
-  console.log("Got Class: ", c);
-
   res.status(200).json(c);
 };
 
@@ -152,12 +150,6 @@ async function updateClass(req, res) {
   let c = null;
   let data = req.body;
   let id = req.params.id ? req.params.id : req.ctx.classId;
-
-  console.log("Instructor is ", req.ctx.userData);
-  console.log('class id is ', req.params.id);
-  console.log("Update data is ", data)
-  console.log("Context class is ", req.ctx.classId);
-
 
   if (data.participants) {
     delete data.participants;
@@ -175,8 +167,6 @@ async function updateClass(req, res) {
       error: err,
     });
   }
-
-  console.log("Updated class ", c);
 
   res.status(200).json({
     message: "Class updated"
