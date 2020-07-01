@@ -3,8 +3,8 @@ const later = require('later');
 const Class = require('../db/Class');
 const log = require('../log');
 
-const APIKey = "46737292";
-const opentok = new OpenTok(APIKey, "aa58ddf290d270e3284ddf9f574903d369f0d6c6");
+const APIKey = "46817934";
+const opentok = new OpenTok(APIKey, "6e0d8092fd0c009620481f1614e56c696e9a1049");
 
 const sessionWindow = 15;
 
