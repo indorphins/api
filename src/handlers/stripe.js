@@ -1,6 +1,10 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const redis = require('redis');
-const redisClient = redis.createClient(process.env.REDIS_CONNECTION);
+const redisClient = redis.createClient({
+  port: process.env.REDIS_PORT,
+  host: process.env.REDIS_HOST,
+  password: process.env.REDIS_PASSWORD
+});
 const StripeUser = require('../db/StripeUser');
 const User = require('../db/User');
 const Class = require('../db/Class');
@@ -21,6 +25,7 @@ const APPLICATION_FEE_PERCENT = 20;
 
 redisClient.on('error', function (error) {
   log.warn("Redis Client Error: ", error);
+  throw error;
 });
 
 const TTL = 1200; // 20 mins
@@ -214,6 +219,7 @@ async function createPayment(req, res, next) {
         client_secret: paymentIntent.client_secret,
         paymentId: paymentIntent.id,
         type: 'payment',
+        stripeId: user.customerId
       };
       next();
     })
@@ -235,8 +241,8 @@ async function refundCharge(req, res, next) {
   const classId = req.body.class_id;
   const userId = req.ctx.userData.id;
 
-  let query = { classId: classId, userId: userId };
-  let transaction, classObj;
+  let query = { classId: classId, userId: userId, type: 'payment' };
+  let transaction;
 
   try {
     transaction = await Transaction.findOne(query);
@@ -247,34 +253,28 @@ async function refundCharge(req, res, next) {
     });
   }
 
+  // Check if payment was an invoice
+  if (!transaction) {
+    query.type = 'invoice';
+    try {
+      transaction = await Transaction.findOne(query);
+    } catch (err) {
+      log.warn('Stripe - refundCharge find transaction error: ', err);
+      return res.status(400).json({
+        message: err,
+      });
+    }
+  }
+
   if (!transaction) {
     return res.status(404).json({
       message: 'No transaction found',
     });
   }
 
-  query = {
-    id: classId,
-  };
-
-  try {
-    classObj = Class.findOne(query);
-  } catch (err) {
-    log.warn('Stripe - refundCharge find class error: ', err);
-    return res.status(404).json({
-      message: err,
-    });
-  }
-
-  if (!classObj) {
-    return res.status(404).json({
-      message: 'No class found',
-    });
-  }
-
   try {
     const refund = await stripe.refunds.create({
-      charge: transaction.paymentId,
+      payment_intent: transaction.paymentId,
       reverse_transfer: true,
       refund_application_fee: true, // Gives back the platform fee
     });
@@ -677,6 +677,7 @@ async function createSubscription(req, res) {
     req.ctx.stripeData = {
       subscription: subscription,
       type: 'subscription',
+      stripeId: user.customerId
     };
 
     next();
@@ -1272,7 +1273,6 @@ async function retrieveUpcomingInvoice(req, res) {
     req.body.subscriptionId
   );
   const invoice = await stripe.invoices.retrieveUpcoming({
-    subscription_prorate: true,
     customer: req.body.customerId,
     subscription: req.body.subscriptionId,
     subscription_items: [

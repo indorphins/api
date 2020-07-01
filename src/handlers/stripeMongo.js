@@ -208,7 +208,7 @@ async function createTransaction(req, res) {
   let transaction;
   let data = {
     classId: classData.id,
-    stripeId: stripeData.paymentId,
+    stripeId: stripeData.stripeId,
     userId: userData.id,
     status: PAYMENT_CREATED,
     type: stripeData.type,
