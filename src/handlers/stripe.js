@@ -565,7 +565,7 @@ async function createSubscription(req, res) {
   // Get 24 hours before the next class date as a timestamp for invoices to be generated
   const now = new Date();
   const nextDate = getNextDate(c.recurring, 1, now);
-  nextDate.setDate(newDate.getDate() - 1);
+  nextDate.setDate(nextDate.getDate() - 1);
   const nextTimestamp = toTimestamp(nextDate);
   log.debug('Next Timestamp is ', nextTimestamp);
 
