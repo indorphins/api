@@ -2,13 +2,13 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+//const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');
 const stripeRouter = require('./src/routes/stripe');
 const instructorsRouter = require('./src/routes/instructor');
-//const stripe = require('./src/handlers/stripe');
+const stripe = require('./src/handlers/stripe');
 const auth = require('./src/auth');
 const db = require('./src/db');
 const log = require('./src/log');
@@ -18,14 +18,9 @@ const PORT = process.env.PORT;
 const app = express();
 
 app.use(cors());
-app.use((req, res, next) => {
-  if (req.url.match('/stripe/invoices') === -1) {
-		express.json();
-    bodyParser.json();
-	}
-	next();
-});
-
+app.post('/stripe/invoices', bodyParser.raw({type: 'application/json'}), stripe.invoiceWebhook)
+app.use(express.json());
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
