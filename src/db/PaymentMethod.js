@@ -1,27 +1,29 @@
 const mongoose = require('mongoose');
 
-const PaymentMethod = new mongoose.Schema({
-	id: {
-		type: String,
-		required: true,
-		unique: true,
-	},
+const PaymentMethods = new mongoose.Schema({
 	userId: {
-		type: String,
+		type: Array,
 		required: true,
 	},
-	last4: {
-		type: String,
-		required: true,
-	},
-	type: {
-		type: String,
-		required: true,
-	},
-	default: {
-		type: Boolean,
-		required: true,
-	},
+	methods: [{
+		id: {
+			type: String,
+			required: true,
+			unique: true,
+		},
+		last4: {
+			type: String,
+			required: true,
+		},
+		type: {
+			type: String,
+			required: true,
+		},
+		default: {
+			type: Boolean,
+			required: true,
+		}
+	}],
 });
 
 PaymentMethod.index({ userId: 1, default: 1 });

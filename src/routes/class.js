@@ -2,6 +2,7 @@ const express = require('express');
 const middleware = require('../middleware');
 const classHandlers = require('../handlers/class');
 const opentokHandlers = require('../handlers/opentok');
+const stripeHandlers = require('../handlers/stripe');
 
 let router = express.Router();
 
@@ -25,6 +26,13 @@ router.delete('/:id', classHandlers.deleteClass);
 router.put('/:id', middleware.authentication);
 router.put('/:id', middleware.adminOrInstructorAuthorized);
 router.put('/:id', classHandlers.updateClass);
+
+
+router.post('/:id/payment/:payment_id', middleware.authentication);
+router.post('/:id/payment/:payment_id', stripeHandlers.createPayment);
+
+router.delete('/:id/payment/:payment_id', middleware.authentication);
+router.delete('/:id/payment/:payment_id', stripeHandlers.refundCharge);
 
 // Add participant to class
 router.post('/:id/participants', middleware.authentication);

@@ -9,6 +9,7 @@ const usersRouter = require('./src/routes/user');
 const stripeRouter = require('./src/routes/stripe');
 const instructorsRouter = require('./src/routes/instructor');
 const stripe = require('./src/handlers/stripe');
+const redis = require('./src/cache');
 const auth = require('./src/auth');
 const db = require('./src/db');
 const log = require('./src/log');
@@ -57,6 +58,11 @@ app.get('*', (req, res) => {
 });
 
 db.init(() => {
-  auth.init();
+	auth.init();
+	try {
+		redis.init();
+	} catch(e) {
+		log.fatal("redis connection", e);
+	}
 	app.listen(PORT, () => log.info("App started on port", PORT));
 });

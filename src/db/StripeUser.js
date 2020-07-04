@@ -19,10 +19,25 @@ const StripeUser = new mongoose.Schema({
 		unique: true,
 		sparse: true,
 	},
-	paymentMethods: {
-		type: Array,
-		required: true,
-	},
+	methods: [{
+		id: {
+			type: String,
+			required: true,
+			unique: true,
+		},
+		last4: {
+			type: String,
+			required: true,
+		},
+		type: {
+			type: String,
+			required: true,
+		},
+		default: {
+			type: Boolean,
+			required: true,
+		}
+	}],
 });
 
 module.exports = mongoose.model('StripeUser', StripeUser);

@@ -4,47 +4,23 @@ const middleware = require('../middleware');
 const stripeMongo = require('../handlers/stripeMongo');
 const stripe = require('../handlers/stripe');
 const c = require('../handlers/class');
-const bodyParser = require('body-parser');
 
-router.post('/payment', middleware.authentication);
-router.post('/payment', stripe.createPayment);
-router.post('/payment', stripeMongo.createTransaction);
+router.get('/payment/method/', middleware.authentication);
+router.get('/payment/method/', stripe.getUserPaymentMethods);
 
-router.post('/refund', middleware.authentication);
-router.post('/refund', stripe.refundCharge);
-router.post('/refund', stripeMongo.updateTransaction);
+router.post('/payment/method/:id', middleware.authentication);
+router.post('/payment/method/:id', stripe.attachPaymentMethod);
 
-router.post('/confirmPayment', middleware.authentication);
-router.post('/confirmPayment', stripe.confirmPayment);
-router.post('/confirmPayment', stripeMongo.updateTransaction);
+router.delete('/payment/method/:id', middleware.authentication);
+router.delete('/payment/method/:id', stripe.removePaymentMethod);
 
-router.post('/customer', middleware.authentication);
-router.post('/customer', stripe.createCustomer);
-router.post('/customer', stripeMongo.createStripeUser);
+router.post('/account', middleware.authentication);
+router.post('/account', stripe.accountLink);
 
-router.get('/customer', middleware.authentication);
-router.get('/customer', stripeMongo.getStripeUser);
+router.get('/account', middleware.authentication);
+router.get('/account', stripeMongo.getStripeUser);
 
-router.post('/paymentMethod', middleware.authentication);
-router.post('/paymentMethod', stripe.attachPaymentMethod);
-router.post('/paymentMethod', stripeMongo.createPaymentMethod);
-
-router.get('/paymentMethods', middleware.authentication);
-router.get('/paymentMethods', stripeMongo.getUserPaymentMethods);
-
-router.delete('/paymentMethod', middleware.authentication);
-router.delete('/paymentMethod', stripe.removePaymentMethod);
-router.delete('/paymentMethod', stripeMongo.deletePaymentMethod);
-
-router.post('/accountRedirect', middleware.authentication);
-router.post('/accountRedirect', stripe.generateState);
-router.post('/accountRedirect', stripe.connectAccountRedirect);
-
-router.get('/verify', stripe.authenticate);
-
-router.post('/classSku', middleware.authentication);
-router.post('/classSku', stripe.createClassSku);
-router.post('/classSku', c.updateClass);
+router.get('/callback', stripe.callback);
 
 router.post('/subscription', middleware.authentication);
 router.post('/subscription', stripe.createSubscription);

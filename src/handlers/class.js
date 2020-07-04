@@ -2,6 +2,7 @@ const uuid = require('uuid');
 const Class = require('../db/Class');
 const User = require('../db/User');
 const log = require('../log');
+const utils = require('../utils');
 
 /**
  * Utility function to decode a custom filter or sort order passed in through query parameters.
@@ -82,12 +83,25 @@ async function createClass(req, res) {
 
   let classData = req.body;
   let newClass = null;
+  let productId = null;
 
   classData.id = uuid.v1();
   classData.created_date = new Date().toISOString();
   classData.available_spots = classData.total_spots;
   classData.instructor = req.ctx.userData;
   classData.participants = [];
+
+  try {
+    productId = await utils.createClassSku(classData);
+  } catch(err) {
+    log.warn('Error creating class sku: ', err);
+    return res.status(400).json({
+      message: "issue creating class sku",
+      error: err
+    });
+  }
+
+  classData.product_sku = productId;
 
   try {
     newClass = await Class.create(classData);

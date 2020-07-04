@@ -30,8 +30,8 @@ const ClassSchema = new mongoose.Schema({
 		required: true,
 	},
 	instructor: {
-		type: mongoose.Schema.ObjectId,
-		ref: 'User',
+		type: String,
+		required: true,
 	},
 	participants: [UserRef],
 	// Should be UTC date
