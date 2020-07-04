@@ -1,4 +1,17 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);;
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const later = require('later');
+
+export function getNextDate(rule, count, refDate) {
+  later.date.UTC();
+  let sched = later.parse.cron(rule);
+  return later.schedule(sched).next(count, refDate);
+}
+
+export function getPrevDate(rule, count, refDate) {
+  later.date.UTC();
+  let sched = later.parse.cron(rule);
+  return later.schedule(sched).prev(count, refDate);
+}
 
 export async function getProductPrices(sku, recurring) {
   const options = {

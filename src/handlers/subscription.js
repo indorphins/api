@@ -1,4 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const Subscription = require('../db/Subscription');
+const utils = require('../utils');
 
 /**
  * Takes in a class ID and cancels the stripe subscription for a user in the class
@@ -8,7 +10,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
  */
 export async function cancel(req, res) {
   const userData = req.ctx.userData;
-  const classId = req.body.class_id;
+  const classId = req.params.id;
   let transaction;
 
   if (!userData.id || !classId) {
@@ -21,11 +23,10 @@ export async function cancel(req, res) {
   let query = {
     userId: userData.id,
     classId: classId,
-    type: 'subscription',
   };
 
   try {
-    transaction = await Transaction.findOne(query);
+    transaction = await Subscription.findOne(query);
   } catch (err) {
     log.warn('CancelSubscription - error finding transaction: ', err);
     return res.status(400).json({
@@ -33,7 +34,7 @@ export async function cancel(req, res) {
     });
   }
 
-  if (!transaction.subscriptionId) {
+  if (!transaction.id) {
     log.warn('CancelSubscription - this transaction has no subscription ID');
     return res.status(400).json({
       message: 'No subscription to cancel',
@@ -41,32 +42,25 @@ export async function cancel(req, res) {
   }
 
   try {
-    // Delete the subscription
-    const deletedSubscription = await stripe.subscriptions.del(
-      transaction.subscriptionId
-    );
-    res.status(200).json({
-      message: 'Deleted Subscription',
-      data: deletedSubscription,
-    });
+    await stripe.subscriptions.del(transaction.id);
   } catch (err) {
     res.status(400).json({
       message: err,
     });
   }
+
+  res.status(200);
 }
 
 export async function create(req, res) {
-  const classId = req.body.class_id;
+  const classId = req.params.id;
   const userId = req.ctx.userData.id;
-  let c, user, price, instructor, defaultPaymentMethod;
-
-  let query = {
-    id: classId,
-  };
+  let course, user, price, instructor, defaultPaymentMethod;
 
   try {
-    c = await Class.findOne(query);
+    course = await Class.findOne({
+      id: classId,
+    });
   } catch (err) {
     log.warn('CreateSubscription - fetch class error: ', err);
     return res.status(400).json({
@@ -74,7 +68,7 @@ export async function create(req, res) {
     });
   }
 
-  if (!c || !c.product_sku || !c.instructor || !c.start_date) {
+  if (!course) {
     log.warn('CreateSubscription - no class data or sku');
     return res.status(404).json({
       message: 'Invalid class data',
@@ -83,10 +77,10 @@ export async function create(req, res) {
 
   // Get 24 hours before the next class date as a timestamp for invoices to be generated
   const now = new Date();
-  const nextDate = getNextDate(c.recurring, 1, now);
+  const nextDate = utils.getNextDate(c.recurring, 1, now);
   nextDate.setDate(newDate.getDate() - 1);
-  const nextTimestamp = toTimestamp(nextDate);
-  log.debug('Next Timestamp is ', nextTimestamp);
+  const timestamp = nextDate.getTime() / 1000;
+  log.debug('Next Timestamp is ', timestamp);
 
   try {
     instructor = await User.findById(c.instructor);
@@ -104,10 +98,10 @@ export async function create(req, res) {
     });
   }
 
-  query.id = instructor.id;
-
   try {
-    instructor = await StripeUser.findOne(query);
+    instructor = await StripeUser.findOne({
+      id: instructor.id
+    });
   } catch (err) {
     log.warn('CreateSubscription - error fetching instructor stripe data');
     return res.status(400).json({
@@ -122,10 +116,10 @@ export async function create(req, res) {
     });
   }
 
-  query.id = userId;
-
   try {
-    user = await StripeUser.findOne(query);
+    user = await StripeUser.findOne({
+      id: userId
+    });
   } catch (err) {
     log.warn('CreateSubscription - fetch user error: ', err);
     return res.status(400).json({
@@ -140,22 +134,17 @@ export async function create(req, res) {
     });
   }
 
-  query = {
-    userId: user.id,
-    default: true,
-  };
+  let defaultPaymentMethod = null;
 
-  try {
-    defaultPaymentMethod = await PaymentMethod.findOne(query);
-  } catch (err) {
-    log.warn('CreateSubscription - error fetching payment method ', err);
-    return res.status(400).json({
-      message: err,
-    });
+  for (var i = 0; i < user.methods.length; i++) {
+    if (user.methods[i].default) {
+      defaultPaymentMethod = user.methods[i];
+      break;
+    }
   }
 
   try {
-    price = await getProductPrices(c.product_sku, true);
+    price = await utils.getProductPrices(c.product_sku, true);
   } catch (err) {
     log.warn('CreateSubscription - error fetching product price');
     return res.status(400).json({
@@ -193,13 +182,24 @@ export async function create(req, res) {
       },
     });
 
-    req.ctx.stripeData = {
-      subscription: subscription,
-      type: 'subscription',
-      stripeId: user.customerId
+    let data = {
+      id: subscription.id,
+      classId: classData.id,
+      stripeId: user.customerId,
+      userId: userId,
     };
 
-    next();
+    try {
+      await Subscription.create(data);
+    } catch (err) {
+      log.warn('createTransaction - error: ', err);
+      return res.status(400).json({
+        message: err,
+      });
+    }
+
+    res.status(200);
+
   } catch (error) {
     return res.status(402).send({ error: error });
   }
