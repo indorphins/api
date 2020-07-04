@@ -6,7 +6,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
  * @param {Object} req
  * @param {Object} res
  */
-export async function invoiceWebhook(req, res) {
+async function invoiceWebhook(req, res) {
   // Retrieve the event by verifying the signature using the raw body and secret.
 
   let b  = req.body;
@@ -89,7 +89,7 @@ export async function invoiceWebhook(req, res) {
  * @param {Object}
  * @param {String} status
  */
-export async function updateSubscriptionStatus(subscription, status) {
+async function updateSubscriptionStatus(subscription, status) {
   let query = {
     subscriptionId: subscription.id,
   };
@@ -149,7 +149,7 @@ export async function updateSubscriptionStatus(subscription, status) {
  * @param {Object}
  * @param {String} status
  */
-export async function updateInvoiceStatus(invoice, status) {
+async function updateInvoiceStatus(invoice, status) {
   let query = {
     paymentId: invoice.id,
   };
@@ -199,4 +199,8 @@ export async function updateInvoiceStatus(invoice, status) {
   }
 
   return transaction;
+}
+
+module.exports = {
+  invoiceWebhook,
 }

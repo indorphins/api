@@ -19,7 +19,7 @@ const PORT = process.env.PORT;
 const app = express();
 
 app.use(cors());
-app.post('/stripe/invoices', bodyParser.raw({type: 'application/json'}), stripe.invoiceWebhook)
+app.post('/stripe/invoices', bodyParser.raw({type: 'application/json'}), stripe.webhook.invoiceWebhook)
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));

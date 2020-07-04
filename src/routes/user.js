@@ -16,19 +16,16 @@ router.delete('/', user.deleteUser);
 router.put('/', middleware.authentication);
 router.put('/', user.updateUser);
 
-router.get('/paymentmethod', middleware.authentication);
-router.get('/paymentmethod', stripe.getUserPaymentMethods);
+router.get('/paymentmethod/', middleware.authentication);
+router.get('/paymentmethod/', stripe.getPaymentMethods);
 
 router.post('/paymentmethod/:id', middleware.authentication);
-router.post('/paymentmethod/:id', stripe.attachPaymentMethod);
+router.post('/paymentmethod/:id', stripe.addPaymentMethod);
 
 router.delete('/paymentmethod/:id', middleware.authentication);
 router.delete('/paymentmethod/:id', stripe.removePaymentMethod);
 
 router.post('/account', middleware.authentication);
-router.post('/account', stripe.accountLink);
-
-router.get('/account', middleware.authentication);
-router.get('/account', stripeMongo.getStripeUser);
+router.post('/account', stripe.account.linkBankAccount);
 
 module.exports = router;

@@ -3,7 +3,6 @@ const middleware = require('../middleware');
 const classHandlers = require('../handlers/class');
 const opentokHandlers = require('../handlers/opentok');
 const stripeHandlers = require('../handlers/stripe');
-const stripeSubscription = require('../handlers/subscription');
 
 let router = express.Router();
 
@@ -29,16 +28,16 @@ router.put('/:id', middleware.adminOrInstructorAuthorized);
 router.put('/:id', classHandlers.updateClass);
 
 router.post('/:id/payment/:payment_id', middleware.authentication);
-router.post('/:id/payment/:payment_id', stripeHandlers.createPayment);
+router.post('/:id/payment/:payment_id', stripeHandlers.transaction.create);
 
 router.delete('/:id/payment/:payment_id', middleware.authentication);
-router.delete('/:id/payment/:payment_id', stripeHandlers.refundCharge);
+router.delete('/:id/payment/:payment_id', stripeHandlers.transaction.refund);
 
 router.post('/:id/subscription', middleware.authentication);
-router.post('/:id/subscription', stripeSubscription.create);
+router.post('/:id/subscription', stripeHandlers.subscription.create);
 
 router.delete('/:id/subscription', middleware.authentication);
-router.delete('/:id/subscription', stripeSubscription.cancel);
+router.delete('/:id/subscription', stripeHandlers.subscription.cancel);
 
 // Add participant to class
 router.post('/:id/participants', middleware.authentication);

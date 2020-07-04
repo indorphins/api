@@ -1,5 +1,4 @@
 const redis = require('redis');
-const log = require('../log');
 
 let redisClient;
 
@@ -19,14 +18,14 @@ async function init() {
   });
 }
 
-export async function get(key) {
+async function get(key) {
   redisClient.get(key, function (err, reply) {
     if (err) throw err;
     return reply;
   });
 }
 
-export async function set(key, obj, ttl) {
+async function set(key, obj, ttl) {
   redisClient.set(key, obj, function (error) {
     if (error) {
       throw error;
@@ -38,5 +37,7 @@ export async function set(key, obj, ttl) {
 
 module.exports = {
   client: redisClient,
-  init: init,
+  init,
+  get,
+  set,
 }

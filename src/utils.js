@@ -1,19 +1,19 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const later = require('later');
 
-export function getNextDate(rule, count, refDate) {
+function getNextDate(rule, count, refDate) {
   later.date.UTC();
   let sched = later.parse.cron(rule);
   return later.schedule(sched).next(count, refDate);
 }
 
-export function getPrevDate(rule, count, refDate) {
+function getPrevDate(rule, count, refDate) {
   later.date.UTC();
   let sched = later.parse.cron(rule);
   return later.schedule(sched).prev(count, refDate);
 }
 
-export async function getProductPrices(sku, recurring) {
+async function getProductPrices(sku, recurring) {
   const options = {
     product: sku,
     type: recurring ? 'recurring' : 'one_time',
@@ -34,7 +34,7 @@ export async function getProductPrices(sku, recurring) {
  * Returns the JSON price object from stripe
  * @param {*} id
  */
-export async function getPrice(id) {
+async function getPrice(id) {
   try {
     const price = await stripe.prices.retrieve(id);
     log.info('Fetched stripe price for id: ', price);
@@ -52,7 +52,7 @@ export async function getPrice(id) {
  * @param {String} productSku
  * @param {Boolean} billingInterval
  */
-export async function createPrice(unitCost, productSku, recurring) {
+async function createPrice(unitCost, productSku, recurring) {
   const options = {
     unit_amount_decimal: unitCost,
     currency: 'usd',
@@ -79,7 +79,7 @@ export async function createPrice(unitCost, productSku, recurring) {
   }
 }
 
-export async function createClassSku(course) {
+async function createClassSku(course) {
   const classId = course.id;
   const options = {
     name: classId,
@@ -101,4 +101,13 @@ export async function createClassSku(course) {
     }).catch(err => {
       throw err;
     });
+}
+
+module.exports = {
+  createClassSku,
+  createPrice,
+  getPrice,
+  getNextDate,
+  getPrevDate,
+  getProductPrices
 }
