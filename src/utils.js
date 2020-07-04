@@ -1,5 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const later = require('later');
+const log = require('./log')
 
 function getNextDate(rule, count, refDate) {
   later.date.UTC();

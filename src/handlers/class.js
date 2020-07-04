@@ -88,7 +88,7 @@ async function createClass(req, res) {
   classData.id = uuid.v1();
   classData.created_date = new Date().toISOString();
   classData.available_spots = classData.total_spots;
-  classData.instructor = req.ctx.userData;
+  classData.instructor = req.ctx.userData.id;
   classData.participants = [];
 
   try {
@@ -141,7 +141,7 @@ async function getClass(req, res) {
   }
 
   try {
-    i = await User.findOne({ _id: c.instructor })
+    i = await User.findOne({ id: c.instructor })
   } catch (err) {
     log.warn("error fetching instructor", err);
     return res.status(404).json({
