@@ -107,6 +107,8 @@ async function linkBankAccount(req, res) {
   uri = `${uri}&stripe_user[business_type]=individual`;
   uri = `${uri}&stripe_user[business_name]=Indoorphins`;
 
+  if (user.phone_number) uri = `${uri}&stripe_user[phone_number]=${user.phone_number}`;
+
   log.debug('redirect URL', uri);
   res.redirect(301, uri);
 }

@@ -26,11 +26,19 @@ const StripeUser = new mongoose.Schema({
 		},
 		last4: {
 			type: String,
-			required: true,
+		},
+		brand: {
+			type: String,
 		},
 		type: {
 			type: String,
 			required: true,
+		},
+		exp_month: {
+			type: String,
+		},
+		exp_year: {
+			type: String,
 		},
 		default: {
 			type: Boolean,

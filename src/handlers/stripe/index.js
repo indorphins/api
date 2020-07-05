@@ -27,8 +27,7 @@ async function getPaymentMethods(req, res) {
 
     let data = {
       id: userData.id,
-      paymentMethods: [],
-      transactions: [],
+      methods: [],
       customerId: customer.id,
     };
   
@@ -56,17 +55,15 @@ async function addPaymentMethod(req, res) {
 
   const id = req.ctx.userData.id
   const email = req.ctx.userData.email;
-  const pMethodId = req.params.id;
+  let paymentData = req.body;
   const query = {
     id: id
   }
   let user = null;
 
-  if (!pMethodId) {
-    const msg = 'Payment method ID and user ID required to attach payment method';
-    log.warn(`attachPaymentMethod - ${msg}`);
+  if (!paymentData) {
     return res.status(400).json({
-      message: msg,
+      message: "missing card data"
     });
   }
 
@@ -86,8 +83,7 @@ async function addPaymentMethod(req, res) {
 
     let data = {
       id: userData.id,
-      paymentMethods: [],
-      transactions: [],
+      methods: [],
       customerId: customer.id,
     };
   
@@ -101,27 +97,37 @@ async function addPaymentMethod(req, res) {
     }
   }
 
-  let paymentData;
   try {
-    paymentData = await stripe.paymentMethods.attach(pMethodId, {
-      customer: user.customerId,
-    });
+    await stripe.paymentMethods.attach(paymentData.id, {customer: user.customerId});
   } catch (err) {
     log.warn('Error attaching payment method ', err);
-    res.status(500).json({
-      message: err
+  }
+
+  if (user.methods.length > 0) {
+    user.methods.map(item => {
+      return item.default = false;
     });
   }
 
-  user.methods.push({
+  let record = {
     id: paymentData.id,
-    last4: paymentData.card.last4,
-    type: paymentData.card.brand,
     default: true,
-  });
+  };
+
+  if (paymentData.card) {
+    Object.assign(record, {
+      last4: paymentData.card.last4,
+      brand: paymentData.card.brand,
+      type: 'card',
+      exp_month: paymentData.card.exp_month,
+      exp_year: paymentData.card.exp_year,
+    });
+  }
+
+  user.methods.unshift(record);
 
   try {
-    await StripeUser.findOneAndUpdate({ id: userData.id }, user);
+    await StripeUser.findOneAndUpdate({ id: id }, user);
   } catch (err) {
     log.warn('update stripe user payment methods with new payment method - error: ', err);
     return res.status(400).json({
@@ -177,6 +183,14 @@ async function removePaymentMethod(req, res) {
     });
   }
 
+  try {
+    await stripe.customers.deleteSource(user.customerId, pMethodId);
+  } catch(err) {
+    return res.status(400).json({
+      message: err,
+    });
+  }
+
   let index = -1
   for (var i = 0; i < user.methods.length; i++) {
     if (user.methods[i].id === pMethodId) {
@@ -196,9 +210,7 @@ async function removePaymentMethod(req, res) {
     });
   }
 
-  res.status(200).json({
-    message: "great success!",
-  });
+  res.status(200).json(user);
 }
 
 module.exports = {
