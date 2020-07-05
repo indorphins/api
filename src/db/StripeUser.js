@@ -13,8 +13,7 @@ const StripeUser = new mongoose.Schema({
 		unique: true,
 		sparse: true,
 	},
-	// stripe id given when connect account created (receives payments)
-	connectId: {
+	accountId: {
 		type: String,
 		unique: true,
 		sparse: true,

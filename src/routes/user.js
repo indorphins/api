@@ -25,7 +25,7 @@ router.post('/paymentmethod/:id', stripe.addPaymentMethod);
 router.delete('/paymentmethod/:id', middleware.authentication);
 router.delete('/paymentmethod/:id', stripe.removePaymentMethod);
 
-router.post('/account', middleware.authentication);
-router.post('/account', stripe.account.linkBankAccount);
+//router.get('/account', middleware.authentication);
+router.get('/account', stripe.account.linkBankAccount);
 
 module.exports = router;

@@ -1,9 +1,10 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const User = require('../../db/User');
 const StripeUser = require('../../db/StripeUser');
 const redisClient = require('../../cache');
-const base64 = require('uuid-base64');
-const { v4: uuidv4 } = require('uuid');
+const { v1: uuidv1 } = require('uuid');
 const log = require('../../log');
+const auth = require('../../auth');
 
 const TTL = 1200; // 20 mins
 
@@ -15,11 +16,35 @@ const TTL = 1200; // 20 mins
  * @param {Function} next
  */
 async function linkBankAccount(req, res) {
-  const return_url = req.body.return_url
-  const user = req.ctx.userData;
+  const return_url = req.query.callbackURL
+  const token = req.query.token;
   const CLIENT_ID = process.env.CONNECT_ACCT_CLIENT_KEY;
+  let buff = new Buffer.from(uuidv1());
+  let stateCode = buff.toString('base64');
   let redisValue;
   let stripeUser;
+
+  let claims;
+  
+  try {
+    claims = await auth.verifyToken(token);
+  } catch(err) {
+    log.warn("Validate firebase token", err);
+    return res.redirect(return_url + '?error=Not+authorized:+' + encodeURIComponent(err.message));
+  }
+
+  if (!claims.uid) {
+    return res.redirect(return_url + '?error=Not+authorized:+no+firebase+uid');
+  }
+
+  let user;
+
+  try {
+    user = await User.findOne({firebase_uid: claims.uid})
+  } catch (err) {
+    log.warn("No user record found for valid firebase token");
+    return res.redirect(return_url + '?error=Not+authorized:+no+user+record');
+  }
 
   redisValue = {
     user: user,
@@ -31,7 +56,7 @@ async function linkBankAccount(req, res) {
     stripeUser = await StripeUser.findOne({ id: user.id });
   } catch (err) {
     log.warn('Sripe - saveAccountId error: ', err);
-    return res.redirect(returnUrl + '?error=Service+error:+'  + encodeURIComponent(error.message));
+    return res.redirect(return_url + '?error=Service+error:+'  + encodeURIComponent(error.message));
   }
 
   if (!stripeUser) {
@@ -39,32 +64,50 @@ async function linkBankAccount(req, res) {
       email: user.email,
     });
 
+    let account = await stripe.accounts.create(  {
+      type: 'custom',
+      country: 'US',
+      email: user.email,
+      requested_capabilities: [
+        'card_payments',
+        'transfers',
+      ],
+    });
+
     let data = {
       id: user.id,
       paymentMethods: [],
       transactions: [],
       customerId: customer.id,
+      accountId: account.id
     };
   
     try {
       stripeUser = await StripeUser.create(data);
     } catch (err) {
       log.warn('createStripeUser - error: ', err);
-      return res.redirect(returnUrl + '?error=Service+error:+'  + encodeURIComponent(error.message));
+      return res.redirect(return_url + '?error=Service+error:+'  + encodeURIComponent(error.message));
     }
   }
-
-  // store state code in redis as [code: user-info] with expire time TTL
-  const stateCode = base64.encode(uuidv4());
 
   try {
     await redisClient.set(stateCode, JSON.stringify(redisValue), TTL);
   } catch(err) {
     log.warn('Error saving state in redis: ', error);
-    return res.redirect(returnUrl + '?error=Service+error:+' + encodeURIComponent(error.message));
+    return res.redirect(return_url + '?error=Service+error:+' + encodeURIComponent(error.message));
   }
 
-  const uri = `https://connect.stripe.com/express/oauth/authorize?client_id=${CLIENT_ID}&state=${stateCode}&suggested_capabilities[]=card_payments&suggested_capabilities[]=transfers&stipe_user[]=`;
+  let uri = `https://connect.stripe.com/express/oauth/authorize`;
+  uri = `${uri}?client_id=${CLIENT_ID}&state=${stateCode}`;
+  uri = `${uri}&redirect_uri=${'http://localhost:3001/stripe/callback'}`;
+  uri = `${uri}&stripe_user[email]=${user.email}`;
+  uri = `${uri}&stripe_user[url]=https://indoorphins.fit`;
+  uri = `${uri}&stripe_user[first_name]=${user.first_name}`;
+  uri = `${uri}&stripe_user[last_name]=${user.last_name}`;
+  uri = `${uri}&stripe_user[business_type]=individual`;
+  uri = `${uri}&stripe_user[business_name]=Indoorphins`;
+
+  log.debug('redirect URL', uri);
   res.redirect(301, uri);
 }
 
@@ -83,24 +126,24 @@ async function callback(req, res) {
     redisValue = await redisClient.get(state);
     cacheData = JSON.parse(redisValue);
   } catch(err) {
-    return res.redirect(returnUrl + '?error=Service+error:+' + encodeURIComponent(error.message));
+    return res.redirect('http://localhost:3000/?error=Service+error:+' + encodeURIComponent(error.message));
   }
 
   let userData = cacheData.user;
-  let returnUrl = cacheData.return_url;
+  let return_url = cacheData.return_url;
 
   stripe.oauth.token({grant_type: 'authorization_code', code})
     .then(response => {
 
       if (!response.stripe_user_id) throw Error("No stripe user exists is stripe");
 
-      return StripeUser.findOneAndUpdate({ id: userData.id }, { connectId: response.stripe_user_id }, { new: true });
+      return StripeUser.findOneAndUpdate({ id: userData.id }, { accountId: response.stripe_user_id }, { new: true });
     })
     .then(() => {
-      res.redirect(301, returnUrl);
+      res.redirect(301, return_url);
     })
     .catch(err => {
-      res.redirect(returnUrl + '?error=Service+error:+' + encodeURIComponent(err.message));
+      res.redirect(return_url + '?error=Service+error:+' + encodeURIComponent(err.message));
     });
 }
 

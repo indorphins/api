@@ -19,20 +19,22 @@ async function init() {
 }
 
 async function get(key) {
-  redisClient.get(key, function (err, reply) {
-    if (err) throw err;
-    return reply;
-  });
+  return new Promise((done, reject) => {
+    redisClient.get(key, function (err, reply) {
+      if (err) return reject(err);
+      done(reply);
+    });
+  })
 }
 
 async function set(key, obj, ttl) {
-  redisClient.set(key, obj, function (error) {
-    if (error) {
-      throw error;
-    }
-    if (ttl) redisClient.expire(key, ttl);
-    return;
-  });
+  return new Promise((done, reject) => {
+    redisClient.set(key, obj, function (error) {
+      if (error) return reject(err)
+      if (ttl) redisClient.expire(key, ttl);
+      done();
+    });
+  })
 }
 
 module.exports = {

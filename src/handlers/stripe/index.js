@@ -1,3 +1,4 @@
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const StripeUser = require('../../db/StripeUser');
 const log = require('../../log');
 
@@ -7,11 +8,11 @@ const subscription = require('./subscription');
 const webhook = require('./webhook');
 
 async function getPaymentMethods(req, res) {
-  let id = req.ctx.userData.id;
+  let userData = req.ctx.userData
   let user;
 
   try {
-    user = await StripeUser.findOne({ id: id });
+    user = await StripeUser.findOne({ id: userData.id });
   } catch (err) {
     log.warn('getUserPaymentMethods - error: ', err);
     return res.status(404).json({
@@ -21,7 +22,7 @@ async function getPaymentMethods(req, res) {
 
   if (!user) {
     let customer = await stripe.customers.create({
-      email: email,
+      email: userData.email,
     });
 
     let data = {
