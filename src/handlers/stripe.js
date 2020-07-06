@@ -800,13 +800,15 @@ async function cancelSubscription(req, res) {
  */
 async function invoiceWebhook(req, res) {
   // Retrieve the event by verifying the signature using the raw body and secret.
+
+  let b  = req.body;
+  let sig = req.headers['stripe-signature'];
+
+  //log.debug('Stripe webhook event', b, sig);
+
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      req.headers['stripe-signature'],
-      process.env.STRIPE_WEBHOOK_SECRET // TODO add this
-    );
+    event = stripe.webhooks.constructEvent(b, sig, "whsec_sQsxXCo7HSpX2QWrJK6Sge3LqnFskTvh");
     log.info('Stripe webhook event: ', event);
   } catch (err) {
     log.warn('Stripe Webhook error: ', err);
@@ -814,7 +816,9 @@ async function invoiceWebhook(req, res) {
   }
   const dataObject = event.data.object;
 
-  if (event.type === 'invoice.payment_succeeded') {
+  log.debug("DATA object", dataObject);
+
+  /*if (event.type === 'invoice.payment_succeeded') {
     updateInvoiceStatus(dataObject, PAYMENT_PAID)
       .then((transaction) => {
         return addUserToClass(
@@ -865,7 +869,7 @@ async function invoiceWebhook(req, res) {
     res.status(400).json({
       message: 'Unhandled stripe webhook event',
     });
-  }
+  }*/
   res.sendStatus(200);
 }
 

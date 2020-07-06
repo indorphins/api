@@ -4,6 +4,7 @@ const middleware = require('../middleware');
 const stripeMongo = require('../handlers/stripeMongo');
 const stripe = require('../handlers/stripe');
 const c = require('../handlers/class');
+const bodyParser = require('body-parser');
 
 router.post('/payment', middleware.authentication);
 router.post('/payment', stripe.createPayment);
@@ -51,8 +52,6 @@ router.post('/subscription', stripeMongo.createTransaction);
 
 router.delete('/subscription', middleware.authentication);
 router.delete('/subscription', stripe.cancelSubscription);
-
-router.post('/invoices', stripe.invoiceWebhook);
 
 // unused routes
 
