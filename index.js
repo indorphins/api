@@ -2,7 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-//const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');

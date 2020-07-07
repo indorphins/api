@@ -177,6 +177,7 @@ async function create(req, res) {
       classId: classData.id,
       stripeId: user.customerId,
       userId: userId,
+      status: subscription.status
     };
 
     try {

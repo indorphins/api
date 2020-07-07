@@ -21,7 +21,6 @@ const Transaction = new mongoose.Schema({
   },
   subscriptionId: {
     type: String,
-    unique: true,
     sparse: true
   },
   status: {
