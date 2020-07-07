@@ -183,14 +183,6 @@ async function removePaymentMethod(req, res) {
     });
   }
 
-  try {
-    await stripe.customers.deleteSource(user.customerId, pMethodId);
-  } catch(err) {
-    return res.status(400).json({
-      message: err,
-    });
-  }
-
   let index = -1
   for (var i = 0; i < user.methods.length; i++) {
     if (user.methods[i].id === pMethodId) {
@@ -202,7 +194,7 @@ async function removePaymentMethod(req, res) {
   user.methods.splice(index, 1);
 
   try {
-    user = await StripeUser.findOneAndUpdate({ id: userId }, user);
+    user = await StripeUser.findOneAndUpdate({ id: userId }, user, {new: true});
   } catch (err) {
     log.warn(err);
     return res.status(404).json({
