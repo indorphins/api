@@ -123,9 +123,9 @@ async function create(req, res) {
 
       return Transaction.create(data);
     })
-    then(transaction => {
-      res.status(200).json({ client_secret: paymentIntent.client_secret });
-    })
+  then(transaction => {
+    res.status(200).json({ client_secret: paymentIntent.client_secret });
+  })
     .catch((error) => {
       log.warn('StripeController - createPayment - error : ', error);
       res.status(400).send(error);
@@ -141,7 +141,7 @@ async function create(req, res) {
  * @param {Function} next
  */
 async function refund(req, res) {
-  const classId = req.body.class_id;
+  const classId = req.params.id;
   const userId = req.ctx.userData.id;
   let refundTransaction;
   let stripeUser;
@@ -168,7 +168,7 @@ async function refund(req, res) {
     stripeUser = await StripeUser.findOne({
       id: userId
     });
-  } catch(err) {
+  } catch (err) {
     log.warn('Stripe - refundCharge find transaction error: ', err);
     return res.status(500).json({
       message: err,
@@ -202,8 +202,9 @@ async function refund(req, res) {
       userId: userId,
       status: refundTransaction.status,
       type: 'credit',
+      created_date: new Date().toISOString()
     });
-  } catch(err) {
+  } catch (err) {
     return res.status(500).json({
       message: "Service error"
     });
