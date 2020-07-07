@@ -149,7 +149,7 @@ async function getClass(req, res) {
     });
   }
 
-  c.instructor = i;
+  c.instructor = JSON.stringify(i);
 
   res.status(200).json(c);
 };

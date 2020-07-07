@@ -1,4 +1,5 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const log = require('../../log');
 
 /**
  * Webhook for stripe event handling

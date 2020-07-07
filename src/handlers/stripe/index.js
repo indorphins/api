@@ -213,6 +213,30 @@ async function removePaymentMethod(req, res) {
   res.status(200).json(user);
 }
 
+async function updatePaymentMethod(req, res) {
+  const userId = req.ctx.userData.id;
+  const data = req.body;
+
+  let user = null;
+
+  if (!data) {
+    return res.status(400).json({
+      message: "Missing card data",
+    });
+  }
+
+  try {
+    user = await StripeUser.findOneAndUpdate({id: userId}, data, {new: true});
+  } catch (err) {
+    log.warn(err);
+    return res.status(404).json({
+      message: err,
+    });
+  }
+
+  return res.status(200).json(user);
+}
+
 module.exports = {
   account,
   transaction,
@@ -220,5 +244,6 @@ module.exports = {
   webhook,
   getPaymentMethods,
   addPaymentMethod,
-  removePaymentMethod
+  removePaymentMethod,
+  updatePaymentMethod
 }

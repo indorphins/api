@@ -22,6 +22,9 @@ router.get('/paymentmethod/', stripe.getPaymentMethods);
 router.post('/paymentmethod/', middleware.authentication);
 router.post('/paymentmethod/', stripe.addPaymentMethod);
 
+router.patch('/paymentmethod/', middleware.authentication);
+router.patch('/paymentmethod/', stripe.updatePaymentMethod);
+
 router.delete('/paymentmethod/:id', middleware.authentication);
 router.delete('/paymentmethod/:id', stripe.removePaymentMethod);
 
