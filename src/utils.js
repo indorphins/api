@@ -104,11 +104,37 @@ async function createClassSku(course) {
     });
 }
 
+/**
+ * Replaces ${value1} ${value2} ... strings in the input string 
+ * values is an object that with keys 'value1', 'value2' and the values being the
+ * strings to interpolate with the given input string
+ * @param {String} string 
+ * @param {Object} values 
+ */
+function interpolate(string, values) {
+  if (!string) {
+    return '';
+  }
+
+  let final = string
+  Object.keys(values).forEach(key => {
+    let value = values[key];
+    if (typeof value === 'string') {
+      const target = '${' + key + '}';
+
+      const escapedTarget = target.replace(/(]${}])/g, '\\$1');
+      result = result.replace(new RegExp(escapedTarget, 'g'), value);
+    }
+  });
+  return final;
+}
+
 module.exports = {
   createClassSku,
   createPrice,
   getPrice,
   getNextDate,
   getPrevDate,
-  getProductPrices
+  getProductPrices,
+  interpolate
 }
