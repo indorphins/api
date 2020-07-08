@@ -92,7 +92,7 @@ async function addPaymentMethod(req, res) {
     } catch (err) {
       log.warn('createStripeUser - error: ', err);
       return res.status(400).json({
-        message: err,
+        message: err.message,
       });
     }
   }
@@ -101,6 +101,9 @@ async function addPaymentMethod(req, res) {
     await stripe.paymentMethods.attach(paymentData.id, {customer: user.customerId});
   } catch (err) {
     log.warn('Error attaching payment method ', err);
+    return res.status(400).json({
+      message: err.message,
+    });
   }
 
   if (user.methods.length > 0) {

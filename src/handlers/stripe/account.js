@@ -90,6 +90,7 @@ async function linkBankAccount(req, res) {
     }
   }
 
+  log.debug("redis client", redisClient);
   try {
     await redisClient.set(stateCode, JSON.stringify(redisValue), TTL);
   } catch(err) {
@@ -99,7 +100,7 @@ async function linkBankAccount(req, res) {
 
   let uri = `https://connect.stripe.com/express/oauth/authorize`;
   uri = `${uri}?client_id=${CLIENT_ID}&state=${stateCode}`;
-  uri = `${uri}&redirect_uri=${'http://localhost:3001/stripe/callback'}`;
+  uri = `${uri}&redirect_uri=${'http://localhost:3001/stripe/verify'}`;
   uri = `${uri}&stripe_user[email]=${user.email}`;
   uri = `${uri}&stripe_user[url]=https://indoorphins.fit`;
   uri = `${uri}&stripe_user[first_name]=${user.first_name}`;

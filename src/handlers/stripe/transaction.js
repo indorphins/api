@@ -1,9 +1,8 @@
 const StripeUser = require('../../db/StripeUser');
 const Class = require('../../db/Class');
 const Transaction = require('../../db/Transaction');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
-const utils = require('../../utils');
-const { transaction } = require('.');
 
 const APPLICATION_FEE_PERCENT = 20;
 
@@ -17,9 +16,9 @@ const APPLICATION_FEE_PERCENT = 20;
  */
 async function create(req, res) {
   const classId = req.params.id;
-  const paymentMethod = req.params.payment_id;
+  const paymentMethod = req.params.payment_method_id;
   const userId = req.ctx.userData.id;
-  let instructor, user, classObj, price;
+  let user, classObj, price;
 
   if (!classId || !paymentMethod) {
     return res.status(400).json({
@@ -73,63 +72,52 @@ async function create(req, res) {
     });
   }
 
-  // Fetch the one-time payment cost - subscriptions handle recurring payment costs
-  try {
-    price = await utils.getProductPrices(classObj.product_sku, recurring);
-  } catch (err) {
-    log.warn('CreatePayment - error fetching one-time price ', err);
-    return res.status(400).json({
-      message: 'Payment intent failure - invalid price',
-    });
-  }
-
-  if (!Array.isArray(price) || price.length < 1) {
-    log.warn('CreatePaymentIntent - no prices for product found');
-    return res.status(404).json({
-      message: 'No price data found',
-    });
-  }
-
+  price = Number(classObj.cost) * 100;
   let intent = {
     payment_method_types: ['card'],
-    amount: price[0].unit_amount,
+    amount: price,
     currency: 'usd',
     customer: user.customerId,
+    confirm: true,
     transfer_data: {
-      destination: instructor.connectId, // where the money will go
+      destination: instructorAccount.accountId, // where the money will go
     },
-    on_behalf_of: instructor.connectId, // the account the money is intended for
-    application_fee_amount: price[0].unit_amount * (APPLICATION_FEE_PERCENT / 100),
+    //on_behalf_of: instructorAccount.accountId, // the account the money is intended for
+    application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
     payment_method: paymentMethod,
     metadata: {
       class_id: classId,
     },
   };
 
-  stripe.paymentIntents.create(intent)
-    .then((paymentIntent) => {
-      return stripe.paymentIntents.confirm(paymentIntent.id);
-    }).then(result => {
-
-      let data = {
-        paymentId: result.id,
-        classId: classData.id,
-        stripeId: user.customerId,
-        userId: userId,
-        status: result.status,
-        type: 'debit',
-        created_date: new Date().toISOString()
-      };
-
-      return Transaction.create(data);
-    })
-  then(transaction => {
-    res.status(200).json({ client_secret: paymentIntent.client_secret });
-  })
-    .catch((error) => {
-      log.warn('StripeController - createPayment - error : ', error);
-      res.status(400).send(error);
+  let paymentIntent;
+  try {
+   paymentIntent = await stripe.paymentIntents.create(intent)
+  } catch (err) {
+    log.error('payment intent error', err);
+    return res.status(400).json({
+      message: err.message
     });
+  }
+
+  let data = {
+    paymentId: result.id,
+    classId: classObj.id,
+    stripeId: user.customerId,
+    userId: userId,
+    status: paymentIntent.status,
+    type: 'debit',
+    created_date: new Date().toISOString()
+  };
+
+  try {
+    await Transaction.create(data);
+  } catch (err) {
+    // TODO: do something with this
+    log.warn("TRANSACTION:: add to db", err);
+  }
+  
+  res.status(200).json(paymentIntent);
 }
 
 /**

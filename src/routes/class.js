@@ -27,11 +27,11 @@ router.put('/:id', middleware.authentication);
 router.put('/:id', middleware.adminOrInstructorAuthorized);
 router.put('/:id', classHandlers.updateClass);
 
-router.post('/:id/payment/:payment_id', middleware.authentication);
-router.post('/:id/payment/:payment_id', stripeHandlers.transaction.create);
+router.post('/:id/payment/:payment_method_id', middleware.authentication);
+router.post('/:id/payment/:payment_method_id', stripeHandlers.transaction.create);
 
-router.delete('/:id/payment/:payment_id', middleware.authentication);
-router.delete('/:id/payment/:payment_id', stripeHandlers.transaction.refund);
+router.delete('/:id/payment/:payment_method_id', middleware.authentication);
+router.delete('/:id/payment/:payment_method_id', stripeHandlers.transaction.refund);
 
 router.post('/:id/subscription', middleware.authentication);
 router.post('/:id/subscription', stripeHandlers.subscription.create);
