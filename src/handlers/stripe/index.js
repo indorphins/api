@@ -6,6 +6,7 @@ const account = require('./account');
 const transaction = require('./transaction');
 const subscription = require('./subscription');
 const webhook = require('./webhook');
+const User = require('../../db/User');
 
 async function getPaymentMethods(req, res) {
   let userData = req.ctx.userData
@@ -99,6 +100,11 @@ async function addPaymentMethod(req, res) {
 
   try {
     await stripe.paymentMethods.attach(paymentData.id, {customer: user.customerId});
+    await stripe.customers.update(user.customerId, {
+      invoice_settings: {
+        default_payment_method: paymentData.id,
+      },
+    });
   } catch (err) {
     log.warn('Error attaching payment method ', err);
     return res.status(400).json({
@@ -218,6 +224,30 @@ async function updatePaymentMethod(req, res) {
     return res.status(400).json({
       message: "Missing card data",
     });
+  }
+
+  try {
+    user = await StripeUser.findOne({id: userId});
+  } catch(err) {
+    return res.status(404).json({message: err.message});
+  }
+
+  if (!user) {
+    return res.status(404).json({
+      message: "Stripe user data not found",
+    });
+  }
+
+  let defaultPayment = data.methods.filter(item => item.default);
+
+  try {
+    await stripe.customers.update(user.customerId, {
+      invoice_settings: {
+        default_payment_method: defaultPayment[0].id,
+      },
+    });
+  } catch(err) {
+    return res.status(500).json({message: err.message});
   }
 
   try {
