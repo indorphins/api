@@ -1,9 +1,11 @@
 const StripeUser = require('../../db/StripeUser');
 const Class = require('../../db/Class');
 const Transaction = require('../../db/Transaction');
+const Subscription = require('../../db/Subscription');
+const User = require('../../db/User');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
-const User = require('../../db/User');
+
 
 const APPLICATION_FEE_PERCENT = 20;
 
@@ -92,9 +94,8 @@ async function create(req, res) {
     customer: user.customerId,
     confirm: true,
     transfer_data: {
-      destination: instructorAccount.accountId, // where the money will go
+      destination: instructorAccount.accountId,
     },
-    //on_behalf_of: instructorAccount.accountId, // the account the money is intended for
     application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
     payment_method: paymentMethod,
     metadata: {
@@ -125,12 +126,58 @@ async function create(req, res) {
   try {
     await Transaction.create(data);
   } catch (err) {
-    // TODO: do something with this
     log.warn("TRANSACTION:: add to db", err);
     return res.status(500).json({
       message: "Error creating transaction",
       error: err.message,
     });
+  }
+  
+  if (classObj.recurring) {
+    const now = new Date();
+    const nextWindow = utils.getNextSession(now, classObj);
+    let subscription;
+
+    let nextDate = utils.getNextDate(c.recurring, 1, nextWindow.end);
+    nextDate.setDate(newDate.getDate() - 1);
+    const timestamp = Math.round(nextDate.getTime() / 1000);
+
+    try {
+      subscription = await stripe.subscriptions.create({
+        customer: user.customerId,
+        items: [{ price: price }],
+        application_fee_percent: APPLICATION_FEE_PERCENT,
+        transfer_data: {
+          destination: instructorAccount.accountId,
+        },
+        off_session: true,
+        billing_cycle_anchor: timestamp,
+        metadata: {
+          class_id: classObj.id,
+          prod_id: classObj.product_sku
+        },
+        pending_invoice_item_interval: {
+          interval: "week"
+        },
+      });
+    } catch(err) {
+      log.error("subscription creation failed but initial class payment succeeded", err);
+    }
+
+    if (subscription) {
+      let data = {
+        id: subscription.id,
+        classId: classObj.id,
+        stripeId: user.customerId,
+        userId: userId,
+      };
+  
+      try {
+        await Subscription.create(data);
+      } catch (err) {
+        log.error('create subsription record fialed', err);
+      }
+    }
   }
 
   let participant = {
