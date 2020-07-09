@@ -116,7 +116,7 @@ function interpolate(string, values) {
     return '';
   }
 
-  let final = string
+  let final = string;
   Object.keys(values).forEach(key => {
     let value = values[key];
     if (typeof value === 'string') {

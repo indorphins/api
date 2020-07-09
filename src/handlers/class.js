@@ -93,7 +93,7 @@ async function createClass(req, res) {
 
   try {
     productId = await utils.createClassSku(classData);
-  } catch(err) {
+  } catch (err) {
     log.warn('Error creating class sku: ', err);
     return res.status(400).json({
       message: "issue creating class sku",
@@ -259,7 +259,8 @@ async function addParticipant(req, res) {
 
   let data = {
     id: req.ctx.userData.id,
-    username: req.ctx.userData.username
+    username: req.ctx.userData.username,
+    email: req.ctx.userData.email
   };
 
   if (req.params.user_id) {

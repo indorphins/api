@@ -1,80 +1,84 @@
 const mongoose = require('mongoose');
 
 const UserRef = new mongoose.Schema({
-	id: {
-		type: String,
-		required: true,
-	},
-	username: {
-		type: String,
-		required: true,
-	},
+  id: {
+    type: String,
+    required: true,
+  },
+  username: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true
+  }
 });
 
 const ClassSchema = new mongoose.Schema({
-	id: {
-		type: String,
-		required: true,
-		unique: true,
-	},
-	title: {
-		type: String,
-		required: true,
-	},
-	description: {
-		type: String,
-		required: true,
-	},
-	type: {
-		type: String,
-		required: true,
-	},
-	instructor: {
-		type: String,
-		required: true,
-	},
-	participants: [UserRef],
-	// Should be UTC date
-	session: {
-		type: Object
-	},
-	created_date: {
-		type: Date,
-		required: true,
-	},
-	// Should be UTC date
-	start_date: {
-		type: Date,
-	},
-	end_date: {
-		type: Date,
-	},
-	recurring: {
-		type: String,
-	},
-	duration: {
-		type: Number,
-		required: true,
-	},
-	total_spots: {
-		type: Number,
-		required: true,
-	},
-	available_spots: {
-		type: Number,
-		required: true,
-	},
-	cost: {
-		type: Number,
-		required: true,
-		default: 20.0,
-	},
-	photo_url: {
-		type: String,
-	},
-	product_sku: {
-		type: String,
-	},
+  id: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  title: {
+    type: String,
+    required: true,
+  },
+  description: {
+    type: String,
+    required: true,
+  },
+  type: {
+    type: String,
+    required: true,
+  },
+  instructor: {
+    type: String,
+    required: true,
+  },
+  participants: [UserRef],
+  // Should be UTC date
+  session: {
+    type: Object
+  },
+  created_date: {
+    type: Date,
+    required: true,
+  },
+  // Should be UTC date
+  start_date: {
+    type: Date,
+  },
+  end_date: {
+    type: Date,
+  },
+  recurring: {
+    type: String,
+  },
+  duration: {
+    type: Number,
+    required: true,
+  },
+  total_spots: {
+    type: Number,
+    required: true,
+  },
+  available_spots: {
+    type: Number,
+    required: true,
+  },
+  cost: {
+    type: Number,
+    required: true,
+    default: 20.0,
+  },
+  photo_url: {
+    type: String,
+  },
+  product_sku: {
+    type: String,
+  },
 });
 
 ClassSchema.index({ participants: -1 });
