@@ -1,12 +1,11 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 const StripeUser = require('../../db/StripeUser');
 const log = require('../../log');
-
 const account = require('./account');
 const transaction = require('./transaction');
 const subscription = require('./subscription');
 const webhook = require('./webhook');
-const User = require('../../db/User');
 
 async function getPaymentMethods(req, res) {
   let userData = req.ctx.userData
