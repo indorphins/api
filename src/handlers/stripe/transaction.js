@@ -3,6 +3,7 @@ const Class = require('../../db/Class');
 const Transaction = require('../../db/Transaction');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
+const User = require('../../db/User');
 
 const APPLICATION_FEE_PERCENT = 20;
 
@@ -41,6 +42,17 @@ async function create(req, res) {
     return res.status(404).json({
       message: "Class not found"
     });
+  }
+
+  let exists = false;
+  classObj.participants.forEach(function (p) {
+    if (p.id == userId) {
+      exists = true;
+    }
+  });
+
+  if (exists) {
+    return res.status(400).json({ message: "User already added to class" });
   }
 
   try {
@@ -101,7 +113,7 @@ async function create(req, res) {
   }
 
   let data = {
-    paymentId: result.id,
+    paymentId: paymentIntent.id,
     classId: classObj.id,
     stripeId: user.customerId,
     userId: userId,
@@ -115,9 +127,45 @@ async function create(req, res) {
   } catch (err) {
     // TODO: do something with this
     log.warn("TRANSACTION:: add to db", err);
+    return res.status(500).json({
+      message: "Error creating transaction",
+      error: err.message,
+    });
   }
+
+  let participant = {
+    id: userId,
+    username: req.ctx.userData.username,
+  };
+
+  classObj.participants.push(participant);
+  classObj.available_spots = classObj.available_spots - 1;
+
+  let updatedClass;
+  try {
+   updatedClass = await Class.findOneAndUpdate({ id: classObj.id }, classObj, {new: true});
+  } catch (err) {
+    log.warn("error updating class", err);
+    return res.status(500).json({
+      message: "Error adding participant",
+      error: err.message,
+    });
+  }
+
+  let instructorData;
+  try {
+    instructorData = await User.findOne({id: classObj.instructor});
+  } catch(err) {
+    log.warn("fetch instructor user record", err);
+    return res.status(500).json({
+      message: "Error fetching instructor",
+      error: err.message,
+    });
+  }
+
+  updatedClass.instructor = JSON.stringify(instructorData);
   
-  res.status(200).json(paymentIntent);
+  res.status(200).json(updatedClass);
 }
 
 /**
