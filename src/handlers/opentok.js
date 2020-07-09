@@ -2,11 +2,10 @@ const OpenTok = require('opentok');
 const later = require('later');
 const Class = require('../db/Class');
 const log = require('../log');
+const utils = require('../utils');
 
 const APIKey = "46817934";
 const opentok = new OpenTok(APIKey, "6e0d8092fd0c009620481f1614e56c696e9a1049");
-
-const sessionWindow = 15;
 
 async function createSession() {
   let settings = {
@@ -21,18 +20,6 @@ async function createSession() {
       response(session);
     });
   });
-}
-
-function getNextDate(rule, count, refDate) {
-  later.date.UTC();
-  let sched = later.parse.cron(rule);
-  return later.schedule(sched).next(count, refDate);
-}
-
-function getPrevDate(rule, count, refDate) {
-  later.date.UTC();
-  let sched = later.parse.cron(rule);
-  return later.schedule(sched).prev(count, refDate);
 }
 
 function makeClientToken(sessionid, role, expire, data) {
@@ -99,43 +86,18 @@ async function joinSession(req, res) {
   }
 
   let now = new Date();
-  let start = new Date(c.start_date);
-  let end = new Date(c.start_date);
-  end.setMinutes(end.getMinutes() + c.duration);
-  let startWindow = new Date(start.setMinutes(start.getMinutes() - sessionWindow));
-  let endWindow = new Date(end.setMinutes(end.getMinutes() + sessionWindow));
-
-  // if it's a recurring class and the first class is in the past
-  if (c.recurring && now > endWindow) {
-
-    // get the previous event date for the recurring class in case there is an
-    // active session right now
-    start = getPrevDate(c.recurring, 1, now);
-    end = new Date(start);
-    end.setMinutes(end.getMinutes() + c.duration);
-    startWindow = new Date(start.setMinutes(start.getMinutes() - sessionWindow));
-    endWindow = new Date(end.setMinutes(end.getMinutes() + sessionWindow));
-
-    // if the prev session is over then get the next session
-    if (now > endWindow) {
-      start = getNextDate(c.recurring, 1, now);
-      end = new Date(start);
-      end.setMinutes(end.getMinutes() + c.duration);
-      startWindow = new Date(start.setMinutes(start.getMinutes() - sessionWindow));
-      endWindow = new Date(end.setMinutes(end.getMinutes() + sessionWindow));
-    }
-  }
+  const nextSession = utils.getNextSession(now, c);
 
   // class session start time hasn't been reached. recurring classes are always going to 
   // fail here if it's not time for an active class session and it's not the first class
-  if (now < startWindow) {
+  if (now < nextSession.start) {
     return res.status(400).json({
       message: "Class not started yet",
     });
   }
 
   // class session over
-  if (now > endWindow) {
+  if (now > nextSession.end) {
     return res.status(400).json({
       message: "Class over",
     });
