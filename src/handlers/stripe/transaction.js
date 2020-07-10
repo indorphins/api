@@ -113,6 +113,8 @@ async function create(req, res) {
     });
   }
 
+  log.debug("Payment succeeded", paymentIntent.id);
+
   let data = {
     paymentId: paymentIntent.id,
     classId: classObj.id,
@@ -138,22 +140,26 @@ async function create(req, res) {
     const nextWindow = utils.getNextSession(now, classObj);
     let subscription;
 
-    let nextDate = utils.getNextDate(classObj.recurring, 1, nextWindow.end);
+    let nextDate = utils.getNextDate(classObj.recurring, 1, nextWindow.end)
     nextDate.setDate(nextDate.getDate() - 1);
     const timestamp = Math.round(nextDate.getTime() / 1000);
 
-    log.debug("next subscription billing date", nextDate.toISOString(), timestamp);
+    log.debug("Subscription start date", timestamp);
 
     try {
-      subscription = await stripe.subscriptions.create({
+      subscription = await stripe.subscriptionSchedules.create({
         customer: user.customerId,
-        items: [{ price: classObj.product_price_id }],
-        application_fee_percent: APPLICATION_FEE_PERCENT,
-        transfer_data: {
-          destination: instructorAccount.accountId,
-        },
-        off_session: true,
-        //billing_cycle_anchor: timestamp,
+        start_date: timestamp,
+        end_behavior: 'release',
+        phases: [
+          {
+            plans: [
+              {
+                price: classObj.product_price_id,
+              },
+            ]
+          },
+        ],
         metadata: {
           class_id: classObj.id,
           prod_id: classObj.product_sku
@@ -161,6 +167,7 @@ async function create(req, res) {
       });
     } catch(err) {
       log.error("subscription creation failed but initial class payment succeeded", err);
+      return res.status(500).json({message: err.message});
     }
 
     if (subscription) {
@@ -169,6 +176,7 @@ async function create(req, res) {
         class_id: classObj.id,
         stripe_id: user.customerId,
         user_id: userId,
+        status: subscription.status,
       };
   
       try {

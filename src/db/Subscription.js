@@ -16,7 +16,10 @@ const Sub = new mongoose.Schema({
   // user's stripe customer ID
   stripe_id: {
     type: String
-  }
+  },
+  status: {
+    type: String,
+  },
 });
 
 module.exports = mongoose.model("Subscription", Sub);
