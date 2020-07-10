@@ -27,7 +27,22 @@ async function createClassSku(course) {
   return new Promise((done, reject) => {
     stripe.products.create(options)
       .then(product => {
-        done(product.id);
+        let priceData = {
+          unit_amount: Number(course.cost) * 100,
+          currency: 'usd',
+          product: product.id,
+        }
+
+        if (course.recurring) {
+          priceData.recurring = {interval: 'week'};
+        }
+
+        return stripe.prices.create(priceData);
+      }).then(price => {
+        done({
+          product_sku: price.product,
+          product_price_id: price.id, 
+        });
       }).catch(err => {
         reject(err);
       });

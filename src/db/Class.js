@@ -75,6 +75,9 @@ const ClassSchema = new mongoose.Schema({
 	product_sku: {
 		type: String,
 	},
+	product_price_id: {
+		type: String,
+	}
 });
 
 ClassSchema.index({ participants: -1 });

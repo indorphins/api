@@ -5,7 +5,7 @@ const Subscription = require('../../db/Subscription');
 const User = require('../../db/User');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
-
+const utils = require('../../utils');
 
 const APPLICATION_FEE_PERCENT = 20;
 
@@ -138,26 +138,25 @@ async function create(req, res) {
     const nextWindow = utils.getNextSession(now, classObj);
     let subscription;
 
-    let nextDate = utils.getNextDate(c.recurring, 1, nextWindow.end);
-    nextDate.setDate(newDate.getDate() - 1);
+    let nextDate = utils.getNextDate(classObj.recurring, 1, nextWindow.end);
+    nextDate.setDate(nextDate.getDate() - 1);
     const timestamp = Math.round(nextDate.getTime() / 1000);
+
+    log.debug("next subscription billing date", nextDate.toISOString(), timestamp);
 
     try {
       subscription = await stripe.subscriptions.create({
         customer: user.customerId,
-        items: [{ price: price }],
+        items: [{ price: classObj.product_price_id }],
         application_fee_percent: APPLICATION_FEE_PERCENT,
         transfer_data: {
           destination: instructorAccount.accountId,
         },
         off_session: true,
-        billing_cycle_anchor: timestamp,
+        //billing_cycle_anchor: timestamp,
         metadata: {
           class_id: classObj.id,
           prod_id: classObj.product_sku
-        },
-        pending_invoice_item_interval: {
-          interval: "week"
         },
       });
     } catch(err) {
@@ -167,15 +166,15 @@ async function create(req, res) {
     if (subscription) {
       let data = {
         id: subscription.id,
-        classId: classObj.id,
-        stripeId: user.customerId,
-        userId: userId,
+        class_id: classObj.id,
+        stripe_id: user.customerId,
+        user_id: userId,
       };
   
       try {
         await Subscription.create(data);
       } catch (err) {
-        log.error('create subsription record fialed', err);
+        log.error('create subscription record fialed', err);
       }
     }
   }
