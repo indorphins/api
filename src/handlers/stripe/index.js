@@ -4,7 +4,6 @@ const StripeUser = require('../../db/StripeUser');
 const log = require('../../log');
 const account = require('./account');
 const transaction = require('./transaction');
-const subscription = require('./subscription');
 const webhook = require('./webhook');
 
 async function getPaymentMethods(req, res) {
@@ -264,7 +263,6 @@ async function updatePaymentMethod(req, res) {
 module.exports = {
   account,
   transaction,
-  subscription,
   webhook,
   getPaymentMethods,
   addPaymentMethod,

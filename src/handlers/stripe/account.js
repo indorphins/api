@@ -64,22 +64,10 @@ async function linkBankAccount(req, res) {
       email: user.email,
     });
 
-    let account = await stripe.accounts.create(  {
-      type: 'custom',
-      country: 'US',
-      email: user.email,
-      requested_capabilities: [
-        'card_payments',
-        'transfers',
-      ],
-    });
-
     let data = {
       id: user.id,
-      paymentMethods: [],
-      transactions: [],
+      methods: [],
       customerId: customer.id,
-      accountId: account.id
     };
   
     try {

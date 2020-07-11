@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { Int32 } = require('mongodb');
 
 const Transaction = new mongoose.Schema({
   classId: {
@@ -9,26 +10,21 @@ const Transaction = new mongoose.Schema({
     type: String,
     required: true,
   },
-  stripeId: {
-    type: String,
-    required: true,
+  amount: {
+    type: Number,
   },
   paymentId: {
     type: String,
-    unique: true,
-    sparse: true,
-    index: true
+    required: true,
   },
   subscriptionId: {
     type: String,
-    sparse: true
   },
   status: {
     type: String,
   },
   created_date: {
     type: Date,
-    required: true
   },
   // Type values: debit, credit
   type: {
