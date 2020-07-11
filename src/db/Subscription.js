@@ -16,6 +16,9 @@ const Sub = new mongoose.Schema({
   status: {
     type: String,
   },
+  start_date: {
+    type: Date,
+  },
   created_date: {
     type: Date,
   }

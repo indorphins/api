@@ -21,6 +21,7 @@ async function create(req, res) {
   const classId = req.params.id;
   const paymentMethod = req.params.payment_method_id;
   const userId = req.ctx.userData.id;
+  let created = new Date().toISOString();
   let user, classObj, price;
 
   if (!classId || !paymentMethod) {
@@ -122,7 +123,7 @@ async function create(req, res) {
     userId: userId,
     status: paymentIntent.status,
     type: 'debit',
-    created_date: new Date().toISOString()
+    created_date: created
   };
 
   try {
@@ -183,7 +184,8 @@ async function create(req, res) {
         class_id: classObj.id,
         user_id: userId,
         status: subscription.status,
-        created_date: new Date().toISOString(),
+        start_date: nextDate.toISOString(),
+        created_date: created,
       };
   
       try {
@@ -299,23 +301,26 @@ async function refund(req, res) {
     refundWindow.setDate(refundWindow.getDate() - 1);
 
     if (now >= refundWindow && now < course.start_date) {
+      return res.status(400).json({ 
+        message: "This class is scheduled to start in the next 24 hours and cannot be left or refunded until the upcoming class session has finished"
+      });
+    }
 
-      return res.status(400).json({ message: "This class is scheduled to start in the next 24 hours and cannot be left or refunded until the upcoming class session has finished" });
+    let nextSession = utils.getNextSession(now, course);
+    log.debug("next class session data for recurring class", nextSession)
 
-    } else {
+    if (now >= nextSession.start && now <= nextSession.end) {
+      return res.status(400).json({ 
+        message: "This class is active and cannot be left or refunded until the current class session has finished"
+      });
+    }
 
-      let nextSession = utils.getNextSession(now, course);
-      log.debug("next class session data for recurring class", nextSession)
-
-      if (now >= nextSession.start && now <= nextSession.end) {
-        return res.status(400).json({ message: "This class is active and cannot be left or refunded until the current class session has finished" });
-      }
-
-      let refundWindow = new Date(nextSession.date);
-      refundWindow.setDate(refundWindow.getDate() - 1);
-      if (now >= refundWindow && now < course.start_date) {
-        return res.status(400).json({ message: "This class is scheduled to start in the next 24 hours and cannot be left or refunded until the upcoming class session has finished" });
-      }
+    refundWindow = new Date(nextSession.date);
+    refundWindow.setDate(refundWindow.getDate() - 1);
+    if (now >= refundWindow && now < course.start_date) {
+      return res.status(400).json({ 
+        message: "This class is scheduled to start in the next 24 hours and cannot be left or refunded until the upcoming class session has finished" 
+      });
     }
 
     let courseSubs;
@@ -360,7 +365,14 @@ async function refund(req, res) {
       }
 
       if (transactions && transactions[0] && transactions.length === 1) {
-        transaction = transactions[0];
+        if (transactions[0].created_date < course.start_date) {
+          transaction = transactions[0];
+        }
+
+        let firstSession = utils.getPrevDate(course.recurring, 1, sub.start_date);
+        if (now < firstSession) {
+          transaction = transactions[0];
+        }
       }
     }
   }

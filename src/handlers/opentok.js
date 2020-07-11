@@ -68,7 +68,7 @@ async function joinSession(req, res) {
 
   // TODO: the fact that we get different types for this is retarded. mongoose is a seriously
   // misguided mongo client that we NEED to refactor. it sucks...
-	if (user._id.toString() == c.instructor.toString()) {
+	if (user.id == c.instructor) {
     log.debug("set authorized true");
 		authorized = true;
   }
@@ -104,7 +104,7 @@ async function joinSession(req, res) {
   }
 
   if (c.session) {
-    sessionId = c.session[start.toISOString()]; 
+    sessionId = c.session[nextSession.date.toISOString()]; 
   } 
 
 	if (!sessionId) {
@@ -120,7 +120,7 @@ async function joinSession(req, res) {
     log.debug("generated new opentok session id", session);
 
     if (!c.session) c.session = {};
-    c.session[start.toISOString()] = session.sessionId;
+    c.session[nextSession.date.toISOString()] = session.sessionId;
     sessionId = session.sessionId;
 
     try {
@@ -145,12 +145,12 @@ async function joinSession(req, res) {
     instructor: false,
   };
 
-  if (user._id.toString() == c.instructor.toString()) {
+  if (user.id == c.instructor) {
     data.instructor = true;
   }
 
   try {
-    token = await makeClientToken(sessionId, tokenType, endWindow, JSON.stringify(data));
+    token = await makeClientToken(sessionId, tokenType, nextSession.end, JSON.stringify(data));
   } catch(err) {
     log.error("error generating session token", err)
     return res.status(500).json({
