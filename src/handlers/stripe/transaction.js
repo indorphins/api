@@ -1,3 +1,4 @@
+
 const StripeUser = require('../../db/StripeUser');
 const Class = require('../../db/Class');
 const Transaction = require('../../db/Transaction');
@@ -23,6 +24,7 @@ async function create(req, res) {
   const userId = req.ctx.userData.id;
   let created = new Date().toISOString();
   let user, classObj, price;
+  let nextClassDate;
 
   if (!classId || !paymentMethod) {
     return res.status(400).json({
@@ -46,6 +48,8 @@ async function create(req, res) {
       message: "Class not found"
     });
   }
+
+  nextClassDate = classObj.start_date;
 
   let exists = false;
   classObj.participants.forEach(function (p) {
@@ -139,6 +143,7 @@ async function create(req, res) {
   if (classObj.recurring) {
     const now = new Date();
     const nextWindow = utils.getNextSession(now, classObj);
+    nextClassDate = nextWindow.date;
     let subscription;
 
     let nextDate = utils.getNextDate(classObj.recurring, 1, nextWindow.end)
@@ -228,8 +233,12 @@ async function create(req, res) {
   }
 
   updatedClass.instructor = JSON.stringify(instructorData);
+  let message = "You have beeen added to the class. It's great to have you!";
   
-  res.status(200).json(updatedClass);
+  res.status(200).json({
+    message: message,
+    course: updatedClass
+  });
 }
 
 /**
@@ -246,6 +255,7 @@ async function refund(req, res) {
   const now = new Date();
   let course;
   let transaction;
+  let message = "You have beeen removed from the class";
 
   try {
     course = await Class.findOne({
@@ -407,6 +417,8 @@ async function refund(req, res) {
         message: err.message
       });
     }
+
+    message = message + ", and your recent payment refunded";
   }
 
   course.participants = course.participants.filter(item => { item.id !== userId });
@@ -434,7 +446,10 @@ async function refund(req, res) {
 
   updatedCourse.instructor = JSON.stringify(instructorData);
 
-  return res.status(200).json(updatedCourse);
+  return res.status(200).json({
+    message: message + ". Sorry to see you go 👋",
+    course: updatedCourse,
+  });
 }
 
 module.exports = {
