@@ -6,6 +6,7 @@ const { v1: uuidv1 } = require('uuid');
 const log = require('../../log');
 const auth = require('../../auth');
 
+const HOST = process.env.HOST;
 const TTL = 1200; // 20 mins
 
 /**
@@ -88,7 +89,7 @@ async function linkBankAccount(req, res) {
 
   let uri = `https://connect.stripe.com/express/oauth/authorize`;
   uri = `${uri}?client_id=${CLIENT_ID}&state=${stateCode}`;
-  uri = `${uri}&redirect_uri=${'http://localhost:3001/stripe/verify'}`;
+  uri = `${uri}&redirect_uri=${HOST}/stripe/verify`;
   uri = `${uri}&stripe_user[email]=${user.email}`;
   uri = `${uri}&stripe_user[url]=https://indoorphins.fit`;
   uri = `${uri}&stripe_user[first_name]=${user.first_name}`;
