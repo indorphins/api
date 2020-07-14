@@ -27,33 +27,11 @@ router.put('/:id', middleware.authentication);
 router.put('/:id', middleware.adminOrInstructorAuthorized);
 router.put('/:id', classHandlers.updateClass);
 
-router.post('/:id/payment/:payment_id', middleware.authentication);
-router.post('/:id/payment/:payment_id', stripeHandlers.transaction.create);
+router.post('/:id/payment/:payment_method_id', middleware.authentication);
+router.post('/:id/payment/:payment_method_id', stripeHandlers.transaction.create);
 
-router.delete('/:id/payment/:payment_id', middleware.authentication);
-router.delete('/:id/payment/:payment_id', stripeHandlers.transaction.refund);
-
-router.post('/:id/subscription', middleware.authentication);
-router.post('/:id/subscription', stripeHandlers.subscription.create);
-
-router.delete('/:id/subscription', middleware.authentication);
-router.delete('/:id/subscription', stripeHandlers.subscription.cancel);
-
-// Add participant to class
-router.post('/:id/participants', middleware.authentication);
-router.post('/:id/participants', classHandlers.addParticipant);
-
-router.post('/:id/participants/:user_id', middleware.authentication);
-router.post('/:id/participants/:user_id', middleware.adminAuthorized);
-router.post('/:id/participants/:user_id', classHandlers.addParticipant);
-
-// Remove participant from class
-router.delete('/:id/participants', middleware.authentication);
-router.delete('/:id/participants', classHandlers.removeParticipant);
-
-router.delete('/:id/participants/:user_id', middleware.authentication);
-router.delete('/:id/participants/:user_id', middleware.adminAuthorized);
-router.delete('/:id/participants/:user_id', classHandlers.removeParticipant);
+router.delete('/:id/payment/', middleware.authentication);
+router.delete('/:id/payment/', stripeHandlers.transaction.refund);
 
 router.get('/:id/session', middleware.authentication);
 router.get('/:id/session', opentokHandlers.joinSession);

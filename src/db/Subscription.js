@@ -13,12 +13,14 @@ const Sub = new mongoose.Schema({
   user_id: {
     type: String
   },
-  // user's stripe customer ID
-  stripe_id: {
-    type: String
-  },
   status: {
-    type: String
+    type: String,
+  },
+  start_date: {
+    type: Date,
+  },
+  created_date: {
+    type: Date,
   }
 });
 

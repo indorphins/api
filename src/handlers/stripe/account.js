@@ -6,6 +6,7 @@ const { v1: uuidv1 } = require('uuid');
 const log = require('../../log');
 const auth = require('../../auth');
 
+const HOST = process.env.HOST;
 const TTL = 1200; // 20 mins
 
 /**
@@ -64,22 +65,10 @@ async function linkBankAccount(req, res) {
       email: user.email,
     });
 
-    let account = await stripe.accounts.create(  {
-      type: 'custom',
-      country: 'US',
-      email: user.email,
-      requested_capabilities: [
-        'card_payments',
-        'transfers',
-      ],
-    });
-
     let data = {
       id: user.id,
-      paymentMethods: [],
-      transactions: [],
+      methods: [],
       customerId: customer.id,
-      accountId: account.id
     };
   
     try {
@@ -90,6 +79,7 @@ async function linkBankAccount(req, res) {
     }
   }
 
+  log.debug("redis client", redisClient);
   try {
     await redisClient.set(stateCode, JSON.stringify(redisValue), TTL);
   } catch(err) {
@@ -99,7 +89,7 @@ async function linkBankAccount(req, res) {
 
   let uri = `https://connect.stripe.com/express/oauth/authorize`;
   uri = `${uri}?client_id=${CLIENT_ID}&state=${stateCode}`;
-  uri = `${uri}&redirect_uri=${'http://localhost:3001/stripe/callback'}`;
+  uri = `${uri}&redirect_uri=${HOST}/stripe/verify`;
   uri = `${uri}&stripe_user[email]=${user.email}`;
   uri = `${uri}&stripe_user[url]=https://indoorphins.fit`;
   uri = `${uri}&stripe_user[first_name]=${user.first_name}`;

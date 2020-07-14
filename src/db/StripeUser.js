@@ -22,7 +22,6 @@ const StripeUser = new mongoose.Schema({
 		id: {
 			type: String,
 			required: true,
-			unique: true,
 		},
 		last4: {
 			type: String,
@@ -46,5 +45,7 @@ const StripeUser = new mongoose.Schema({
 		}
 	}],
 });
+
+StripeUser.index( { methods: 1 }, { sparse: true } )
 
 module.exports = mongoose.model('StripeUser', StripeUser);

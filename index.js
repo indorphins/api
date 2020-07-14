@@ -63,5 +63,6 @@ db.init(() => {
 	} catch(e) {
 		log.fatal("redis connection", e);
 	}
+
 	app.listen(PORT, () => log.info("App started on port", PORT));
 });

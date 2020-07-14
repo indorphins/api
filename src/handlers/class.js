@@ -83,7 +83,7 @@ async function createClass(req, res) {
 
   let classData = req.body;
   let newClass = null;
-  let productId = null;
+  let productSkuData = null;
 
   classData.id = uuid.v1();
   classData.created_date = new Date().toISOString();
@@ -92,8 +92,13 @@ async function createClass(req, res) {
   classData.participants = [];
 
   try {
+<<<<<<< HEAD
     productId = await utils.createClassSku(classData);
   } catch (err) {
+=======
+    productSkuData = await utils.createClassSku(classData);
+  } catch(err) {
+>>>>>>> stripe-refactor
     log.warn('Error creating class sku: ', err);
     return res.status(400).json({
       message: "issue creating class sku",
@@ -101,7 +106,8 @@ async function createClass(req, res) {
     });
   }
 
-  classData.product_sku = productId;
+  classData.product_sku = productSkuData.product_sku;
+  classData.product_price_id = productSkuData.product_price_id;
 
   try {
     newClass = await Class.create(classData);
