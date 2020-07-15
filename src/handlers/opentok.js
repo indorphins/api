@@ -11,7 +11,7 @@ const sessionWindow = 15;
 async function createSession() {
   let settings = {
     mediaMode:"routed",
-    archiveMode: "always"
+    archiveMode: "manual"
   };
 
   return new Promise(function(response, reject) {
