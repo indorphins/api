@@ -28,7 +28,7 @@ router.put('/:id', classHandlers.updateClass);
 
 // Add participant to class
 router.post('/:id/participants', middleware.authentication);
-router.post('/:id/participants', function(req, res, next) { /** implement middleware to validate the user paid for the class */ next();});
+router.post('/:id/participants', function (req, res, next) { /** implement middleware to validate the user paid for the class */ next(); });
 router.post('/:id/participants', classHandlers.addParticipant);
 
 router.post('/:id/participants/:user_id', middleware.authentication);
@@ -45,5 +45,8 @@ router.delete('/:id/participants/:user_id', classHandlers.removeParticipant);
 
 router.get('/:id/session', middleware.authentication);
 router.get('/:id/session', opentokHandlers.joinSession);
+
+router.post('/:id/email', middleware.authentication);
+router.post('/:id/email', classHandlers.emailClass);
 
 module.exports = router;
