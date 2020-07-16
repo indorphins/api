@@ -359,7 +359,7 @@ async function emailClass(req, res) {
   const html = req.body.html;
   let c;
 
-  if (userData.type !== 'instructor' || userData.type !== 'admin') {
+  if (userData.type !== 'instructor' && userData.type !== 'admin') {
     log.warn("Only instructors can send class messages")
     return res.status(400).json({
       message: "Only instructors can send class messages"
@@ -398,9 +398,25 @@ async function emailClass(req, res) {
   }
 
   let participants = c.participants.map(participant => {
-    return participant.email;
-  })
+    return participant.id;
+  });
 
+
+  let users;
+
+  try {
+    users = await User.find({ id: { $in: participants } })
+  } catch (err) {
+    log.warn("database error", err);
+    return res.status(500).json({
+      message: "Database error",
+      error: err,
+    });
+  }
+
+  participants = users.map(user => {
+    return user.email
+  });
 
   const subject = utils.createClassEmailSubject(c.start_date, userData.first_name);
   const defaultMessage = utils.createDefaultMessageText(c.start_date, userData.first_name);
