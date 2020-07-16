@@ -36,4 +36,7 @@ router.delete('/:id/payment/', stripeHandlers.transaction.refund);
 router.get('/:id/session', middleware.authentication);
 router.get('/:id/session', opentokHandlers.joinSession);
 
+router.post('/:id/email', middleware.authentication);
+router.post('/:id/email', classHandlers.emailClass);
+
 module.exports = router;

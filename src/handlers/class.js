@@ -3,6 +3,7 @@ const Class = require('../db/Class');
 const User = require('../db/User');
 const log = require('../log');
 const utils = require('../utils');
+const message = require('./message');
 
 /**
  * Utility function to decode a custom filter or sort order passed in through query parameters.
@@ -93,7 +94,7 @@ async function createClass(req, res) {
 
   try {
     productSkuData = await utils.createClassSku(classData);
-  } catch(err) {
+  } catch (err) {
     log.warn('Error creating class sku: ', err);
     return res.status(400).json({
       message: "issue creating class sku",
@@ -260,7 +261,8 @@ async function addParticipant(req, res) {
 
   let data = {
     id: req.ctx.userData.id,
-    username: req.ctx.userData.username
+    username: req.ctx.userData.username,
+    email: req.ctx.userData.email
   };
 
   if (req.params.user_id) {
@@ -352,6 +354,88 @@ async function removeParticipant(req, res) {
 
 }
 
+async function emailClass(req, res) {
+  const userData = req.ctx.userData;
+  const html = req.body.html;
+  let c;
+
+  if (userData.type !== 'instructor' && userData.type !== 'admin') {
+    log.warn("Only instructors can send class messages")
+    return res.status(400).json({
+      message: "Only instructors can send class messages"
+    })
+  }
+
+  if (!html) {
+    log.warn("Invalid html message");
+    return res.status(400).json({
+      message: 'Invalid html message'
+    })
+  }
+
+  try {
+    c = await Class.findOne({ id: req.params.id });
+  } catch (err) {
+    log.warn("database error", err);
+    return res.status(500).json({
+      message: "Database error",
+      error: err,
+    });
+  }
+
+  if (!c) {
+    log.warn("No class found to message");
+    return res.status(404).json({
+      message: "Class not found",
+    })
+  }
+
+  if (c.participants.length == 0) {
+    log.info("No users in class can't send email");
+    return res.status(400).json({
+      message: "no_users_in_class"
+    })
+  }
+
+  let participants = c.participants.map(participant => {
+    return participant.id;
+  });
+
+
+  let users;
+
+  try {
+    users = await User.find({ id: { $in: participants } })
+  } catch (err) {
+    log.warn("database error", err);
+    return res.status(500).json({
+      message: "Database error",
+      error: err,
+    });
+  }
+
+  participants = users.map(user => {
+    return user.email
+  });
+
+  const subject = utils.createClassEmailSubject(c.start_date, userData.first_name);
+  const defaultMessage = utils.createDefaultMessageText(c.start_date, userData.first_name);
+
+  try {
+    await message.sendEmail(participants, utils.getEmailSender(), subject, defaultMessage, html, true);
+  } catch (err) {
+    log.warn("Error sending class email: ", err);
+    return res.status(400).json({
+      message: 'Error sending class email',
+      error: err
+    })
+  }
+
+  res.status(200).json({
+    message: "Sent class email success"
+  })
+}
+
 module.exports = {
   deleteClass,
   updateClass,
@@ -360,4 +444,5 @@ module.exports = {
   createClass,
   addParticipant,
   removeParticipant,
+  emailClass
 };
