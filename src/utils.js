@@ -1,4 +1,4 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+//const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const later = require('later');
 
 const sessionWindow = 5;
@@ -16,7 +16,7 @@ function getPrevDate(rule, count, refDate) {
   return later.schedule(sched).prev(count, refDate);
 }
 
-async function createClassSku(course) {
+/*async function createClassSku(course) {
   const classId = course.id;
   const options = {
     name: classId,
@@ -48,7 +48,7 @@ async function createClassSku(course) {
         reject(err);
       });
   });
-}
+}*/
 
 /**
  * Replaces ${value1} ${value2} ... strings in the input string 
@@ -142,7 +142,7 @@ function tConvert(time) {
 }
 
 module.exports = {
-  createClassSku,
+  //createClassSku,
   getNextDate,
   getPrevDate,
   interpolate,
