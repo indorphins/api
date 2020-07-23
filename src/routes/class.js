@@ -39,4 +39,7 @@ router.get('/:id/session', opentokHandlers.joinSession);
 router.post('/:id/email', middleware.authentication);
 router.post('/:id/email', classHandlers.emailClass);
 
+router.delete('/:id', middleware.authentication);
+router.delete('/:id', classHandlers.deleteClass);
+
 module.exports = router;
