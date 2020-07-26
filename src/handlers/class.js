@@ -154,9 +154,12 @@ async function getClass(req, res) {
     });
   }
 
-  c.instructor = JSON.stringify(i);
+  let data = Object.assign({}, c._doc);
+  data.instructor = Object.assign({}, i._doc);
 
-  res.status(200).json(c);
+  log.debug("course data", data);
+
+  res.status(200).json(data);
 };
 
 /**

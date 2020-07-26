@@ -232,12 +232,13 @@ async function create(req, res) {
     });
   }
 
-  updatedClass.instructor = JSON.stringify(instructorData);
-  let message = "You have beeen added to the class. It's great to have you!";
+  let combined = Object.assign({}, updatedClass._doc);
+  combined.instructor = Object.assign({}, instructorData._doc);
+  let message = "You have been added to the class. It's great to have you!";
   
   res.status(200).json({
     message: message,
-    course: updatedClass
+    course: combined,
   });
 }
 
@@ -255,7 +256,7 @@ async function refund(req, res) {
   const now = new Date();
   let course;
   let transaction;
-  let message = "You have beeen removed from the class";
+  let message = "You have been removed from the class";
 
   try {
     course = await Class.findOne({
@@ -444,11 +445,12 @@ async function refund(req, res) {
     });
   }
 
-  updatedCourse.instructor = JSON.stringify(instructorData);
+  let data = Object.assign({}, updatedCourse._doc);
+  data.instructor = Object.assign({}, instructorData._doc);
 
   return res.status(200).json({
     message: message + ". Sorry to see you go 👋",
-    course: updatedCourse,
+    course: data,
   });
 }
 
