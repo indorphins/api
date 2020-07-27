@@ -2,13 +2,13 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-//const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');
 const stripeRouter = require('./src/routes/stripe');
 const instructorsRouter = require('./src/routes/instructor');
 const stripe = require('./src/handlers/stripe');
+const redis = require('./src/cache');
 const auth = require('./src/auth');
 const db = require('./src/db');
 const log = require('./src/log');
@@ -18,7 +18,7 @@ const PORT = process.env.PORT;
 const app = express();
 
 app.use(cors());
-app.post('/stripe/invoices', bodyParser.raw({type: 'application/json'}), stripe.invoiceWebhook)
+app.post('/stripe/invoices', bodyParser.raw({type: 'application/json'}), stripe.webhook.invoiceWebhook)
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -57,6 +57,12 @@ app.get('*', (req, res) => {
 });
 
 db.init(() => {
-  auth.init();
+	auth.init();
+	try {
+		redis.init();
+	} catch(e) {
+		log.fatal("redis connection", e);
+	}
+
 	app.listen(PORT, () => log.info("App started on port", PORT));
 });

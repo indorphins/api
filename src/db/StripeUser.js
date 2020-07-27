@@ -13,16 +13,39 @@ const StripeUser = new mongoose.Schema({
 		unique: true,
 		sparse: true,
 	},
-	// stripe id given when connect account created (receives payments)
-	connectId: {
+	accountId: {
 		type: String,
 		unique: true,
 		sparse: true,
 	},
-	paymentMethods: {
-		type: Array,
-		required: true,
-	},
+	methods: [{
+		id: {
+			type: String,
+			required: true,
+		},
+		last4: {
+			type: String,
+		},
+		brand: {
+			type: String,
+		},
+		type: {
+			type: String,
+			required: true,
+		},
+		exp_month: {
+			type: String,
+		},
+		exp_year: {
+			type: String,
+		},
+		default: {
+			type: Boolean,
+			required: true,
+		}
+	}],
 });
+
+StripeUser.index( { methods: 1 }, { sparse: true } )
 
 module.exports = mongoose.model('StripeUser', StripeUser);

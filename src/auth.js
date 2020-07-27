@@ -14,15 +14,28 @@ async function init() {
 }
 
 function verifyToken(token) {
-	return admin
-		.auth()
+	return admin.auth()
 		.verifyIdToken(token, true)
 		.then(function (decodedToken) {
 			return decodedToken;
 		});
 }
 
+async function verifyTokenSync(token) {
+	return new Promise((done, reject) => {
+		admin.auth()
+			.verifyIdToken(token, true)
+			.then(function (decodedToken) {
+				done(decodedToken);
+			})
+			.catch(err => {
+				reject(err);
+			});
+	})
+}
+
 module.exports = {
-	init: init,
-	verifyToken: verifyToken,
+	init,
+	verifyToken,
+	verifyTokenSync,
 };
