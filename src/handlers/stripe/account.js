@@ -93,8 +93,6 @@ async function linkBankAccount(req, res) {
   uri = `${uri}&redirect_uri=${HOST}/stripe/verify`;
   uri = `${uri}&stripe_user[email]=${user.email}`;
   uri = `${uri}&stripe_user[url]=https://indoorphins.fit`;
-  uri = `${uri}&stripe_user[first_name]=${user.first_name}`;
-  uri = `${uri}&stripe_user[last_name]=${user.last_name}`;
   uri = `${uri}&stripe_user[business_type]=individual`;
   uri = `${uri}&stripe_user[business_name]=Indoorphins`;
 
