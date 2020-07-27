@@ -4,7 +4,7 @@ services:
     container_name: mongo
     image: 'bitnami/mongodb:latest'
     ports:
-      - "27017:27017"    
+      - '27017:27017'
     environment:
       MONGODB_REPLICA_SET_MODE: primary
       MONGODB_REPLICA_SET_KEY: testingthis
@@ -13,7 +13,6 @@ services:
       MONGODB_ROOT_PASSWORD: mongopass
     volumes:
       - 'mongodb_master_data:/bitnami'
-
   mongosecondary:
     container_name: mongosecondary
     image: 'bitnami/mongodb:latest'
@@ -26,7 +25,6 @@ services:
       MONGODB_PRIMARY_PORT_NUMBER: 27017
       MONGODB_ADVERTISED_HOSTNAME: mongosecondary
       MONGODB_PRIMARY_ROOT_PASSWORD: mongopass
-
   mongo-express:
     container_name: mongo-express
     image: 'mongo-express:latest'
@@ -39,11 +37,31 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: mongopass
     links:
       - mongo:mongo
-    depends_on: 
+    depends_on:
       - mongo
       - mongosecondary
     restart: always
-
+  redis:
+    image: 'redis:latest'
+    container_name: redis
+    hostname: redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - 'redis_data:/data'
+  redis-commander:
+    container_name: redis-commander
+    hostname: redis-commander
+    image: rediscommander/redis-commander:latest
+    restart: always
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - '8081:8081'
+    depends_on:
+      - redis
 volumes:
   mongodb_master_data:
+    driver: local
+  redis_data:
     driver: local

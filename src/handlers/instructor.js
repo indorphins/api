@@ -32,11 +32,10 @@ async function getList(req, res) {
 
 async function get(req, res) {
 	let id = req.params.id;
-	let query = { id: id };
 	let user;
 
 	try {
-		user = await User.findOne(query)
+		user = await User.findOne({ id: id })
 	} catch (err) {
 		log.warn('getUser - error: ', err);
 		return res.status(404).json({
