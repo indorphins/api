@@ -2,12 +2,12 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const User = require('../../db/User');
 const StripeUser = require('../../db/StripeUser');
 const redisClient = require('../../cache');
-const { v1: uuidv1 } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const log = require('../../log');
 const auth = require('../../auth');
 
 const HOST = process.env.HOST;
-const TTL = 1200; // 20 mins
+const TTL = 3600; // 1 hour
 
 /**
  * Generate state code. Store in redis.
@@ -20,7 +20,8 @@ async function linkBankAccount(req, res) {
   const return_url = req.query.callbackURL
   const token = req.query.token;
   const CLIENT_ID = process.env.CONNECT_ACCT_CLIENT_KEY;
-  let buff = new Buffer.from(uuidv1());
+  let guid = uuidv4();
+  let buff = new Buffer.from(guid);
   let stateCode = buff.toString('base64');
   let redisValue;
   let stripeUser;
@@ -100,7 +101,7 @@ async function linkBankAccount(req, res) {
   if (user.phone_number) uri = `${uri}&stripe_user[phone_number]=${user.phone_number}`;
 
   log.debug('redirect URL', uri);
-  res.redirect(301, uri);
+  res.redirect(302, uri);
 }
 
 /**
@@ -132,7 +133,7 @@ async function callback(req, res) {
       return StripeUser.findOneAndUpdate({ id: userData.id }, { accountId: response.stripe_user_id }, { new: true });
     })
     .then(() => {
-      res.redirect(301, return_url);
+      res.redirect(302, return_url);
     })
     .catch(err => {
       res.redirect(return_url + '?error=Service+error:+' + encodeURIComponent(err.message));
