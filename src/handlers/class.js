@@ -289,7 +289,7 @@ async function deleteClass(req, res) {
         sub = courseSubs[0];
       }
 
-      if (sub) {
+      if (sub && sub.status !== 'canceled') {
         let result;
         try {
           result = await stripe.subscriptionSchedules.cancel(sub.id);
@@ -317,9 +317,10 @@ async function deleteClass(req, res) {
         }
 
         // Refund them if they've paid in the last 24 hours before this class starts or if they paid the initial payment and the class hasn't taken place
-        let end = new Date(c.start_date);
-        end.setMinutes(end.getMinutes() + c.duration);
-        if (transactions && transactions[0] && (transactions[0].created_date >= refundWindow || (transactions[0].created_date < c.start_date && now < end))) {
+        let prev = utils.getPrevDate(c.recurring, 1, now);
+        prev.setMinutes(prev.getMinutes() + c.duration);
+
+        if (transactions && transactions[0] && (transactions[0].created_date >= refundWindow || (transactions[0].created_date < nextSession.end && transactions[0].created_date > prev && transactions.length === 1))) {
           transaction = transactions[0];
         }
 
