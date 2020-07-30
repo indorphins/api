@@ -115,7 +115,7 @@ function createClassEmailSubject(classTime, instructor) {
 
   let startTime = start.getHours() + ':' + start.getMinutes();
   startTime = tConvert(startTime);
-  return `Message from ${instructor} about your ${days[start.getDay()]} ${startTime} class`
+  return `Message from ${instructor}`
 }
 
 // Return email sender's address - eventually will update and/or allow for parameters to determine email
@@ -127,7 +127,7 @@ function createDefaultMessageText(classTime, instructor) {
   const start = new Date(classTime);
   let startTime = start.getHours() + ':' + start.getMinutes();
   startTime = tConvert(startTime);
-  return `This is a reminder that you have ${instructor}'s Indoorphins class on ${days[start.getDay()]} ${startTime}!`
+  return `This is a reminder that you have ${instructor}'s Indoorphins class on ${days[start.getDay()]}!`
 }
 
 function tConvert(time) {
