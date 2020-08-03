@@ -422,7 +422,7 @@ async function refund(req, res) {
     message = message + ", and your recent payment refunded";
   }
 
-  course.participants = course.participants.filter(item => { item.id !== userId });
+  course.participants = course.participants.filter(item => { return item.id !== userId; });
   course.available_spots = course.available_spots + 1;
 
   let updatedCourse;
