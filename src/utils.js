@@ -127,7 +127,7 @@ function createDefaultMessageText(classTime, instructor) {
   const start = new Date(classTime);
   let startTime = start.getHours() + ':' + start.getMinutes();
   startTime = tConvert(startTime);
-  return `This is a reminder that you have ${instructor}'s Indoorphins class on ${days[start.getDay()]}!`
+  return `A friendly note from your neighborhood Indoorphins instructor ${instructor}!`
 }
 
 function tConvert(time) {
