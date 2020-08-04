@@ -1,6 +1,6 @@
 # Indorphins Backend
 
-[![Indorphins](https://circleci.com/gh/afloesch/indorphins-be.svg?style=shield&circle-token=3fc72662729760bb207849bed87c75d4c593848e)](https://app.circleci.com/pipelines/github/afloesch/indorphins-be)
+[![Indorphins](https://circleci.com/gh/indorphins/api?.svg?style=shield&circle-token=107c0259b4f7d65c68880940ac834a16d50da2ed)](https://app.circleci.com/pipelines/github/indorphins/api)
 
 Node.js based express service for the Indorphins video chat application. Currently tested against node version 14.1.
 
