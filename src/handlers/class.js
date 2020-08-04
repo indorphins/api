@@ -522,6 +522,24 @@ async function emailClass(req, res) {
     })
   }
 
+  if (userData.type !== 'admin' && c.instructor !== userData.id) {
+    log.warn("Instructors can only send messages to their own classes")
+    return res.status(400).json({
+      message: "Instructors can only send messages to their own classes"
+    })
+  }
+
+  let instructor;
+
+  try {
+    instructor = await User.findOne({ id: c.instructor });
+  } catch (err) {
+    log.warn("No instructor found for course");
+    return res.status(404).json({
+      message: "Instructor not found for course"
+    })
+  }
+
   if (c.participants.length == 0) {
     log.info("No users in class can't send email");
     return res.status(400).json({
@@ -550,8 +568,8 @@ async function emailClass(req, res) {
     return user.email
   });
 
-  const subject = utils.createClassEmailSubject(c.start_date, userData.first_name);
-  const defaultMessage = utils.createDefaultMessageText(c.start_date, userData.first_name);
+  const subject = utils.createClassEmailSubject(c.start_date, instructor.username);
+  const defaultMessage = utils.createDefaultMessageText(c.start_date, instructor.username);
 
   try {
     await message.sendEmail(participants, utils.getEmailSender(), subject, defaultMessage, html, true);
