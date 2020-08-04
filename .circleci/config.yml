@@ -20,14 +20,14 @@ jobs:
             AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 586425846122.dkr.ecr.us-east-1.amazonaws.com
       - run: 
           name: Build Docker Image
-          command: docker build -t 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) .;
+          command: docker build -t 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git describe --abbrev=0 --tags) .;
       - run: 
           name: Tag Docker Image Latest
-          command: docker tag 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1) 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest;
+          command: docker tag 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git describe --abbrev=0 --tags) 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest;
       - run:
           name: Push Docker Image to ECR 
           command: |
-            docker push 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1);
+            docker push 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git describe --abbrev=0 --tags);
             docker push 586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest;
   build_feat:
     machine:
@@ -84,7 +84,7 @@ jobs:
           name: Deploy new version to develop
           command: |
             AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
-            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET kubectl --record deployment.apps/indorphins-be-dev set image deployment.v1.apps/indorphins-be-dev indorphins-be-dev=586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET kubectl --record deployment.apps/indorphins-be-dev set image deployment.v1.apps/indorphins-be-dev indorphins-be-dev=586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git describe --abbrev=0 --tags)
   deploy:
     machine:
       image: 'ubuntu-1604:201903-01'
@@ -116,7 +116,7 @@ jobs:
           name: Deploy new version to production
           command: |
             AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET eksctl utils write-kubeconfig --cluster indorphins --region us-east-1
-            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git tag --list | tail -n 1)
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS AWS_SECRET_ACCESS_KEY=$AWS_SECRET kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:$(git describe --abbrev=0 --tags)
 workflows:
   version: 2
   build_release:
