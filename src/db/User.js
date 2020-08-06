@@ -54,7 +54,10 @@ const User = new mongoose.Schema({
 	},
 	social: {
 		type: Object,
-	}
+  },
+  birthday: {
+    type: String,
+  }
 });
 
 User.index({ username: 1 });
