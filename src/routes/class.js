@@ -42,4 +42,7 @@ router.post('/:id/email', classHandlers.emailClass);
 router.delete('/:id', middleware.authentication);
 router.delete('/:id', classHandlers.deleteClass);
 
+router.get('/:id/participants', middleware.authentication);
+router.get('/:id/participants', classHandlers.getClassParticipants);
+
 module.exports = router;
