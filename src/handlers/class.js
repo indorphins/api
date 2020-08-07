@@ -593,6 +593,76 @@ async function asyncForEach(array, callback) {
   }
 }
 
+async function getClassParticipants(req, res) {
+  let userData = req.ctx.userData;
+  let classId = req.params.id;
+
+  let c;
+
+  try {
+    c = await Class.findOne({ id: classId })
+  } catch (err) {
+    log.warn("GetBirthdays no class found ", err);
+    return res.status(404).json({
+      message: 'No class found'
+    })
+  }
+
+  if (userData.type !== 'instructor' && userData.type !== 'admin' && (c.instructor !== userData.id && userData.type === 'instructor')) {
+    log.warn('Invalid permissions to fetch class participant data');
+    return res.status(403).json({
+      message: 'Invalid permissions'
+    })
+  }
+
+  if (c.participants.length == 0) {
+    log.info("No users in class");
+    return res.status(400).json({
+      message: "no_users_in_class"
+    })
+  }
+
+  let participants = c.participants.map(participant => {
+    return participant.id;
+  });
+
+  let users;
+
+  try {
+    users = await User.find({ id: { $in: participants } })
+  } catch (err) {
+    log.warn("database error", err);
+    return res.status(500).json({
+      message: "Database error",
+      error: err,
+    });
+  }
+
+  participants = users.map(user => {
+    let data = {
+      username: user.username,
+    }
+    
+    if (user.birthday) {
+
+      const bday = new Date(user.birthday);
+      const start = new Date(c.start_date);
+      const oneDay = 24 * 60 * 60 * 1000;
+      bday.setFullYear(start.getFullYear());
+
+      if ((bday - start) / oneDay <= 7) {
+        data.birthday = user.birthday;
+      }
+    }
+
+    return data;
+  });
+
+  return res.status(200).json({
+    data: participants
+  })
+}
+
 module.exports = {
   deleteClass,
   updateClass,
@@ -601,5 +671,6 @@ module.exports = {
   createClass,
   addParticipant,
   removeParticipant,
-  emailClass
+  emailClass,
+  getClassParticipants
 };
