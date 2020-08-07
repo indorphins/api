@@ -7,6 +7,7 @@ const message = require('./message');
 const Transaction = require('../db/Transaction');
 const Subscription = require('../db/Subscription');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const isWithinInterval = require('date-fns/isWithinInterval');
 
 /**
  * Utility function to decode a custom filter or sort order passed in through query parameters.
@@ -617,8 +618,8 @@ async function getClassParticipants(req, res) {
 
   if (c.participants.length == 0) {
     log.info("No users in class");
-    return res.status(400).json({
-      message: "no_users_in_class"
+    return res.status(200).json({
+      participants: []
     })
   }
 
@@ -647,11 +648,11 @@ async function getClassParticipants(req, res) {
 
       const bday = new Date(user.birthday);
       const start = new Date(c.start_date);
-      const oneDay = 24 * 60 * 60 * 1000;
+      const end = new Date(c.start_date);
+      end.setDate(end.getDate() + 7);
       bday.setFullYear(start.getFullYear());
-      const daysTil = (bday - start) / oneDay;
 
-      if (daysTil <= 7 && daysTil > 0) {
+      if (isWithinInterval(bday, {start: start, end: end})) {
         data.birthday = user.birthday;
       }
     }
@@ -659,9 +660,7 @@ async function getClassParticipants(req, res) {
     return data;
   });
 
-  return res.status(200).json({
-    data: participants
-  })
+  return res.status(200).json({ participants })
 }
 
 module.exports = {
