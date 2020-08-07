@@ -618,9 +618,7 @@ async function getClassParticipants(req, res) {
 
   if (c.participants.length == 0) {
     log.info("No users in class");
-    return res.status(200).json({
-      participants: []
-    })
+    return res.status(200).json([])
   }
 
   let participants = c.participants.map(participant => {
@@ -660,7 +658,7 @@ async function getClassParticipants(req, res) {
     return data;
   });
 
-  return res.status(200).json({ participants })
+  return res.status(200).json(participants)
 }
 
 module.exports = {
