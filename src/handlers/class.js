@@ -649,8 +649,9 @@ async function getClassParticipants(req, res) {
       const start = new Date(c.start_date);
       const oneDay = 24 * 60 * 60 * 1000;
       bday.setFullYear(start.getFullYear());
+      const daysTil = (bday - start) / oneDay;
 
-      if ((bday - start) / oneDay <= 7) {
+      if (daysTil <= 7 && daysTil > 0) {
         data.birthday = user.birthday;
       }
     }
