@@ -236,7 +236,7 @@ async function create(req, res) {
 
   let combined = Object.assign({}, updatedClass._doc);
   combined.instructor = Object.assign({}, instructorData._doc);
-  let message = "You have been added to the class. It's great to have you!";
+  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts";
   
   res.status(200).json({
     message: message,
