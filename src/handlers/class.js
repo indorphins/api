@@ -643,16 +643,7 @@ async function getClassParticipants(req, res) {
     }
     
     if (user.birthday) {
-
-      const bday = new Date(user.birthday);
-      const start = new Date(c.start_date);
-      const end = new Date(c.start_date);
-      end.setDate(end.getDate() + 7);
-      bday.setFullYear(start.getFullYear());
-
-      if (isWithinInterval(bday, {start: start, end: end})) {
-        data.birthday = user.birthday;
-      }
+      data.birthday = user.birthday;
     }
 
     return data;
