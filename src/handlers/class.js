@@ -8,8 +8,6 @@ const Transaction = require('../db/Transaction');
 const Subscription = require('../db/Subscription');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const isWithinInterval = require('date-fns/isWithinInterval');
-const milestoneUtils = require('../utils/milestone');
-const Milestone = require('../db/Milestone');
 
 /**
  * Utility function to decode a custom filter or sort order passed in through query parameters.
@@ -119,31 +117,6 @@ async function createClass(req, res) {
       message: "issue creating class",
       error: err
     });
-  }
-
-  // Create instructor milestone if it doesn't already exist
-  let milestone;
-
-  try {
-    milestone = await Milestone.findOne({ user_id: req.ctx.userData.id })
-  } catch (err) {
-    log.warn('Error finding milestone: ', err);
-    return res.status(400).json({
-      message: "database error",
-    });
-  }
-
-  if (!milestone) {
-    milestone = milestoneUtils.getNewMilestone(req.ctx.userData.id);
-
-    try {
-      milestone = await Milestone.create(milestone);
-    } catch (err) {
-      log.warn("Error creating instructor milestone on course creation ", err);
-      return res.status(400).json({
-        message: "Error creating instructor milestone"
-      })
-    }
   }
 
   log.debug('New class created', newClass);

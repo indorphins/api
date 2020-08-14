@@ -2,8 +2,6 @@ const uuid = require('uuid');
 const User = require('../db/User');
 const log = require('../log');
 const knownAccounts = require('../db/known_accounts.json');
-const Milestone = require('../db/Milestone');
-const milestoneUtils = require('../utils/milestone');
 
 /**
  * Express handler to create a new user. Requires a valid firebase token so that we can properly associate
@@ -36,17 +34,6 @@ async function createUser(req, res) {
 		newUser = await User.create(userData);
 	} catch (err) {
 		log.warn('createUser - error: ', err);
-		return res.status(400).json({
-			message: err,
-		});
-  }
-  
-  let milestone = milestoneUtils.getNewMilestone(userData.id);
-
-  try {
-    const newStone = Milestone.create(milestone);
-  } catch (err) {
-    log.warn('createUser - error creating milestone: ', err);
 		return res.status(400).json({
 			message: err,
 		});

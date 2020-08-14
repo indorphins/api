@@ -4,7 +4,7 @@ const log = require('../log');
 const utils = require('../utils/milestone');
 
 async function updateMilestone(req, res) {
-  const userId = req.ctx.userDate.id;
+  const userId = req.ctx.userData.id;
   const classId = req.params.id;
 
   let c, milestone;
@@ -66,3 +66,6 @@ async function updateMilestone(req, res) {
   return res.status(200).json(milestone);
 } 
 
+module.exports = {
+  updateMilestone
+}
