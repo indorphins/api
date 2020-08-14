@@ -1,6 +1,6 @@
 const sgMail = require('@sendgrid/mail');
 const log = require('../log');
-const utils = require('../utils');
+const utils = require('../utils/index');
 const noreply = 'noreply@indorphins.com'
 const support = 'support@indoorphins.fit'
 const alex = 'alex@indorphins.com';

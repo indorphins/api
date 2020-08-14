@@ -2,7 +2,7 @@ const OpenTok = require('opentok');
 const later = require('later');
 const Class = require('../db/Class');
 const log = require('../log');
-const utils = require('../utils');
+const utils = require('../utils/index');
 
 const APIKey = "46817934";
 const opentok = new OpenTok(APIKey, "6e0d8092fd0c009620481f1614e56c696e9a1049");
