@@ -6,7 +6,9 @@ const Subscription = require('../../db/Subscription');
 const User = require('../../db/User');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
-const utils = require('../../utils');
+const utils = require('../../utils/index');
+const Milestone = require('../../db/Milestone');
+const milestoneUtils = require('../../utils/milestone');
 
 const APPLICATION_FEE_PERCENT = 20;
 
@@ -232,6 +234,31 @@ async function create(req, res) {
       message: "Error fetching instructor",
       error: err.message,
     });
+  }
+
+  // Create user milestone if it doesn't already exist
+  let milestone;
+
+  try {
+    milestone = await Milestone.findOne({ user_id: userId })
+  } catch (err) {
+    log.warn('Error finding milestone: ', err);
+    return res.status(400).json({
+      message: "database error",
+    });
+  }
+
+  if (!milestone) {
+    milestone = milestoneUtils.getNewMilestone(userId);
+
+    try {
+      milestone = await Milestone.create(milestone);
+    } catch (err) {
+      log.warn("Error creating instructor milestone on course creation ", err);
+      return res.status(400).json({
+        message: "Error creating instructor milestone"
+      })
+    }
   }
 
   let combined = Object.assign({}, updatedClass._doc);
