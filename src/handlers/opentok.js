@@ -9,6 +9,7 @@ const opentok = new OpenTok(APIKey, "6e0d8092fd0c009620481f1614e56c696e9a1049");
 
 async function createSession() {
   let settings = {
+    archiveMode: "always",
     mediaMode:"routed",
   };
 
