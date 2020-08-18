@@ -1,3 +1,6 @@
+const dayOfTheYear = require('date-fns/getDayOfYear');
+const differenceInWeeks = require('date-fns/differenceInWeeks');
+
 function getNewMilestone(id) {
   return {
     user_id: id,
@@ -36,8 +39,7 @@ function updateInstructorMilestones(iStone, participants, course) {
       iStone.days_changed.day = course.start_date;
     }
 
-    // Check that its not checking for time only day
-    if (iStone.days_changed.day !== course.start_date) {
+    if (dayOfTheYear(iStone.days_changed.day) !== dayOfTheYear(course.start_date)) {
       // push the previous day's user list to the count and start fresh
       iStone.days_changed.count += iStone.days_changed.users.length;
       iStone.days_changed.users = [];
@@ -61,20 +63,19 @@ function updateInstructorMilestones(iStone, participants, course) {
       iStone.weeks_taught.max_count = 0;
     }
 
-    // Checking date not time
-    if (iStone.weeks_taught.last_class !== course.start_date) {
-      let weeksDiff;
-      // get diff b/w last class and this one in weeks
+    if (dayOfTheYear(iStone.weeks_taught.last_class) !== dayOfTheYear(course.start_date)) {
+      let weeksDiff = differenceInWeeks(course.start_date, iStone.weeks_taught.last_class);
       if (weeksDiff > 0) {
         // reset weeks taught
         iStone.weeks_taught.start = course.start_date
       } else {
         // get diff b/w this course and start in weeks
-        weeksDiff = 1;
+        weeksDiff = differenceInWeeks(course.start_date, iStone.weeks_taught.start_date);
         if (weeksDiff > iStone.weeks_taught.max_count) {
           iStone.weeks_taught.max_count = weeksDiff;
         }
       }
+      iStone.weeks_taught.last_class = course.start_date;
     }
   })
 
@@ -92,18 +93,17 @@ function updateParticipantMilestones(pStone, course) {
     pStone.weekly_streak.start = course.start_date;
   }
   
-  // Weekly streak logic
-  // check this by day not datetime
-  if (pStone.weekly_streak.day !== course.start_date) {
-    let weekDiff; // course.start_date - pStone.weekly_streak.start
+  if (dayOfTheYear(pStone.weekly_streak.last_class) !== dayOfTheYear(course.start_date)) {
+    let weekDiff = differenceInWeeks(course.start_date, pStone.weekly_streak.last_class)
     if (weekDiff > 0) {
       pStone.weekly_streak.start = course.start_date;
     } else {
-      weekDiff = 1; // course.start_date - pStone.weekly_streak.last_class
+      weekDiff = differenceInWeeks(course.start_date, pStone.weekly_streak.start);
       if (weekDiff > pStone.weekly_streak.max_count) {
         pStone.weekly_streak.max_count = weekDiff;
       }
     }
+    pStone.weekly_streak.last_class = course.start_date;
   }
 
   // Setup or add to classes taken from the instructor

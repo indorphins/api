@@ -7,6 +7,8 @@ const classesRouter = require('./src/routes/class');
 const usersRouter = require('./src/routes/user');
 const stripeRouter = require('./src/routes/stripe');
 const instructorsRouter = require('./src/routes/instructor');
+const milestoneRouter = require('./src/routes/milestone');
+const sessionRouter = require('./src/routes/session');
 const stripe = require('./src/handlers/stripe');
 const redis = require('./src/cache');
 const auth = require('./src/auth');
@@ -43,6 +45,8 @@ app.use('/class', classesRouter);
 app.use('/user', usersRouter);
 app.use('/stripe', stripeRouter);
 app.use('/instructor', instructorsRouter);
+app.use('/milestone', milestoneRouter);
+app.use('/session', sessionRouter)
 
 
 app.get('/healthy', (req, res) => {
