@@ -66,6 +66,29 @@ async function updateMilestone(req, res) {
   return res.status(200).json(milestone);
 } 
 
+/**
+ * Fetches a user's milestone
+ * @param {Object} req 
+ * @param {Object} res 
+ */
+async function getMilestone(req, res) {
+  const userData = req.ctx.userData;
+
+  let milestone;
+
+  try {
+    milestone = await Milestone.findOne({ user_id: userData.id })
+  } catch (err) {
+    log.warn("Error fetching milestone ", err);
+    res.status(500).json({
+      message: "Error fetching milestone"
+    });
+  }
+
+  return res.status(200).json(milestone);
+}
+
 module.exports = {
-  updateMilestone
+  updateMilestone,
+  getMilestone
 }
