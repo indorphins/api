@@ -1,6 +1,7 @@
 const OpenTok = require('opentok');
 const later = require('later');
 const Class = require('../db/Class');
+const Session = require('../db/Session');
 const log = require('../log');
 const utils = require('../utils/index');
 
@@ -11,6 +12,26 @@ async function createSession() {
   let settings = {
     mediaMode:"routed",
   };
+
+  let session;
+
+  const newSession = {
+    instructor_id: instructor,
+    class_id: classId,
+    session_id: sessionId,
+    users_enrolled: [],
+    users_joined: [],
+    start_date: startDate
+  }
+  
+  try {
+    session = await Session.create(newSession)
+  } catch (err) {
+    log.warn("Database error creating session");
+    res.status(500).json({
+      message: "Database error"
+    })
+  }
 
   return new Promise(function(response, reject) {
     opentok.createSession(settings, function(err, session) {
@@ -114,6 +135,26 @@ async function joinSession(req, res) {
       return res.status(500).json({
         message: "Service error",
       });
+    }
+
+    let classSession;
+
+    const newSession = {
+      instructor_id: c.instructor,
+      class_id: c.id,
+      session_id: session.sessionId,
+      users_enrolled: [],
+      users_joined: [],
+      start_date: c.startDate
+    }
+    
+    try {
+      classSession = await Session.create(newSession)
+    } catch (err) {
+      log.warn("Database error creating session");
+      res.status(500).json({
+        message: "Database error"
+      })
     }
 
     log.debug("generated new opentok session id", session);
