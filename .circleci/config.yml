@@ -103,14 +103,14 @@ workflows:
               only:
                 - develop
             tags:
-              only: /^\d+.\d+.\d+-{1}\S+$/gmi
+              only: /^\d+.\d+.\d+$/gm
       - deploy_dev:
           filters:
             branches:
               only:
                 - develop
             tags:
-              only: /^\d+.\d+.\d+-{1}\S+$/gmi
+              only: /^\d+.\d+.\d+$/gm
           requires:
             - build
   build_feature:
