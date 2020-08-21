@@ -10,9 +10,6 @@ const Session = new mongoose.Schema({
   session_id: {
     type: String
   },
-  users_enrolled: {
-    type: Array,
-  },
   users_joined: {
     type: Array
   },
