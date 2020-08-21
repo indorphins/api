@@ -89,9 +89,29 @@ async function createSession(req, res) {
   res.status(200).json(session);
 }
 
+async function getAllSessions(req, res) {
+  const userData = req.ctx.userData;
+
+  let sessions;
+
+  try {
+    sessions = await Session.find({ users_joined: userData.id }).sort({ start_date: -1 })
+  } catch (err) {
+    log.warn("Error fetching user's sessions");
+    res.status(500).json({
+      message: 'Error fetching user sessions'
+    })
+  }
+
+  res.status(200).json({
+    sessions: sessions
+  });
+}
+
 module.exports = {
   createSession,
   updateSession,
   deleteSession,
-  getSession
+  getSession,
+  getAllSessions
 };

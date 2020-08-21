@@ -15,4 +15,7 @@ router.post('/:classId/:sessionId', session.createSession);
 router.delete('/:classId/:sessionId', middleware.authentication);
 router.delete('/:classId/:sessionId', session.deleteSession);
 
+router.get('', middleware.authentication);
+router.get('', session.getAllSessions);
+
 module.exports = router;

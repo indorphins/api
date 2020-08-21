@@ -21,4 +21,9 @@ const Session = new mongoose.Schema({
   }
 });
 
+Session.index({ class_id: 1 });
+Session.index({ session_id: 1 });
+Session.index({ class_id: 1, session_id: 1});
+Session.index({ start_date: 1 })
+
 module.exports = mongoose.model('Session', Session);

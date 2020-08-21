@@ -13,26 +13,6 @@ async function createSession() {
     mediaMode:"routed",
   };
 
-  let session;
-
-  const newSession = {
-    instructor_id: instructor,
-    class_id: classId,
-    session_id: sessionId,
-    users_enrolled: [],
-    users_joined: [],
-    start_date: startDate
-  }
-  
-  try {
-    session = await Session.create(newSession)
-  } catch (err) {
-    log.warn("Database error creating session");
-    res.status(500).json({
-      message: "Database error"
-    })
-  }
-
   return new Promise(function(response, reject) {
     opentok.createSession(settings, function(err, session) {
       if (err) return reject(err);
@@ -145,7 +125,7 @@ async function joinSession(req, res) {
       session_id: session.sessionId,
       users_enrolled: [],
       users_joined: [],
-      start_date: c.startDate
+      start_date: c.start_date
     }
     
     try {
