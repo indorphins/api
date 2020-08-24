@@ -3,8 +3,8 @@ const router = express.Router();
 const middleware = require('../middleware');
 const session = require('../handlers/session');
 
-router.put('/:classId/:sessionId', middleware.authentication);
-router.put('/:classId/:sessionId', session.updateSession);
+router.patch('/:classId/:sessionId', middleware.authentication);
+router.patch('/:classId/:sessionId', session.updateSession);
 
 router.get('/:classId/:sessionId', middleware.authentication);
 router.get('/:classId/:sessionId', session.getSession)

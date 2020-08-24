@@ -10,15 +10,37 @@ async function updateSession(req, res) {
   let session;
 
   try {
-    session = await Session.findOneAndUpdate( { class_id: classId, session_id: sessionId }, { $set: data });
+    session = await Session.findOne( { class_id: classId, session_id: sessionId });
   } catch (err) {
-    log.warn("Error finding session");
+    log.warn("Error finding session", err);
     res.status(500).json({
       message: 'Error finding session'
     });
   }
 
-  res.status(200).json(session);
+  if (!session) {
+    log.warn("No session exists to update");
+    res.status(404).json({
+      message: "No session found"
+    })
+  }
+
+  if (userData.id !== session.instructor && session.users_joined.indexOf(userData.id) < 0) {
+    session.users_joined.push(userData.id);
+  }
+
+  try {
+    await Session.updateOne({ class_id: classId, session_id: sessionId }, { $set: session })
+  } catch (err) {
+    log.warn("Error updating session ", err);
+    res.status(500).json({
+      message: 'Error updating session'
+    });
+  }
+
+  res.status(200).json({
+    message: "Session updated"
+  });
 }
 
 async function getSession(req, res) {

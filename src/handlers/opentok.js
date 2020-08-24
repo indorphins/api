@@ -118,8 +118,6 @@ async function joinSession(req, res) {
       });
     }
 
-    let classSession;
-
     const newSession = {
       instructor_id: c.instructor,
       class_id: c.id,
@@ -130,7 +128,7 @@ async function joinSession(req, res) {
     }
     
     try {
-      classSession = await Session.create(newSession)
+      await Session.create(newSession);
     } catch (err) {
       log.warn("Database error creating session");
       res.status(500).json({
