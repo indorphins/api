@@ -7,7 +7,8 @@ const message = require('./message');
 const Transaction = require('../db/Transaction');
 const Subscription = require('../db/Subscription');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const isWithinInterval = require('date-fns/isWithinInterval');
+const Session = require('../db/Session');
+const { getRecentStreak, getClassesTaken } = require('../utils/session');
 
 /**
  * Utility function to decode a custom filter or sort order passed in through query parameters.
@@ -637,7 +638,7 @@ async function getClassParticipants(req, res) {
     });
   }
 
-  participants = users.map(user => {
+  participants = users.map(async user => {
     let data = {
       username: user.username,
     }
@@ -646,10 +647,32 @@ async function getClassParticipants(req, res) {
       data.birthday = user.birthday;
     }
 
+    let userSessions;
+
+    try {
+      userSessions = await Session.find({ users_joined: { $in: user.id } }).sort({ start_date: -1 });
+    } catch (err) {
+      log.warn("Database error finding user sessions ", err);
+    }
+
+    if (userSessions) {
+      const weeklyStreak = getRecentStreak(userSessions, c);
+      const classesTaken = getClassesTaken(userSessions);
+
+      if (weeklyStreak > 0) {
+        data.weeklyStreak = weeklyStreak;
+      }
+      if (classesTaken > 0) {
+        data.classesTaken = classesTaken;
+      }
+    }
+
     return data;
   });
 
-  return res.status(200).json(participants)
+  const finalList = await Promise.all(participants);
+
+  return res.status(200).json(finalList)
 }
 
 module.exports = {
