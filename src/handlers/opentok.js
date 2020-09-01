@@ -122,7 +122,6 @@ async function joinSession(req, res) {
       instructor_id: c.instructor,
       class_id: c.id,
       session_id: session.sessionId,
-      users_enrolled: [],
       users_joined: [],
       start_date: c.start_date
     }
