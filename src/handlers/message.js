@@ -1,6 +1,8 @@
 const sgMail = require('@sendgrid/mail');
 const log = require('../log');
 const utils = require('../utils/index');
+const Class = require('../db/Class');
+const User = require('../db/User')
 const noreply = 'noreply@indorphins.com'
 const support = 'support@indoorphins.fit'
 const alex = 'alex@indorphins.com';
@@ -162,9 +164,10 @@ async function scheduleMorningOfNotification(isInstructor, classType, instructor
  * @param {String} text 
  * @param {String} html 
  * @param {Boolean} isMultiple
+ * @param {Array[Object]} attachments optional
  * @param {Timestamp} sendTime optional (must be within 72 hours from now)
  */
-async function sendEmail(recipients, sender, subject, text, html, isMultiple, sendTime) {
+async function sendEmail(recipients, sender, subject, text, html, isMultiple, attachments, sendTime) {
   const msg = {
     to: recipients,
     from: sender,
@@ -177,6 +180,10 @@ async function sendEmail(recipients, sender, subject, text, html, isMultiple, se
     msg.send_at = sendTime
   }
 
+  if (attachments) {
+    msg.attachments = attachments;
+  }
+
   try {
     const sent = await sgMail.send(msg, isMultiple)
     log.info("Send Email Success: ", sent);
@@ -186,6 +193,22 @@ async function sendEmail(recipients, sender, subject, text, html, isMultiple, se
     throw err;
   }
 };
+
+/**
+ * Creates an attachment in a format sendgrid can accept
+ * Type must be 
+ * @param {Object} content 
+ * @param {String} name 
+ * @param {String} type 'application/xxx'
+ */
+function createAttachment(content, name, type) {
+  return {
+    content: content,
+    filename: name,
+    type: type,
+    disposition: 'attachment'
+  }
+}
 
 async function sendSms(to, from, text) {
   smsClient.messages
@@ -202,7 +225,72 @@ async function sendSms(to, from, text) {
     })
 }
 
+/**
+ * Checks if user is in class. If so send them an email notification
+ * Using the input class_date to set datetime parameters from req.body
+ * @param {Object} req 
+ * @param {Object} res 
+ */
+async function classJoined(req, res) {
+  const userData = req.ctx.userData;
+  const classId = req.params.id;
+  const classDate = req.body.class_date;
+  const calLink = req.body.cal_link;
+
+  let c;
+
+  try {
+    c = await Class.findOne({ id: classId, "participants.id" : userData.id  });
+  } catch (err) {
+    log.warn("Error finding class");
+    return res.status(500).json({
+      message: "Database error"
+    })
+  }
+
+  if (!c || !c.instructor) {
+    log.warn("No class found with participant enrolled");
+    res.status(404).json({
+      message: "User is not enrolled in class"
+    })
+  }
+
+  let instructor;
+
+  try {
+    instructor = await User.findOne({ id: c.instructor });
+  } catch (err) {
+    log.warn("No instructor found for course");
+    return res.status(404).json({
+      message: "Instructor not found for course"
+    })
+  }
+
+  const subject = utils.createClassJoinedSubject(classDate, instructor.username);
+  const body = utils.createClassJoinedBody(userData.username, c, calLink);
+
+  let iCalAttachment;
+  if (calLink) {
+    iCalAttachment = createAttachment(calLink, 'iCal Event', 'text/calendar');
+  }
+
+  try {
+    await sendEmail(userData.email, utils.getEmailSender(), subject, body.text, body.html, false, [iCalAttachment]);
+  } catch (err) {
+    log.warn("Error sending class email: ", err);
+    return res.status(400).json({
+      message: 'Error sending class email',
+      error: err
+    })
+  }
+
+  res.status(200).json({
+    message: "Sent class email success"
+  })
+}
+
 module.exports = {
   sendEmail,
-  sendSms
+  sendSms,
+  classJoined
 }
