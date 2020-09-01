@@ -130,6 +130,34 @@ function createDefaultMessageText(classTime, instructor) {
   return `A friendly note from your neighborhood Indoorphins instructor ${instructor}!`
 }
 
+/**
+ * Returns the subject text for class joined email notification
+ * @param {Date} classDateTime
+ * @param {*} instructor 
+ */
+function createClassJoinedSubject(classDateTime, instructor) {
+  return `You're set to take ${instructor}'s class on ${classDateTime}`;
+}
+
+/**
+ * Returns the body text for class joined email notification
+ * @param {String} participantName 
+ * @param {Object} course
+ */
+function createClassJoinedBody(participantName, course, calendarLink) {
+  return {
+    text: `Hey ${participantName}, we're excited to have you in class!
+
+      Here are some tips:
+      - Use a laptop/computer for class
+      - Set up close to your router: good wifi is important!
+      - 5 minutes before class starts, you can join here: ${process.env.CLIENT_HOST}/${course.id}/join
+      
+      Add this to your calendar so you don't forget!`, 
+    html: `<p>Hey ${participantName}, we&#x27;re excited to have you in class!</p><p></p><p>Here are some tips:</p><p>- Use a laptop/computer for class</p><p>- Set up close to your router: good wifi is important!</p><p>- 5 minutes before class starts, you can join here: ${process.env.CLIENT_HOST}/${course.id}/join </p><p></p><p>Add this to your calendar so you don&#x27;t forget!</p>`
+  };
+}
+
 function tConvert(time) {
   time = time.toString().match(/^([01]\d|2[0-3])(:)([0-5]\d)(:[0-5]\d)?$/) || [time];
 
@@ -149,5 +177,7 @@ module.exports = {
   getNextSession,
   createClassEmailSubject,
   getEmailSender,
-  createDefaultMessageText
+  createDefaultMessageText,
+  createClassJoinedSubject,
+  createClassJoinedBody
 }

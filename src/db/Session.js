@@ -2,19 +2,24 @@ const mongoose = require('mongoose');
 
 const Session = new mongoose.Schema({
   class_id: {
-    type: String
+    type: String,
+    required: true
   },
   instructor_id: {
-    type: String
+    type: String,
+    required: true
   },
   session_id: {
-    type: String
+    type: String,
+    required: true
   },
   users_joined: {
-    type: Array
+    type: Array,
+    required: true
   },
   start_date: {
-    type: Date
+    type: Date,
+    required: true
   }
 });
 
