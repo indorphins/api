@@ -151,10 +151,10 @@ function createClassJoinedBody(participantName, course, calendarLink) {
       Here are some tips:
       - Use a laptop/computer for class
       - Set up close to your router: good wifi is important!
-      - 5 minutes before class starts, you can join here: ${process.env.CLIENT_HOST}/${course.id}/join
+      - 5 minutes before class starts, you can join here: ${process.env.CLIENT_HOST}/login?redirect=/class/${course.id}
       
       Add this to your calendar so you don't forget!`, 
-    html: `<p>Hey ${participantName}, we&#x27;re excited to have you in class!</p><p></p><p>Here are some tips:</p><p>- Use a laptop/computer for class</p><p>- Set up close to your router: good wifi is important!</p><p>- 5 minutes before class starts, you can join here: ${process.env.CLIENT_HOST}/${course.id}/join </p><p></p><p>Add this to your calendar so you don&#x27;t forget!</p>`
+    html: `<p>Hey ${participantName}, we&#x27;re excited to have you in class!</p><p></p><p>Here are some tips:</p><p>- Use a laptop/computer for class</p><p>- Set up close to your router: good wifi is important!</p><p>- 5 minutes before class starts, you can join here: ${process.env.CLIENT_HOST}/login?redirect=/class/${course.id} </p><p></p><p>Add this to your calendar so you don&#x27;t forget!</p>`
   };
 }
 
