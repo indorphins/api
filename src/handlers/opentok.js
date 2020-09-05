@@ -1,8 +1,9 @@
 const OpenTok = require('opentok');
 const later = require('later');
 const Class = require('../db/Class');
+const Session = require('../db/Session');
 const log = require('../log');
-const utils = require('../utils');
+const utils = require('../utils/index');
 
 const APIKey = "46817934";
 const opentok = new OpenTok(APIKey, "6e0d8092fd0c009620481f1614e56c696e9a1049");
@@ -115,6 +116,23 @@ async function joinSession(req, res) {
       return res.status(500).json({
         message: "Service error",
       });
+    }
+
+    const newSession = {
+      instructor_id: c.instructor,
+      class_id: c.id,
+      session_id: session.sessionId,
+      users_joined: [],
+      start_date: c.start_date
+    }
+    
+    try {
+      await Session.create(newSession);
+    } catch (err) {
+      log.warn("Database error creating session");
+      res.status(500).json({
+        message: "Database error"
+      })
     }
 
     log.debug("generated new opentok session id", session);

@@ -120,7 +120,7 @@ function createClassEmailSubject(classTime, instructor) {
 
 // Return email sender's address - eventually will update and/or allow for parameters to determine email
 function getEmailSender() {
-  return 'indoorphins@indoorphins.fit';
+  return 'Indoorphins.fit <no-reply@indoorphins.fit>';
 }
 
 function createDefaultMessageText(classTime, instructor) {
@@ -128,6 +128,50 @@ function createDefaultMessageText(classTime, instructor) {
   let startTime = start.getHours() + ':' + start.getMinutes();
   startTime = tConvert(startTime);
   return `A friendly note from your neighborhood Indoorphins instructor ${instructor}!`
+}
+
+/**
+ * Returns the subject text for class joined email notification
+ * @param {Date} classDateTime
+ * @param {*} instructor 
+ */
+function createClassJoinedSubject(classDateTime, instructor) {
+  return `You're all set to take ${instructor}'s class on ${classDateTime}`;
+}
+
+/**
+ * Returns the body text for class joined email notification
+ * @param {String} participantName 
+ * @param {Object} course
+ */
+function createClassJoinedBody(participantName, course, calendarLink) {
+  return {
+    text: `
+      Hey ${participantName},
+
+      We're excited to have you in class!
+
+      Notes for class:
+      - Use a laptop/computer for class
+      - Set up close to your router: good wifi is important!
+      - You can join 5 minutes before class starts here ${process.env.CLIENT_HOST}/login?redirect=/class/${course.id}
+      
+      Add this to your calendar so you don't forget!
+    `, 
+    html: `
+      <p>Hey <strong>${participantName}</strong>,</p>
+      <p>We&#x27;re excited to have you in class!</p>
+      <p>Notes for class:</p>
+      <p>
+        <ul>
+          <li>Use a laptop/computer for class</li>
+          <li>Set up close to your router: good wifi is important!</li>
+          <li>You can join 5 minutes before class starts <a href="${process.env.CLIENT_HOST}/login?redirect=/class/${course.id}">here</a></li>
+        </ul>
+      </p>
+      <p>Add this to your calendar so you don&#x27;t forget!</p>
+    `
+  };
 }
 
 function tConvert(time) {
@@ -149,5 +193,7 @@ module.exports = {
   getNextSession,
   createClassEmailSubject,
   getEmailSender,
-  createDefaultMessageText
+  createDefaultMessageText,
+  createClassJoinedSubject,
+  createClassJoinedBody
 }

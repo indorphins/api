@@ -1,7 +1,6 @@
 const uuid = require('uuid');
 const User = require('../db/User');
 const log = require('../log');
-
 const knownAccounts = require('../db/known_accounts.json');
 
 /**
@@ -38,7 +37,7 @@ async function createUser(req, res) {
 		return res.status(400).json({
 			message: err,
 		});
-	}
+  }
 
 	res.status(201).json({
 		message: 'New user created',

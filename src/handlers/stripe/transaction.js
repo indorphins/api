@@ -6,7 +6,7 @@ const Subscription = require('../../db/Subscription');
 const User = require('../../db/User');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
-const utils = require('../../utils');
+const utils = require('../../utils/index');
 
 const APPLICATION_FEE_PERCENT = 20;
 
@@ -22,6 +22,7 @@ async function create(req, res) {
   const classId = req.params.id;
   const paymentMethod = req.params.payment_method_id;
   const userId = req.ctx.userData.id;
+  const userType = req.ctx.userData.type;
   let created = new Date().toISOString();
   let user, classObj, price;
   let nextClassDate;
@@ -91,114 +92,117 @@ async function create(req, res) {
     });
   }
 
-  if (classObj.cost && classObj.cost > 0) {
-    price = Number(classObj.cost) * 100;
-    let intent = {
-      payment_method_types: ['card'],
-      amount: price,
-      currency: 'usd',
-      customer: user.customerId,
-      confirm: true,
-      transfer_data: {
-        destination: instructorAccount.accountId,
-      },
-      application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
-      payment_method: paymentMethod,
-      metadata: {
-        class_id: classId,
-      },
-    };
+  // Instructors don't pay for single & recurring classes
+  if (userType !== 'instructor') {
+    if (classObj.cost && classObj.cost > 0) {
+      price = Number(classObj.cost) * 100;
+      let intent = {
+        payment_method_types: ['card'],
+        amount: price,
+        currency: 'usd',
+        customer: user.customerId,
+        confirm: true,
+        transfer_data: {
+          destination: instructorAccount.accountId,
+        },
+        application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
+        payment_method: paymentMethod,
+        metadata: {
+          class_id: classId,
+        },
+      };
 
-    let paymentIntent;
-    try {
-    paymentIntent = await stripe.paymentIntents.create(intent)
-    } catch (err) {
-      log.error('payment intent error', err);
-      return res.status(400).json({
-        message: err.message
-      });
-    }
-
-    log.debug("Payment succeeded", paymentIntent.id);
-
-    let data = {
-      amount: price,
-      paymentId: paymentIntent.id,
-      classId: classObj.id,
-      userId: userId,
-      status: paymentIntent.status,
-      type: 'debit',
-      created_date: created
-    };
-
-    try {
-      await Transaction.create(data);
-    } catch (err) {
-      log.warn("add transaction to db", err);
-      return res.status(500).json({
-        message: "Error creating transaction",
-        error: err.message,
-      });
-    }
-    
-    if (classObj.recurring) {
-      const now = new Date();
-      const nextWindow = utils.getNextSession(now, classObj);
-      nextClassDate = nextWindow.date;
-      let subscription;
-
-      let nextDate = utils.getNextDate(classObj.recurring, 1, nextWindow.end)
-      nextDate.setDate(nextDate.getDate() - 1);
-      const timestamp = Math.round(nextDate.getTime() / 1000);
-
-      log.debug("Subscription start date", timestamp);
-
+      let paymentIntent;
       try {
-        subscription = await stripe.subscriptionSchedules.create({
-          customer: user.customerId,
-          start_date: timestamp,
-          end_behavior: 'release',
-          default_settings: {
-            transfer_data: {
-              destination: instructorAccount.accountId,
-              amount_percent: 100 - APPLICATION_FEE_PERCENT,
-            }
-          },
-          phases: [
-            {
-              plans: [
-                {
-                  price: classObj.product_price_id,
-                },
-              ]
-            },
-          ],
-          metadata: {
-            class_id: classObj.id,
-            prod_id: classObj.product_sku
-          },
+        paymentIntent = await stripe.paymentIntents.create(intent)
+      } catch (err) {
+        log.error('payment intent error', err);
+        return res.status(400).json({
+          message: err.message
         });
-      } catch(err) {
-        log.error("subscription creation failed but initial class payment succeeded", err);
-        //return res.status(500).json({message: err.message});
       }
 
-      if (subscription) {
-        log.debug("made stripe subscription", subscription.id, subscription.default_settings.transfer_data);
-        let data = {
-          id: subscription.id,
-          class_id: classObj.id,
-          user_id: userId,
-          status: subscription.status,
-          start_date: nextDate.toISOString(),
-          created_date: created,
-        };
-    
+      log.debug("Payment succeeded", paymentIntent.id);
+
+      let data = {
+        amount: price,
+        paymentId: paymentIntent.id,
+        classId: classObj.id,
+        userId: userId,
+        status: paymentIntent.status,
+        type: 'debit',
+        created_date: created
+      };
+
+      try {
+        await Transaction.create(data);
+      } catch (err) {
+        log.warn("add transaction to db", err);
+        return res.status(500).json({
+          message: "Error creating transaction",
+          error: err.message,
+        });
+      }
+      
+      if (classObj.recurring) {
+        const now = new Date();
+        const nextWindow = utils.getNextSession(now, classObj);
+        nextClassDate = nextWindow.date;
+        let subscription;
+
+        let nextDate = utils.getNextDate(classObj.recurring, 1, nextWindow.end)
+        nextDate.setDate(nextDate.getDate() - 1);
+        const timestamp = Math.round(nextDate.getTime() / 1000);
+
+        log.debug("Subscription start date", timestamp);
+
         try {
-          await Subscription.create(data);
-          await Transaction.findOneAndUpdate({paymentId: paymentIntent.id}, {subscriptionId: subscription.id})
-        } catch (err) {
-          log.error('create subscription record fialed', err);
+          subscription = await stripe.subscriptionSchedules.create({
+            customer: user.customerId,
+            start_date: timestamp,
+            end_behavior: 'release',
+            default_settings: {
+              transfer_data: {
+                destination: instructorAccount.accountId,
+                amount_percent: 100 - APPLICATION_FEE_PERCENT,
+              }
+            },
+            phases: [
+              {
+                plans: [
+                  {
+                    price: classObj.product_price_id,
+                  },
+                ]
+              },
+            ],
+            metadata: {
+              class_id: classObj.id,
+              prod_id: classObj.product_sku
+            },
+          });
+        } catch(err) {
+          log.error("subscription creation failed but initial class payment succeeded", err);
+          //return res.status(500).json({message: err.message});
+        }
+
+        if (subscription) {
+          log.debug("made stripe subscription", subscription.id, subscription.default_settings.transfer_data);
+          let data = {
+            id: subscription.id,
+            class_id: classObj.id,
+            user_id: userId,
+            status: subscription.status,
+            start_date: nextDate.toISOString(),
+            created_date: created,
+          };
+      
+          try {
+            await Subscription.create(data);
+            await Transaction.findOneAndUpdate({paymentId: paymentIntent.id}, {subscriptionId: subscription.id})
+          } catch (err) {
+            log.error('create subscription record fialed', err);
+          }
         }
       }
     }
@@ -210,7 +214,11 @@ async function create(req, res) {
   };
 
   classObj.participants.push(participant);
-  classObj.available_spots = classObj.available_spots - 1;
+
+  // Instructors don't take up a spot since they play for free
+  if (userType !== 'instructor') {
+    classObj.available_spots = classObj.available_spots - 1;
+  }
 
   let updatedClass;
   try {
