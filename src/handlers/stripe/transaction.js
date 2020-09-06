@@ -407,28 +407,33 @@ async function refund(req, res) {
       });
     } catch (err) {
       log.warn('Stripe - refundCharge create refund error: ', err);
-      return res.status(400).json({
-        message: err.message,
-      });
+      let re = /is already fully reversed/g
+      if (!err.message.match(re)) {
+        return res.status(400).json({
+          message: err.message,
+        });
+      }
     }
 
-    try {
-      await Transaction.create({
-        amount: transaction.amount,
-        paymentId: refundTransaction.id,
-        classId: classId,
-        userId: userId,
-        status: refundTransaction.status,
-        type: 'credit',
-        created_date: new Date().toISOString()
-      });
-    } catch (err) {
-      return res.status(500).json({
-        message: err.message
-      });
-    }
+    if (refundTransaction) {
+      try {
+        await Transaction.create({
+          amount: transaction.amount,
+          paymentId: refundTransaction.id,
+          classId: classId,
+          userId: userId,
+          status: refundTransaction.status,
+          type: 'credit',
+          created_date: new Date().toISOString()
+        });
+      } catch (err) {
+        return res.status(500).json({
+          message: err.message
+        });
+      }
 
-    message = message + ", and your recent payment refunded";
+      message = message + ", and your recent payment refunded";
+    }
   }
 
   course.participants = course.participants.filter(item => { return item.id !== userId; });
