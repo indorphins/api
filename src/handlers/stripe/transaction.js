@@ -92,117 +92,115 @@ async function create(req, res) {
     });
   }
 
-  // Instructors don't pay for single & recurring classes
-  if (userType !== 'instructor') {
-    if (classObj.cost && classObj.cost > 0) {
-      price = Number(classObj.cost) * 100;
-      let intent = {
-        payment_method_types: ['card'],
-        amount: price,
-        currency: 'usd',
-        customer: user.customerId,
-        confirm: true,
-        transfer_data: {
-          destination: instructorAccount.accountId,
-        },
-        application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
-        payment_method: paymentMethod,
-        metadata: {
-          class_id: classId,
-        },
-      };
+  // Instructors and admins don't pay for classes
+  if (classObj.cost && classObj.cost > 0 && userType === 'standard') {
+    price = Number(classObj.cost) * 100;
+    let intent = {
+      payment_method_types: ['card'],
+      amount: price,
+      currency: 'usd',
+      customer: user.customerId,
+      confirm: true,
+      transfer_data: {
+        destination: instructorAccount.accountId,
+      },
+      application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
+      payment_method: paymentMethod,
+      metadata: {
+        class_id: classId,
+      },
+    };
 
-      let paymentIntent;
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.create(intent)
+    } catch (err) {
+      log.error('payment intent error', err);
+      return res.status(400).json({
+        message: err.message
+      });
+    }
+
+    log.debug("Payment succeeded", paymentIntent.id);
+
+    let data = {
+      amount: price,
+      paymentId: paymentIntent.id,
+      classId: classObj.id,
+      userId: userId,
+      status: paymentIntent.status,
+      type: 'debit',
+      created_date: created
+    };
+
+    try {
+      await Transaction.create(data);
+    } catch (err) {
+      log.warn("add transaction to db", err);
+      return res.status(500).json({
+        message: "Error creating transaction",
+        error: err.message,
+      });
+    }
+    
+    if (classObj.recurring) {
+      const now = new Date();
+      const nextWindow = utils.getNextSession(now, classObj);
+      nextClassDate = nextWindow.date;
+      let subscription;
+
+      let nextDate = utils.getNextDate(classObj.recurring, 1, nextWindow.end)
+      nextDate.setDate(nextDate.getDate() - 1);
+      const timestamp = Math.round(nextDate.getTime() / 1000);
+
+      log.debug("Subscription start date", timestamp);
+
       try {
-        paymentIntent = await stripe.paymentIntents.create(intent)
-      } catch (err) {
-        log.error('payment intent error', err);
-        return res.status(400).json({
-          message: err.message
-        });
-      }
-
-      log.debug("Payment succeeded", paymentIntent.id);
-
-      let data = {
-        amount: price,
-        paymentId: paymentIntent.id,
-        classId: classObj.id,
-        userId: userId,
-        status: paymentIntent.status,
-        type: 'debit',
-        created_date: created
-      };
-
-      try {
-        await Transaction.create(data);
-      } catch (err) {
-        log.warn("add transaction to db", err);
-        return res.status(500).json({
-          message: "Error creating transaction",
-          error: err.message,
-        });
-      }
-      
-      if (classObj.recurring) {
-        const now = new Date();
-        const nextWindow = utils.getNextSession(now, classObj);
-        nextClassDate = nextWindow.date;
-        let subscription;
-
-        let nextDate = utils.getNextDate(classObj.recurring, 1, nextWindow.end)
-        nextDate.setDate(nextDate.getDate() - 1);
-        const timestamp = Math.round(nextDate.getTime() / 1000);
-
-        log.debug("Subscription start date", timestamp);
-
-        try {
-          subscription = await stripe.subscriptionSchedules.create({
-            customer: user.customerId,
-            start_date: timestamp,
-            end_behavior: 'release',
-            default_settings: {
-              transfer_data: {
-                destination: instructorAccount.accountId,
-                amount_percent: 100 - APPLICATION_FEE_PERCENT,
-              }
+        subscription = await stripe.subscriptionSchedules.create({
+          customer: user.customerId,
+          start_date: timestamp,
+          end_behavior: 'release',
+          default_settings: {
+            transfer_data: {
+              destination: instructorAccount.accountId,
+              amount_percent: 100 - APPLICATION_FEE_PERCENT,
+            }
+          },
+          phases: [
+            {
+              plans: [
+                {
+                  price: classObj.product_price_id,
+                },
+              ]
             },
-            phases: [
-              {
-                plans: [
-                  {
-                    price: classObj.product_price_id,
-                  },
-                ]
-              },
-            ],
-            metadata: {
-              class_id: classObj.id,
-              prod_id: classObj.product_sku
-            },
-          });
-        } catch(err) {
-          log.error("subscription creation failed but initial class payment succeeded", err);
-          //return res.status(500).json({message: err.message});
-        }
-
-        if (subscription) {
-          log.debug("made stripe subscription", subscription.id, subscription.default_settings.transfer_data);
-          let data = {
-            id: subscription.id,
+          ],
+          metadata: {
             class_id: classObj.id,
-            user_id: userId,
-            status: subscription.status,
-            start_date: nextDate.toISOString(),
-            created_date: created,
-          };
-      
-          try {
-            await Subscription.create(data);
-            await Transaction.findOneAndUpdate({paymentId: paymentIntent.id}, {subscriptionId: subscription.id})
-          } catch (err) {
-            log.error('create subscription record fialed', err);
-          }
+            prod_id: classObj.product_sku
+          },
+        });
+      } catch(err) {
+        log.error("subscription creation failed but initial class payment succeeded", err);
+        //return res.status(500).json({message: err.message});
+      }
+
+      if (subscription) {
+        log.debug("made stripe subscription", subscription.id, subscription.default_settings.transfer_data);
+        let data = {
+          id: subscription.id,
+          class_id: classObj.id,
+          user_id: userId,
+          status: subscription.status,
+          start_date: nextDate.toISOString(),
+          created_date: created,
+        };
+    
+        try {
+          await Subscription.create(data);
+          await Transaction.findOneAndUpdate({paymentId: paymentIntent.id}, {subscriptionId: subscription.id})
+        } catch (err) {
+          log.error('create subscription record fialed', err);
         }
       }
     }
@@ -216,7 +214,7 @@ async function create(req, res) {
   classObj.participants.push(participant);
 
   // Instructors don't take up a spot since they play for free
-  if (userType !== 'instructor') {
+  if (userType === 'standard') {
     classObj.available_spots = classObj.available_spots - 1;
   }
 
@@ -263,6 +261,7 @@ async function create(req, res) {
 async function refund(req, res) {
   const classId = req.params.id;
   const userId = req.ctx.userData.id;
+  const userType = req.ctx.userData.type;
   const now = new Date();
   let course;
   let transaction;
@@ -408,32 +407,40 @@ async function refund(req, res) {
       });
     } catch (err) {
       log.warn('Stripe - refundCharge create refund error: ', err);
-      return res.status(400).json({
-        message: err.message,
-      });
+      let re = /is already fully reversed/g
+      if (!err.message.match(re)) {
+        return res.status(400).json({
+          message: err.message,
+        });
+      }
     }
 
-    try {
-      await Transaction.create({
-        amount: transaction.amount,
-        paymentId: refundTransaction.id,
-        classId: classId,
-        userId: userId,
-        status: refundTransaction.status,
-        type: 'credit',
-        created_date: new Date().toISOString()
-      });
-    } catch (err) {
-      return res.status(500).json({
-        message: err.message
-      });
-    }
+    if (refundTransaction) {
+      try {
+        await Transaction.create({
+          amount: transaction.amount,
+          paymentId: refundTransaction.id,
+          classId: classId,
+          userId: userId,
+          status: refundTransaction.status,
+          type: 'credit',
+          created_date: new Date().toISOString()
+        });
+      } catch (err) {
+        return res.status(500).json({
+          message: err.message
+        });
+      }
 
-    message = message + ", and your recent payment refunded";
+      message = message + ", and your recent payment refunded";
+    }
   }
 
   course.participants = course.participants.filter(item => { return item.id !== userId; });
-  course.available_spots = course.available_spots + 1;
+
+  if (userType === 'standard') {
+    course.available_spots = course.available_spots + 1;
+  }
 
   let updatedCourse;
   try {
