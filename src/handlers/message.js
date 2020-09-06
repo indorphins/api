@@ -180,16 +180,13 @@ async function sendEmail(recipients, sender, subject, text, html, isMultiple, at
     msg.send_at = sendTime
   }
 
-  if (attachments) {
+  if (attachments && attachments.length > 0) {
     msg.attachments = attachments;
   }
 
   try {
-    const sent = await sgMail.send(msg, isMultiple)
-    log.info("Send Email Success: ", sent);
+    await sgMail.send(msg, isMultiple)
   } catch (err) {
-    log.warn("Error sending email: ", err);
-    log.warn("Error sending email detail: ", err.response.body)
     throw err;
   }
 };
@@ -269,13 +266,13 @@ async function classJoined(req, res) {
   const subject = utils.createClassJoinedSubject(classDate, instructor.username);
   const body = utils.createClassJoinedBody(userData.username, c, calLink);
 
-  let iCalAttachment;
+  let attachments;
   if (calLink) {
-    iCalAttachment = createAttachment(calLink, 'iCal Event', 'text/calendar');
+    attachments = [createAttachment(calLink, 'iCal Event', 'text/calendar')];
   }
 
   try {
-    await sendEmail(userData.email, utils.getEmailSender(), subject, body.text, body.html, false, [iCalAttachment]);
+    await sendEmail(userData.email, utils.getEmailSender(), subject, body.text, body.html, false, attachments);
   } catch (err) {
     log.warn("Error sending class email: ", err);
     return res.status(400).json({
