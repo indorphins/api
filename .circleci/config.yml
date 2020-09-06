@@ -120,15 +120,8 @@ workflows:
             branches:
               only:
                 - /feat-.*/
-  Build and deploy production:
+  Deploy production:
     jobs:
-      - build:
-          filters:
-            branches:
-              only:
-                - master
-            tags:
-              only: /^\d+.\d+.\d+$/gm
       - deploy:
           filters:
             branches:
@@ -136,5 +129,3 @@ workflows:
                 - master
             tags:
               only: /^\d+.\d+.\d+$/gm
-          requires:
-            - build
