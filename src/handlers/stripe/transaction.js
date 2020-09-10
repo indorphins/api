@@ -211,16 +211,22 @@ async function create(req, res) {
     username: req.ctx.userData.username,
   };
 
-  classObj.participants.push(participant);
+  let updateData = {
+    $push: {
+      participants: participant
+    }
+  }
 
   // Instructors don't take up a spot since they play for free
   if (userType === 'standard') {
-    classObj.available_spots = classObj.available_spots - 1;
+    updateData.$inc = {
+      available_spots: -1
+    };
   }
 
   let updatedClass;
   try {
-   updatedClass = await Class.findOneAndUpdate({ id: classObj.id }, classObj, {new: true});
+   updatedClass = await Class.findOneAndUpdate({ id: classObj.id }, updateData, {new: true});
   } catch (err) {
     log.error("error updating class", err);
     return res.status(500).json({
@@ -438,13 +444,23 @@ async function refund(req, res) {
 
   course.participants = course.participants.filter(item => { return item.id !== userId; });
 
+  let updateData = {
+    $pull: {
+      participants: {
+        id: userId
+      }
+    }
+  }
+
   if (userType === 'standard') {
-    course.available_spots = course.available_spots + 1;
+    updateData.$inc = {
+      available_spots: 1
+    }
   }
 
   let updatedCourse;
   try {
-    updatedCourse = await Class.findOneAndUpdate({id: course.id}, course, {new: true});
+    updatedCourse = await Class.findOneAndUpdate({id: course.id}, updateData, {new: true});
   } catch(err) {
     return res.status(500).json({
       message: err.message
