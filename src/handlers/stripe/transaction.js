@@ -442,8 +442,6 @@ async function refund(req, res) {
     }
   }
 
-  course.participants = course.participants.filter(item => { return item.id !== userId; });
-
   let updateData = {
     $pull: {
       participants: {
