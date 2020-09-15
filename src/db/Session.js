@@ -17,6 +17,9 @@ const Session = new mongoose.Schema({
     type: Array,
     required: true
   },
+  users_enrolled: {
+    type: Array,
+  },
   start_date: {
     type: Date,
     required: true

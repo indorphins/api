@@ -1,36 +1,24 @@
 const Session = require('../db/Session');
+const Class = require('../db/Class');
 const log = require('../log');
 
 async function updateSession(req, res) {
   const userData = req.ctx.userData;
   const sessionId = req.params.sessionId;
   const classId = req.params.classId;
-  const data = req.body;
 
-  let session;
-
-  try {
-    session = await Session.findOne( { class_id: classId, session_id: sessionId });
-  } catch (err) {
-    log.warn("Error finding session", err);
-    res.status(500).json({
-      message: 'Error finding session'
-    });
-  }
-
-  if (!session) {
-    log.warn("No session exists to update");
-    res.status(404).json({
-      message: "No session found"
-    })
-  }
-
-  if (userData.id !== session.instructor && session.users_joined.indexOf(userData.id) < 0) {
-    session.users_joined.push(userData.id);
-  }
+  let sessionData;
+  let course;
 
   try {
-    await Session.updateOne({ class_id: classId, session_id: sessionId }, { $set: session })
+    sessionData = await Session.findOneAndUpdate(
+      { class_id: classId, session_id: sessionId }, 
+      {
+        $addToSet: {
+          users_joined: userData.id
+        }
+      },
+      { new: true })
   } catch (err) {
     log.warn("Error updating session ", err);
     res.status(500).json({
@@ -38,9 +26,39 @@ async function updateSession(req, res) {
     });
   }
 
-  res.status(200).json({
-    message: "Session updated"
-  });
+  if (!sessionData) {
+    try {
+      course = await Class.findOne({id: classId});
+    } catch (err) {
+      log.warn("Error updating session ", err);
+      res.status(500).json({
+        message: 'Error updating session'
+      });
+    }
+
+    const newSession = {
+      instructor_id: course.instructor,
+      class_id: classId,
+      session_id: sessionId,
+      users_enrolled: course.participants.map(item => {
+        return item.id;
+      }),
+      users_joined: [userData.id],
+      start_date: course.start_date,
+      type: course.type,
+    }
+
+    try {
+      sessionData = await Session.create(newSession);
+    } catch (err) {
+      log.warn("Error creating new session ", err);
+      res.status(500).json({
+        message: 'Database error'
+      })
+    }
+  }
+
+  res.status(200).json(sessionData);
 }
 
 async function getSession(req, res) {
@@ -96,7 +114,7 @@ async function createSession(req, res) {
     session_id: sessionId,
     users_enrolled: [],
     users_joined: [],
-    start_date: startDate
+    start_date: startDate,
   }
 
   try {
