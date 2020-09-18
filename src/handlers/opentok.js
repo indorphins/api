@@ -123,7 +123,8 @@ async function joinSession(req, res) {
       class_id: c.id,
       session_id: session.sessionId,
       users_joined: [],
-      start_date: c.start_date
+      start_date: c.start_date,
+      type: c.type
     }
     
     try {
