@@ -119,7 +119,7 @@ async function run() {
   }
 
   events = events.concat(sameInstructor(5));
-  events = events.concat(consecutive(7,1));
+  events = events.concat(consecutive(30,1));
   events = events.concat(consecutive(10,7));
   events = events.concat(classTypes());
   events = events.concat(multipleInstructors(4));
