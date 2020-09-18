@@ -135,7 +135,7 @@ async function getAllSessions(req, res) {
   let sessions;
 
   try {
-    sessions = await Session.find({ users_joined: userData.id }).sort({ start_date: -1 })
+    sessions = await Session.find({ users_joined: userData.id }).sort({ start_date: -1 }).limit(1000)
   } catch (err) {
     log.warn("Error fetching user's sessions");
     res.status(500).json({
