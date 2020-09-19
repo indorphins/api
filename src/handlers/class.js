@@ -654,7 +654,6 @@ async function getClassParticipants(req, res) {
   let partial = users.map(user => {
     let data = {
       id: user.id,
-      username: user.username,
     }
     if (user.birthday) data.birthday = user.birthday;
     return data;
@@ -675,14 +674,14 @@ async function getClassParticipants(req, res) {
   let final = participants.map(item => {
     let exists = partial.filter(i => i.id === item.id)[0];
     if (exists) {
-      return exists;
+      return Object.assign({
+        username: item.username
+      }, exists);
     } else {
-      let data = {
+      return {
         id: item.id,
         username: item.username,
-      }
-      if (item.birthday) data.birthday = item.birthday;
-      return data;
+      };
     }
   })
 
