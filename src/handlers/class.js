@@ -8,7 +8,7 @@ const Transaction = require('../db/Transaction');
 const Subscription = require('../db/Subscription');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Session = require('../db/Session');
-const { getRecentStreak, getClassesTaken } = require('../utils/session');
+const { getRecentStreak } = require('../utils/session');
 
 /**
  * Utility function to decode a custom filter or sort order passed in through query parameters.

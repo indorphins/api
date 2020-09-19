@@ -45,25 +45,6 @@ function getRecentStreak(sessions) {
   return streak;
 }
 
-
-/**
- * If the user has taken X + 1 classes that match one of the benchmarks, return the benchmark
- * X + 1 because of the classes they've taken plus the one they are signed up for but haven't joined yet
- * Else returns 0
- * @param {Array} sessions 
- */
-function getClassesTaken(sessions) {
-  let classesTakenLabels = 
-  [1, 5, 10, 20, 30, 50, 75, 100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000];
-
-  if (Array.isArray(sessions) && classesTakenLabels.indexOf(sessions.length + 1) > -1) {
-    return sessions.length + 1;
-  }
-
-  return 0;
-}
-
 module.exports = {
-  getClassesTaken,
   getRecentStreak,
 }
