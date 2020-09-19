@@ -610,6 +610,12 @@ async function getClassParticipants(req, res) {
     })
   }
 
+  if (!c) {
+    return res.status(404).json({
+      message: 'No class found'
+    });
+  }
+
   if (userData.type !== 'instructor' && userData.type !== 'admin' && (c.instructor !== userData.id && userData.type === 'instructor')) {
     log.warn('Invalid permissions to fetch class participant data');
     return res.status(403).json({
@@ -622,14 +628,14 @@ async function getClassParticipants(req, res) {
     return res.status(200).json([])
   }
 
-  let participants = c.participants.map(participant => {
+  let participants = c.participants;
+  let userIds = participants.map(participant => {
     return participant.id;
   });
 
   let users;
-
   try {
-    users = await User.find({ id: { $in: participants } })
+    users = await User.find({ id: { $in: userIds } })
   } catch (err) {
     log.warn("database error", err);
     return res.status(500).json({
@@ -638,41 +644,49 @@ async function getClassParticipants(req, res) {
     });
   }
 
-  participants = users.map(async user => {
+  let userSessions;
+  try {
+    userSessions = await Session.find({ users_joined: { $in: userIds } }).sort({ start_date: -1 }).limit(2500);
+  } catch (err) {
+    log.warn("Database error finding user sessions ", err);
+  }
+
+  let partial = users.map(user => {
     let data = {
+      id: user.id,
       username: user.username,
     }
-    
-    if (user.birthday) {
-      data.birthday = user.birthday;
-    }
-
-    let userSessions;
-
-    try {
-      userSessions = await Session.find({ users_joined: { $in: user.id } }).sort({ start_date: -1 });
-    } catch (err) {
-      log.warn("Database error finding user sessions ", err);
-    }
-
-    if (userSessions) {
-      const weeklyStreak = getRecentStreak(userSessions, c);
-      const classesTaken = getClassesTaken(userSessions);
-
-      if (weeklyStreak > 0) {
-        data.weeklyStreak = weeklyStreak;
-      }
-      if (classesTaken > 0) {
-        data.classesTaken = classesTaken;
-      }
-    }
-
+    if (user.birthday) data.birthday = user.birthday;
     return data;
   });
 
-  const finalList = await Promise.all(participants);
+  if (userSessions && userSessions.length) {
+    partial.map(item => {
+      let sessions = userSessions.filter(i => {
+        return i.users_joined.findIndex(a => a === item.id) > -1 &&
+        i.instructor_id !== item.id;
+      });
+      item.classesTaken = sessions.length;
+      item.weeklyStreak = getRecentStreak(sessions, c);
+      return item;
+    });
+  }
 
-  return res.status(200).json(finalList)
+  let final = participants.map(item => {
+    let exists = partial.filter(i => i.id === item.id)[0];
+    if (exists) {
+      return exists;
+    } else {
+      let data = {
+        id: item.id,
+        username: item.username,
+      }
+      if (item.birthday) data.birthday = item.birthday;
+      return data;
+    }
+  })
+
+  return res.status(200).json(final);
 }
 
 module.exports = {

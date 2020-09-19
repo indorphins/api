@@ -1,5 +1,16 @@
-const getDayOfYear = require('date-fns/getDayOfYear');
-const differenceInWeeks = require('date-fns/differenceInWeeks');
+const getISOWeek = require('date-fns/getISOWeek');
+const getYear = require('date-fns/getYear');
+
+function getWeek(d) {
+  return getISOWeek(d) + getYear(d);
+}
+
+function getClassWeeks(sessions) {
+  return sessions.map(item => {
+    let d = new Date(item.start_date);
+    return getWeek(d);
+  });
+}
 
 /**
  * If the nextClass will hit a new weekly streak benchmark return the benchmark
@@ -7,40 +18,33 @@ const differenceInWeeks = require('date-fns/differenceInWeeks');
  * @param {Array} sessions 
  * @param {Object} nextClass 
  */
-function getRecentStreak(sessions, nextClass) {
-  if (sessions.length < 2) {
-    return 0;
-  }
+function getRecentStreak(sessions) {
+  let items = getClassWeeks(sessions);
+  let last = items[0];
+  let index = 0;
+  let streak = 0;
+  let current = getWeek(new Date());
 
-  let longest = 0;
-  let start = new Date(nextClass.start_date);
-  let last = new Date(nextClass.start_date);
-
-  sessions.forEach(session => {
-    let sessionDate = new Date(session.start_date);
-
-    if (getDayOfYear(last) !== getDayOfYear(sessionDate)) {
-      let weekDiff = differenceInWeeks(last, sessionDate)
-      if (weekDiff > 1) {
-        return longest;
-      } else {
-        weekDiff = differenceInWeeks(start, sessionDate);
-        if (weekDiff > longest) {
-          longest = weekDiff;
-        }
+  if (current === last) {
+    streak = 1;
+    index = 1;
+    while(
+          items[index] && 
+          (last - items[index] === 1 || last - items[index] === 0 || items[index] - last === 51)
+        ) {
+      
+      if (last - items[index] === 1) {
+        streak = streak + 1;
       }
-      last = sessionDate;
+
+      last = items[index];
+      index = index + 1;
     }
-  })
-
-  let weeklyStreakLabels = [2, 3, 4, 7, 10, 20, 30, 40, 52, 60, 70, 80, 90, 104, 125, 156, 175, 208];
-
-  if (weeklyStreakLabels.indexOf(longest) > -1) {
-    return longest;
   }
 
-  return 0;
+  return streak;
 }
+
 
 /**
  * If the user has taken X + 1 classes that match one of the benchmarks, return the benchmark
