@@ -19,27 +19,25 @@ function getClassWeeks(sessions) {
  * @param {Object} nextClass 
  */
 function getRecentStreak(sessions) {
-  let items = getClassWeeks(sessions);
+  let items = Array.from(new Set(getClassWeeks(sessions)));
   let last = items[0];
   let index = 0;
   let streak = 0;
   let current = getWeek(new Date());
 
-  if (current === last) {
+  if (current === last || current - 1 === last || last - current === 51) {
     streak = 1;
     index = 1;
-    while(
-          items[index] && 
-          (last - items[index] === 1 || last - items[index] === 0 || items[index] - last === 51)
-        ) {
-      
-      if (last - items[index] === 1) {
-        streak = streak + 1;
-      }
+  }
 
-      last = items[index];
-      index = index + 1;
-    }
+  while(
+    items[index] && 
+    (last - items[index] === 1 || items[index] - last === 51)
+  ) {
+
+    streak = streak + 1;
+    last = items[index];
+    index = index + 1;
   }
 
   return streak;
