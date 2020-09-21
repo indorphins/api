@@ -605,15 +605,15 @@ async function getClassParticipants(req, res) {
     c = await Class.findOne({ id: classId })
   } catch (err) {
     log.warn("GetBirthdays no class found ", err);
-    return res.status(404).json({
-      message: 'No class found'
+    return res.status(500).json({
+      message: 'Database error'
     })
   }
 
-  if (userData.type !== 'instructor' && userData.type !== 'admin' && (c.instructor !== userData.id && userData.type === 'instructor')) {
-    log.warn('Invalid permissions to fetch class participant data');
-    return res.status(403).json({
-      message: 'Invalid permissions'
+  if (!c) {
+    log.warn("No class found for participant list fetch");
+    return res.status(404).json({
+      message: 'No class found'
     })
   }
 
@@ -640,8 +640,15 @@ async function getClassParticipants(req, res) {
 
   participants = users.map(async user => {
     let data = {
+      id: user.id,
       username: user.username,
     }
+
+    if (userData.type === 'standard') {
+      return data;
+    }
+
+    data.email = user.email
     
     if (user.birthday) {
       data.birthday = user.birthday;
@@ -666,13 +673,10 @@ async function getClassParticipants(req, res) {
         data.classesTaken = classesTaken;
       }
     }
-
     return data;
   });
 
-  const finalList = await Promise.all(participants);
-
-  return res.status(200).json(finalList)
+  return res.status(200).json(await Promise.all(participants))
 }
 
 module.exports = {
