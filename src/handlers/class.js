@@ -654,6 +654,7 @@ async function getClassParticipants(req, res) {
   let partial = users.map(user => {
     let data = {
       id: user.id,
+      email: user.email,
     }
     if (user.birthday) data.birthday = user.birthday;
     return data;
@@ -665,6 +666,10 @@ async function getClassParticipants(req, res) {
         return i.users_joined.findIndex(a => a === item.id) > -1 &&
         i.instructor_id !== item.id;
       });
+      let instructorSession = sessions.filter(item => {
+        return item.instructor_id === c.instructor
+      });
+      item.instructorClasses = instructorSession.length;
       item.classesTaken = sessions.length;
       item.weeklyStreak = getRecentStreak(sessions, c);
       return item;
@@ -675,7 +680,7 @@ async function getClassParticipants(req, res) {
     let exists = partial.filter(i => i.id === item.id)[0];
     if (exists) {
       return Object.assign({
-        username: item.username
+        username: item.username,
       }, exists);
     } else {
       return {
