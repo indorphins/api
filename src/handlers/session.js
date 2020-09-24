@@ -148,10 +148,62 @@ async function getAllSessions(req, res) {
   });
 }
 
+async function getInstructorSessions(req, res) {
+  const instructorId = req.params.instructorId;
+
+  let sessions = [];
+
+  try {
+    sessions = await Session.find({ instructor_id: instructorId });
+  } catch (err) {
+    log.warn("Error finding sessions");
+    res.status(500).json({
+      message: 'Error finding sessions'
+    });
+  }
+
+  if (sessions) {
+    let classIds = sessions.map(session => {
+      return session.class_id;
+    });
+
+    let classes;
+    try {
+      classes = await Class.find({ id: { $in: classIds }})
+    } catch (err) {
+      log.warn("Error finding classes");
+      res.status(500).json({
+        message: 'Error finding classes'
+      });
+    }
+
+    let data = sessions.map(session => {
+      return {
+        session_id: session.session_id,
+        instructor_id: session.instructor_id,
+        class_id: session.class_id,
+        start_date: session.start_date
+      }
+    })
+
+    if (classes && classes.length > 0) {
+      data = data.map(session => {
+        let course = classes.find(c => c.id === session.class_id )
+        session.classTitle = course.title;
+        return session;
+      })
+    }
+
+    sessions = data;
+  }
+  return res.status(200).json(sessions);
+}
+
 module.exports = {
   createSession,
   updateSession,
   deleteSession,
   getSession,
-  getAllSessions
+  getAllSessions,
+  getInstructorSessions
 };
