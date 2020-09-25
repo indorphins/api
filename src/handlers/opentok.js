@@ -4,9 +4,13 @@ const Class = require('../db/Class');
 const Session = require('../db/Session');
 const log = require('../log');
 const utils = require('../utils/index');
+const jwt = require('jwt-simple');
+const uuid = require('uuid');
+const request = require('request');
 
-const APIKey = "46817934";
-const opentok = new OpenTok(APIKey, "6e0d8092fd0c009620481f1614e56c696e9a1049");
+const projectAPIKey = "46817934";
+const projectAPISecret = "6e0d8092fd0c009620481f1614e56c696e9a1049";
+const opentok = new OpenTok(projectAPIKey, projectAPISecret);
 
 async function createSession(archive, media) {
   let settings = {
@@ -292,8 +296,56 @@ async function joinSession(req, res) {
   });
 }
 
+async function fetchArchives(req, res) {
+  const sessionId = req.body.sessionId;
+  let url = `https://api.opentok.com/v2/project/${projectAPIKey}/archive`;
+
+  if (sessionId) {
+    url += `?sessionId=${sessionId}`;
+  } else {
+    log.warn("Session ID required to fetch archive");
+    return res.status(400).json({
+      message: 'Session ID required'
+    })
+  }
+
+  const threeMinutesInSeconds = 180 * 60;
+  let options = {
+    "iss": projectAPIKey,
+    "iat": Math.round(Date.now() / 1000), 
+    "exp": Math.round(Date.now() / 1000) + threeMinutesInSeconds,
+    "ist": "project",
+    "jti": uuid.v4()
+  };
+
+  let token = jwt.encode(
+    options,
+    projectAPISecret,
+    'HS256'
+  );
+
+  options = {
+    method: 'GET',
+    uri: url,
+    headers: {
+      'X-OPENTOK-AUTH': token,
+    }
+  }
+
+  return request(options, function (error, response) { 
+    if (error) {
+      log.warn("Error fetching opentok archives ", error)
+      return res.status(500).json({
+        message: 'Opentok api error'
+      })
+    }
+    return res.status(200).json(response.body);
+  });
+}
+
 module.exports = {
   createSession,
   joinSession,
+  fetchArchives,
   privateSession,
 };

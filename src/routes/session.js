@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const middleware = require('../middleware');
 const session = require('../handlers/session');
+const opentok = require('../handlers/opentok');
 
 router.patch('/:classId/:sessionId', middleware.authentication);
 router.patch('/:classId/:sessionId', session.updateSession);
@@ -17,5 +18,11 @@ router.delete('/:classId/:sessionId', session.deleteSession);
 
 router.get('', middleware.authentication);
 router.get('', session.getAllSessions);
+
+router.post('/archive', middleware.authentication);
+router.post('/archive', opentok.fetchArchives);
+
+router.get('/:instructorId', middleware.authentication);
+router.get('/:instructorId', session.getInstructorSessions);
 
 module.exports = router;
