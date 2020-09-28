@@ -292,7 +292,7 @@ async function joinSession(req, res) {
   res.status(200).json({
     sessionId: sessionId,
     token: token,
-    apiKey: APIKey,
+    apiKey: projectAPIKey,
   });
 }
 
