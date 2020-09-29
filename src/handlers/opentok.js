@@ -90,7 +90,8 @@ async function joinSession(req, res) {
   }
 
   let now = new Date();
-  const nextSession = utils.getNextSession(now, c);
+  let sessionWindow = 10;
+  const nextSession = utils.getNextSession(now, c, sessionWindow);
 
   // class session start time hasn't been reached. recurring classes are always going to 
   // fail here if it's not time for an active class session and it's not the first class
@@ -114,7 +115,7 @@ async function joinSession(req, res) {
 	if (!sessionId) {
     if (user.id !== c.instructor) {
       return res.status(400).json({
-        message: "Instructor has not started the class. Please try again in a minute.",
+        message: "The instructor has not started this class yet. Please try again in a minute.",
       });
     }
 
