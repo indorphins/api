@@ -1,5 +1,4 @@
 const OpenTok = require('opentok');
-const later = require('later');
 const Class = require('../db/Class');
 const Session = require('../db/Session');
 const log = require('../log');
@@ -113,6 +112,12 @@ async function joinSession(req, res) {
   } 
 
 	if (!sessionId) {
+    if (user.id !== c.instructor) {
+      return res.status(400).json({
+        message: "Instructor has not started the class. Please try again in a minute.",
+      });
+    }
+
     try {
       session = await createSession("always", "routed");
     } catch(err) {
