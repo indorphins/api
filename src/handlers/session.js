@@ -154,7 +154,7 @@ async function getInstructorSessions(req, res) {
   let sessions = [];
 
   try {
-    sessions = await Session.find({ instructor_id: instructorId });
+    sessions = await Session.find({ instructor_id: instructorId }).sort({start_date: -1}).limit(10);
   } catch (err) {
     log.warn("Error finding sessions");
     res.status(500).json({
