@@ -10,6 +10,7 @@ const request = require('request');
 const projectAPIKey = "46817934";
 const projectAPISecret = "6e0d8092fd0c009620481f1614e56c696e9a1049";
 const opentok = new OpenTok(projectAPIKey, projectAPISecret);
+const archiveAPIKey = "46817934";
 
 async function createSession(archive, media) {
   let settings = {
@@ -222,6 +223,8 @@ async function fetchArchives(req, res) {
     'HS256'
   );
 
+  console.log("TOKEN: ", token);
+
   options = {
     method: 'GET',
     uri: url,
@@ -237,7 +240,11 @@ async function fetchArchives(req, res) {
         message: 'Opentok api error'
       })
     }
-    return res.status(200).json(response.body);
+    const archives = JSON.parse(response.body);
+    const archiveList = archives.items.map(archive => {
+      return `https://s3.console.aws.amazon.com/s3/buckets/indorphins-session-archive/${archiveAPIKey}/${archive.id}/?region=us-east-1`;
+    })
+    return res.status(200).json(archiveList);
   });
 }
 
