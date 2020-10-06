@@ -21,7 +21,7 @@ async function createSession(archive, media) {
   return new Promise(function(response, reject) {
     opentok.createSession(settings, function(err, session) {
       if (err) return reject(err);
-    
+      
       response(session);
     });
   });
@@ -121,13 +121,14 @@ async function joinSession(req, res) {
     }
 
     try {
-      session = await createSession("always", "routed");
+      session = await createSession("manual", "routed");
     } catch(err) {
       log.error("create new opentok session id", err);
       return res.status(500).json({
         message: "Service error",
       });
     }
+
 
     const newSession = {
       instructor_id: c.instructor,
@@ -188,11 +189,20 @@ async function joinSession(req, res) {
     });
   }
 
-  res.status(200).json({
-    sessionId: sessionId,
-    token: token,
-    apiKey: projectAPIKey,
-  });
+  const options = {
+    outputMode: 'individual',
+  }
+
+  return opentok.startArchive(sessionId, options, (error, archive) => {
+    if (error) console.log("ERROR STARTING ARCHIVE ", error);
+
+    return res.status(200).json({
+      sessionId: sessionId,
+      token: token,
+      apiKey: projectAPIKey,
+    });
+  })
+
 }
 
 async function fetchArchives(req, res) {
@@ -222,8 +232,6 @@ async function fetchArchives(req, res) {
     projectAPISecret,
     'HS256'
   );
-
-  console.log("TOKEN: ", token);
 
   options = {
     method: 'GET',
