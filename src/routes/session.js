@@ -25,4 +25,7 @@ router.post('/archive', opentok.fetchArchives);
 router.get('/:instructorId', middleware.authentication);
 router.get('/:instructorId', session.getInstructorSessions);
 
+router.put('/archive/:id', middleware.authentication);
+router.put('/archive/:id', opentok.startArchive);
+
 module.exports = router;

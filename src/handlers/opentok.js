@@ -129,7 +129,6 @@ async function joinSession(req, res) {
       });
     }
 
-
     const newSession = {
       instructor_id: c.instructor,
       class_id: c.id,
@@ -189,20 +188,11 @@ async function joinSession(req, res) {
     });
   }
 
-  const options = {
-    outputMode: 'individual',
-  }
-
-  return opentok.startArchive(sessionId, options, (error, archive) => {
-    if (error) console.log("ERROR STARTING ARCHIVE ", error);
-
-    return res.status(200).json({
-      sessionId: sessionId,
-      token: token,
-      apiKey: projectAPIKey,
-    });
-  })
-
+  return res.status(200).json({
+    sessionId: sessionId,
+    token: token,
+    apiKey: projectAPIKey,
+  });
 }
 
 async function fetchArchives(req, res) {
@@ -256,8 +246,24 @@ async function fetchArchives(req, res) {
   });
 }
 
+async function startArchive(req, res) {
+  const sessionId = req.params.id;
+
+  const options = {
+    outputMode: 'individual',
+  }
+  opentok.startArchive(sessionId, options, (error, archive) => {
+    if (error) {
+      log.warn("Error starting archive ", error)
+      return res.status(500).json(error);
+    }
+    return res.status(200).json(archive);
+  })
+}
+
 module.exports = {
   createSession,
   joinSession,
   fetchArchives,
+  startArchive
 };
