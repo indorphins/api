@@ -261,9 +261,22 @@ async function startArchive(req, res) {
   })
 }
 
+async function stopArchive(req, res) {
+  const archiveId = req.params.id;
+
+  opentok.stopArchive(archiveId, (error, archive) => {
+    if (error) {
+      log.warn("Error stopping archive ", error)
+      return res.status(500).json(error);
+    }
+    return res.status(200).json(archive);
+  })
+}
+
 module.exports = {
   createSession,
   joinSession,
   fetchArchives,
-  startArchive
+  startArchive,
+  stopArchive
 };
