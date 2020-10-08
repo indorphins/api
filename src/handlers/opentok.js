@@ -21,7 +21,7 @@ async function createSession(archive, media) {
   return new Promise(function(response, reject) {
     opentok.createSession(settings, function(err, session) {
       if (err) return reject(err);
-    
+      
       response(session);
     });
   });
@@ -121,7 +121,7 @@ async function joinSession(req, res) {
     }
 
     try {
-      session = await createSession("always", "routed");
+      session = await createSession("manual", "routed");
     } catch(err) {
       log.error("create new opentok session id", err);
       return res.status(500).json({
@@ -188,7 +188,7 @@ async function joinSession(req, res) {
     });
   }
 
-  res.status(200).json({
+  return res.status(200).json({
     sessionId: sessionId,
     token: token,
     apiKey: projectAPIKey,
@@ -223,8 +223,6 @@ async function fetchArchives(req, res) {
     'HS256'
   );
 
-  console.log("TOKEN: ", token);
-
   options = {
     method: 'GET',
     uri: url,
@@ -248,8 +246,37 @@ async function fetchArchives(req, res) {
   });
 }
 
+async function startArchive(req, res) {
+  const sessionId = req.params.id;
+
+  const options = {
+    outputMode: 'individual',
+  }
+  opentok.startArchive(sessionId, options, (error, archive) => {
+    if (error) {
+      log.warn("Error starting archive ", error)
+      return res.status(500).json(error);
+    }
+    return res.status(200).json(archive);
+  })
+}
+
+async function stopArchive(req, res) {
+  const archiveId = req.params.id;
+
+  opentok.stopArchive(archiveId, (error, archive) => {
+    if (error) {
+      log.warn("Error stopping archive ", error)
+      return res.status(500).json(error);
+    }
+    return res.status(200).json(archive);
+  })
+}
+
 module.exports = {
   createSession,
   joinSession,
   fetchArchives,
+  startArchive,
+  stopArchive
 };

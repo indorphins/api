@@ -9,6 +9,7 @@ const stripeRouter = require('./src/routes/stripe');
 const instructorsRouter = require('./src/routes/instructor');
 const sessionRouter = require('./src/routes/session');
 const messageRouter = require('./src/routes/message');
+const archiveRouter = require('./src/routes/archive');
 const stripe = require('./src/handlers/stripe');
 const redis = require('./src/cache');
 const auth = require('./src/auth');
@@ -47,7 +48,7 @@ app.use('/stripe', stripeRouter);
 app.use('/instructor', instructorsRouter);
 app.use('/session', sessionRouter)
 app.use('/message', messageRouter);
-
+app.use('/archive', archiveRouter);
 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');

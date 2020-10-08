@@ -189,7 +189,9 @@ async function getInstructorSessions(req, res) {
     if (classes && classes.length > 0) {
       data = data.map(session => {
         let course = classes.find(c => c.id === session.class_id )
-        session.classTitle = course.title;
+        if (course) {
+          session.classTitle = course.title;
+        }
         return session;
       })
     }
