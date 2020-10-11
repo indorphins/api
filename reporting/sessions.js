@@ -2,7 +2,7 @@ const Session = require('../src/db/Session');
 
 async function classAttendence() {
 
-  let formatData = {
+  let format = {
     $project: {
       users: "$users_joined",
       year: { $year: "$start_date"},
@@ -43,7 +43,7 @@ async function classAttendence() {
   }
 
   return Session.aggregate([
-    formatData,
+    format,
     unwind,
     group,
     report,
@@ -72,7 +72,6 @@ async function returnRate() {
       week: { $week: "$start_date" },
     } 
   };
-
 
   let uwind = {
     $unwind: {
@@ -187,7 +186,63 @@ async function returnRate() {
   ]);
 }
 
+async function participantAvg() {
+
+  let formatData = {
+    $project: {
+      instructor: "$instructor_id",
+      session: "$session_id",
+      joined: {
+        $size: {
+          $filter: {
+            input: "$users_joined",
+            as: "user",
+            cond: {
+              $not: [ { $eq: ["$instructor_id", "$$user"]}]
+            }
+          }
+        }
+      },
+      year: { $year: "$start_date"},
+      week: { $week: "$start_date" },
+    } 
+  };
+
+  let group = {
+    $group: {
+      _id: {
+        year: "$year",
+        week: "$week",
+        instructor: "$instructor",
+      },
+      classes: {
+        $sum: 1,
+      },
+      avgJoined: {
+        $avg: "$joined"
+      }
+    }
+  }
+
+  let report = {
+    $project: {
+      week: "$_id.week",
+      year: "$_id.year",
+      instructorId: "$_id.instructor",
+      totalClasses: "$classes",
+      averageJoined: "$avgJoined",
+    }
+  }
+
+  return Session.aggregate([
+    formatData,
+    group,
+    report,
+  ])
+}
+
 module.exports = {
   returnRate: returnRate,
   classAttendence: classAttendence,
+  participantAvg: participantAvg
 }

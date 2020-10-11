@@ -2,7 +2,7 @@ const process = require('process');
 const mongoose = require('mongoose');
 const db = require('../src/db');
 
-const { returnRate, classAttendence } = require("./sessions");
+const { returnRate, classAttendence, participantAvg } = require("./sessions");
 const { classBooking } = require("./transactions");
 const { newUsers } = require("./users");
 
@@ -61,9 +61,11 @@ async function run() {
   console.log("\nData:\n", att);
 
   let s;
+  let avg;
 
   try {
     s = await returnRate();
+    avg = await participantAvg();
   } catch(err) {
     console.error(err);
     disconnect();
@@ -71,6 +73,7 @@ async function run() {
   }
 
   console.log("\nData:\n", s);
+  console.log("\nData:\n", avg);
 
   process.exit();
 }
