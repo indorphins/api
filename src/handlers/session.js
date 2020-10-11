@@ -117,6 +117,18 @@ async function createSession(req, res) {
     start_date: startDate,
   }
 
+  let c;
+
+  try {
+    c = await Class.findOne({ id: classId});
+  } catch (err) {
+    log.warn("Error fetching class info", err);
+  }
+
+  if (c && c.participants) {
+    newSession.users_enrolled = participants;
+  }
+
   try {
     session = await Session.create(newSession);
   } catch (err) {
