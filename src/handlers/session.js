@@ -126,7 +126,9 @@ async function createSession(req, res) {
   }
 
   if (c && c.participants) {
-    newSession.users_enrolled = participants;
+    newSession.users_enrolled = c.participants.map(item => {
+      return item.id;
+    });
   }
 
   try {
