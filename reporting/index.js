@@ -4,6 +4,7 @@ const db = require('../src/db');
 const User = require('../src/db/User');
 const Transaction = require('../src/db/Transaction');
 const Session = require('../src/db/Session');
+const differenceInWeeks = require('date-fns/differenceInWeeks');
 
 /**
  * disconnect from mongo DB at end of run
@@ -23,96 +24,131 @@ async function connect() {
 }
 
 async function countUsers() {
-  return User.countDocuments();
-}
-
-async function transactionsAgg() {
-  return Transaction.aggregate([
-    { 
-      $project: {
-        classId: "$classId",
-        userId: "$userId",
-        date: "$created_date",
-        amount: { 
-          $cond: { 
-            if: { $eq: ["$type", "debit"] },
-            then: "$amount",
-            else: {$multiply: [-1, "$amount"]}
-          }
-        }
-      }
-    },
-    {
-      $group: {
-        _id: {
-          classId: "$classId",
-          userId: "$userId"
-        },
-        total: {
-          $sum: "$amount"
-        }
-      }
-    },
-    {
-      $group: {
-        _id: "$_id.classId",
-        users: {
-          $push: {
-            id: "$_id.userId",
-            amount: "$total",
-          }
-        },
-        total: {
-          $sum: "$total"
-        }
-      }
-    }, 
-    {
-      $project: {
-        total: "$total",
-        paid: {
-          $filter: {
-            input: "$users",
-            as: "user",
-            cond: { $gt: [ "$$user.amount", 0 ] }
-          }
-        },
-        refunded: {
-          $filter: {
-            input: "$users",
-            as: "user",
-            cond: { $lte: [ "$$user.amount", 0 ] }
-          }
-        }
-      }
-    },
-    {
-      $project: {
-        type: "t",
-        total: "$total",
-        paid: {
-          $size: "$paid",
-        },
-        refunded: {
-          $size: "$refunded",
-        }
-      }
-    },
+  let d = new Date();
+  return User.aggregate([
     {
       $group: {
         _id: "$type",
-        totalRevenue: {
-          $sum: "$total"
-        },
-        classesBooked: {
-          $sum: "$paid",
-        },
-        classesRefunded: {
-          $sum: "$refunded",
+        total: {
+          $sum: 1,
+        }
+      }
+    },
+  ])
+}
+
+
+async function transactionsAgg() {
+
+  let formatted = { 
+    $project: {
+      userId: "$userId",
+      year: { $year: "$created_date"},
+      week: { $week: "$created_date" },
+      type: "$type",
+      amount: { 
+        $cond: { 
+          if: { $eq: ["$type", "debit"] },
+          then: "$amount",
+          else: {$multiply: [-1, "$amount"]}
         }
       }
     }
-  ])
+  };
+
+  let typeGroup = {
+    $group: {
+      _id: {
+        type: "$type",
+        year: "$year",
+        week: "$week",
+      },
+      total: {
+        $push: "$userId"
+      },
+      unique: {
+        $addToSet: "$userId"
+      },
+      sum: {
+        $sum: "$amount"
+      }
+    }
+  };
+
+  let weekGroup = {
+    $group: {
+      _id: {
+        year: "$_id.year",
+        week: "$_id.week",
+      },
+      data: {
+        $push: {
+          type: "$_id.type",
+          total: "$total",
+          unique: "$unique",
+        }
+      },
+      sum: {
+        $sum: "$sum",
+      }
+    }
+  };
+
+  let sortTypes = {
+    $project: {
+      debits: {
+        $first: {
+          $filter: {
+            input: "$data",
+            as: "d",
+            cond: {
+              $eq: ["$$d.type", "debit"],
+            }
+          }
+        }
+      },
+      credits: {
+        $first: {
+          $filter: {
+            input: "$data",
+            as: "d",
+            cond: {
+              $eq: ["$$d.type", "credit"],
+            }
+          }
+        }
+      },
+      sum: "$sum",
+    }
+  };
+
+  let reportFormat = {
+    $project: {
+      week: "$_id.week",
+      year: "$_id.year",
+      totalBooked: {
+        $size: "$debits.total"
+      },
+      uniqueBooked: {
+        $size: "$debits.unique"
+      },
+      totalRefunded: {
+        $size: "$credits.total"
+      },
+      uniqueRefunded: {
+        $size: "$credits.unique"
+      },
+      totalRevenue: "$sum",
+    }
+  }
+
+  return Transaction.aggregate([
+    formatted,
+    typeGroup,
+    weekGroup,
+    sortTypes,
+    reportFormat,
+  ]);
 }
 
 async function sessionAgg() {
@@ -133,10 +169,11 @@ async function sessionAgg() {
       noShow: {
         $setDifference: ["$users_enrolled", "$users_joined"],
       },
+      year: { $year: "$start_date"},
       week: { $week: "$start_date" },
-      day: { $dayOfYear: "$start_date" }
     } 
   };
+
 
   let uwind = {
     $unwind: {
@@ -145,32 +182,12 @@ async function sessionAgg() {
     }
   };
 
-
-  let allGroup = {
-    $group: {
-      _id: "$instructor",
-      classes: {
-        $sum: 1,
-      },
-      joined: {
-        $addToSet: "$joined"
-      },
-      noShow: {
-        $sum: {
-          $size: "$noShow"
-        }
-      }
-    }
-  }
-
   let weekGroup = {
     $group: {
       _id: {
         week: "$week",
+        year: "$year",
         instructor: "$instructor",
-      },
-      classes: {
-        $sum: 1,
       },
       joined: {
         $addToSet: "$joined"
@@ -183,13 +200,79 @@ async function sessionAgg() {
     }
   }
 
-  let format = {
+  let weekSort = {
+    $sort: {
+      "_id.instructor": -1,
+      "_id.year": 1,
+      "_id.week": 1,
+    }
+  }
+
+  let insGroup = {
+    $group: {
+      _id: "$_id.instructor",
+      weeks: {
+        $push: {
+          instructor: "$_id.instructor",
+          week: "$_id.week",
+          year: "$_id.year",
+          joined: "$joined",
+          noShow: "$noShow",
+        }
+      }
+    }
+  }
+
+  let returningUsers = {
     $project: {
-      classes: "$classes",
-      joined: {
-        $size: "$joined",
+      weeks: {
+        $function: {
+          body: `function(weeks) {
+            let updated = [];
+            for (var i = 0; i < weeks.length; i++) {
+              let current = weeks[i];
+              let prev = weeks[i-1];
+
+              if (prev) {
+                let a = current.joined;
+                let b = prev.joined;
+
+                let missing = b.filter((item) => a.indexOf(item) < 0);
+                let p = (b.length - missing.length) / b.length;
+                current.percentageReturned = p;
+              } else {
+                current.percentageReturned = 0;
+              }
+
+              updated.push(current);
+            }
+
+            return updated;
+          }`,
+          args: ["$weeks"],
+          lang: "js"
+        }
+      }
+    }
+  }
+
+  let weekUnwind = {
+    $unwind: {
+      path: "$weeks",
+      preserveNullAndEmptyArrays: false,
+    }
+  }
+
+  let flat = {
+    $project: {
+      instructorId: "$weeks.instructor",
+      week: "$weeks.week",
+      year: "$weeks.year",
+      uniqueJoined: {
+        $size: "$weeks.joined",
       },
-      noShow: "$noShow",
+      totalNoShows: "$weeks.noShow",
+      percentageReturned: "$weeks.percentageReturned",
     }
   }
 
@@ -197,8 +280,12 @@ async function sessionAgg() {
     formatData,
     uwind,
     weekGroup,
-    //format
-  ])
+    weekSort,
+    insGroup,
+    returningUsers,
+    weekUnwind,
+    flat,
+  ]);
 }
 
 async function run() {
@@ -210,7 +297,7 @@ async function run() {
     console.error(e)
   }
 
-  /*let result = null;
+  let result = null;
 
   try {
     result = await countUsers();
@@ -232,7 +319,7 @@ async function run() {
     return process.exit(1);
   }
 
-  console.log("\nData:\n", trans);*/
+  console.log("\nData:\n", trans);
 
   let s;
 

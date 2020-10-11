@@ -2,27 +2,28 @@ version: '3.7'
 services:
   mongo:
     container_name: mongo
-    image: 'bitnami/mongodb:latest'
+    image: 'bitnami/mongodb:4.4'
     ports:
       - '27017:27017'
     environment:
       MONGODB_REPLICA_SET_MODE: primary
       MONGODB_REPLICA_SET_KEY: testingthis
-      MONGODB_PRIMARY_HOST: mongo
+      MONGODB_INITIAL_PRIMARY_HOST: mongo
+      MONGODB_INITIAL_PRIMARY_PORT_NUMBER: 27017
       MONGODB_ADVERTISED_HOSTNAME: mongo
       MONGODB_ROOT_PASSWORD: mongopass
     volumes:
       - 'mongodb_master_data:/bitnami'
   mongosecondary:
     container_name: mongosecondary
-    image: 'bitnami/mongodb:latest'
+    image: 'bitnami/mongodb:4.4'
     depends_on:
       - mongo
     environment:
       MONGODB_REPLICA_SET_MODE: secondary
       MONGODB_REPLICA_SET_KEY: testingthis
-      MONGODB_PRIMARY_HOST: mongo
-      MONGODB_PRIMARY_PORT_NUMBER: 27017
+      MONGODB_INITIAL_PRIMARY_HOST: mongo
+      MONGODB_INITIAL_PRIMARY_PORT_NUMBER: 27017
       MONGODB_ADVERTISED_HOSTNAME: mongosecondary
       MONGODB_PRIMARY_ROOT_PASSWORD: mongopass
   mongo-express:
