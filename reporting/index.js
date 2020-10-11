@@ -2,7 +2,7 @@ const process = require('process');
 const mongoose = require('mongoose');
 const db = require('../src/db');
 
-const { returnRate } = require("./sessions");
+const { returnRate, classAttendence } = require("./sessions");
 const { classBooking } = require("./transactions");
 const { newUsers } = require("./users");
 
@@ -46,9 +46,11 @@ async function run() {
   console.log("\nData:\n", n);
 
   let trans;
+  let att;
 
   try {
     trans = await classBooking();
+    att = await classAttendence();
   } catch(err) {
     console.error(err);
     disconnect();
@@ -56,6 +58,7 @@ async function run() {
   }
 
   console.log("\nData:\n", trans);
+  console.log("\nData:\n", att);
 
   let s;
 

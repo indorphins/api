@@ -1,5 +1,55 @@
 const Session = require('../src/db/Session');
 
+async function classAttendence() {
+
+  let formatData = {
+    $project: {
+      users: "$users_joined",
+      year: { $year: "$start_date"},
+      week: { $week: "$start_date" },
+    } 
+  };
+
+  let unwind = {
+    $unwind: "$users"
+  }
+
+  let group = {
+    $group: {
+      _id: {
+        year: "$year",
+        week: "$week",
+      },
+      total: {
+        $push: "$users",
+      },
+      unique: {
+        $addToSet: "$users",
+      }
+    }
+  }
+
+  let report = {
+    $project: {
+      week: "$_id.week",
+      year: "$_id.year",
+      totalAttended: {
+        $size: "$total",
+      },
+      uniqueAttended: {
+        $size: "$unique",
+      }
+    }
+  }
+
+  return Session.aggregate([
+    formatData,
+    unwind,
+    group,
+    report,
+  ])
+}
+
 async function returnRate() {
 
   let formatData = {
@@ -117,7 +167,7 @@ async function returnRate() {
       instructorId: "$weeks.instructor",
       week: "$weeks.week",
       year: "$weeks.year",
-      uniqueJoined: {
+      uniqueAttended: {
         $size: "$weeks.joined",
       },
       totalNoShows: "$weeks.noShow",
@@ -139,4 +189,5 @@ async function returnRate() {
 
 module.exports = {
   returnRate: returnRate,
+  classAttendence: classAttendence,
 }
