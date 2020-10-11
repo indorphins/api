@@ -65,7 +65,15 @@ async function classAttendence() {
 
   let format = {
     $project: {
-      users: "$users_joined",
+      users: {
+        $filter: {
+          input: "$users_joined",
+          as: "user",
+          cond: {
+            $not: [ { $eq: ["$instructor_id", "$$user"]}]
+          }
+        }
+      },
       year: { $year: "$start_date"},
       week: { $week: "$start_date" },
     } 
