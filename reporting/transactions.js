@@ -89,16 +89,32 @@ async function classBooking() {
       week: "$_id.week",
       year: "$_id.year",
       totalBooked: {
-        $size: "$debits.total"
+        $cond: {
+          if: { $isArray: "$debits.total"},
+          then: { $size: "$debits.total"},
+          else: 0,
+        }
       },
       uniqueBooked: {
-        $size: "$debits.unique"
+        $cond: {
+          if: { $isArray: "$debits.unique"},
+          then: { $size: "$debits.unique"},
+          else: 0,
+        }
       },
       totalRefunded: {
-        $size: "$credits.total"
+        $cond: {
+          if: { $isArray: "$credits.total"},
+          then: { $size: "$credits.total"},
+          else: 0,
+        }
       },
       uniqueRefunded: {
-        $size: "$credits.unique"
+        $cond: {
+          if: { $isArray: "$credits.unique"},
+          then: { $size: "$credits.unique"},
+          else: 0,
+        }
       },
       totalRevenue: "$sum",
     }
