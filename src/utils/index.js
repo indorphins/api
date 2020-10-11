@@ -75,12 +75,14 @@ function interpolate(string, values) {
   return final;
 }
 
-function getNextSession(now, c) {
+function getNextSession(now, c, /*optional*/ win) {
+  let sw = sessionWindow;
+  if (win) sw = win;
   let start = new Date(c.start_date);
   let end = new Date(c.start_date);
   end.setMinutes(end.getMinutes() + c.duration);
-  let startWindow = new Date(start.setMinutes(start.getMinutes() - sessionWindow));
-  let endWindow = new Date(end.setMinutes(end.getMinutes() + sessionWindow));
+  let startWindow = new Date(start.setMinutes(start.getMinutes() - sw));
+  let endWindow = new Date(end.setMinutes(end.getMinutes() + sw));
 
   // if it's a recurring class and the first class is in the past
   if (c.recurring && now > endWindow) {
@@ -90,16 +92,16 @@ function getNextSession(now, c) {
     start = getPrevDate(c.recurring, 1, now);
     end = new Date(start);
     end.setMinutes(end.getMinutes() + c.duration);
-    startWindow = new Date(start.setMinutes(start.getMinutes() - sessionWindow));
-    endWindow = new Date(end.setMinutes(end.getMinutes() + sessionWindow));
+    startWindow = new Date(start.setMinutes(start.getMinutes() - sw));
+    endWindow = new Date(end.setMinutes(end.getMinutes() + sw));
 
     // if the prev session is over then get the next session
     if (now > endWindow) {
       start = getNextDate(c.recurring, 1, now);
       end = new Date(start);
       end.setMinutes(end.getMinutes() + c.duration);
-      startWindow = new Date(start.setMinutes(start.getMinutes() - sessionWindow));
-      endWindow = new Date(end.setMinutes(end.getMinutes() + sessionWindow));
+      startWindow = new Date(start.setMinutes(start.getMinutes() - sw));
+      endWindow = new Date(end.setMinutes(end.getMinutes() + sw));
     }
   }
 

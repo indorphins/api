@@ -154,7 +154,7 @@ async function getInstructorSessions(req, res) {
   let sessions = [];
 
   try {
-    sessions = await Session.find({ instructor_id: instructorId });
+    sessions = await Session.find({ instructor_id: instructorId }).sort({start_date: -1}).limit(10);
   } catch (err) {
     log.warn("Error finding sessions");
     res.status(500).json({
@@ -189,7 +189,9 @@ async function getInstructorSessions(req, res) {
     if (classes && classes.length > 0) {
       data = data.map(session => {
         let course = classes.find(c => c.id === session.class_id )
-        session.classTitle = course.title;
+        if (course) {
+          session.classTitle = course.title;
+        }
         return session;
       })
     }
