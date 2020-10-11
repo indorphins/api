@@ -312,9 +312,32 @@ async function participantAvg() {
       classes: {
         $sum: 1,
       },
+      totalAttended: {
+        $sum: "$joined",
+      },
       avgJoined: {
-        $avg: "$joined"
+        $avg: "$joined",
       }
+    }
+  }
+
+  let instructorLookup = {
+    $lookup: {
+      from: "users",
+      localField: "_id.instructorId",
+      foreignField: "id",
+      as: "instructor"
+    }
+  }
+
+  let instructorData = {
+    $project: {
+      instructor: { 
+        $first: "$instructor",
+      },
+      classes: "$classes",
+      totalAttended: "$totalAttended",
+      avgAttended: "$avgJoined",
     }
   }
 
@@ -323,8 +346,14 @@ async function participantAvg() {
       instructorId: "$_id.instructorId",
       week: "$_id.week",
       year: "$_id.year",
+      instructor: { 
+        username: "$instructor.username",
+        first_name: "$instructor.first_name",
+        last_name: "$instructor.last_name",
+      },
       totalClasses: "$classes",
-      averageJoined: "$avgJoined",
+      totalAttended: "$totalAttended",
+      averageAttended: "$avgAttended",
     }
   }
 
@@ -340,6 +369,8 @@ async function participantAvg() {
   return Session.aggregate([
     formatData,
     group,
+    instructorLookup,
+    instructorData,
     report,
     save,
   ])
