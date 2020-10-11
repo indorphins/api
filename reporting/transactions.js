@@ -104,12 +104,23 @@ async function classBooking() {
     }
   }
 
+  let save = {
+    $merge: {
+      into: "reportings",
+      on: "_id",
+      whenMatched: "merge",
+      whenNotMatched: "insert",
+    }
+  }
+
+
   return Transaction.aggregate([
     formatted,
     typeGroup,
     weekGroup,
     sortTypes,
     reportFormat,
+    save,
   ]);
 }
 

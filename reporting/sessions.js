@@ -42,11 +42,21 @@ async function classAttendence() {
     }
   }
 
+  let save = {
+    $merge: {
+      into: "reportings",
+      on: "_id",
+      whenMatched: "merge",
+      whenNotMatched: "insert",
+    }
+  }
+
   return Session.aggregate([
     format,
     unwind,
     group,
     report,
+    save,
   ])
 }
 
@@ -163,6 +173,11 @@ async function returnRate() {
 
   let flat = {
     $project: {
+      _id: {
+        year: "$weeks.year",
+        week: "$weeks.week",
+        instructorId: "$weeks.instructor",
+      },
       instructorId: "$weeks.instructor",
       week: "$weeks.week",
       year: "$weeks.year",
@@ -171,6 +186,15 @@ async function returnRate() {
       },
       totalNoShows: "$weeks.noShow",
       percentageReturned: "$weeks.percentageReturned",
+    }
+  }
+
+  let save = {
+    $merge: {
+      into: "instructorreportings",
+      on: "_id",
+      whenMatched: "merge",
+      whenNotMatched: "insert",
     }
   }
 
@@ -183,6 +207,7 @@ async function returnRate() {
     returningUsers,
     weekUnwind,
     flat,
+    save,
   ]);
 }
 
@@ -213,7 +238,7 @@ async function participantAvg() {
       _id: {
         year: "$year",
         week: "$week",
-        instructor: "$instructor",
+        instructorId: "$instructor",
       },
       classes: {
         $sum: 1,
@@ -226,11 +251,20 @@ async function participantAvg() {
 
   let report = {
     $project: {
+      instructorId: "$_id.instructorId",
       week: "$_id.week",
       year: "$_id.year",
-      instructorId: "$_id.instructor",
       totalClasses: "$classes",
       averageJoined: "$avgJoined",
+    }
+  }
+
+  let save = {
+    $merge: {
+      into: "instructorreportings",
+      on: "_id",
+      whenMatched: "merge",
+      whenNotMatched: "insert",
     }
   }
 
@@ -238,6 +272,7 @@ async function participantAvg() {
     formatData,
     group,
     report,
+    save,
   ])
 }
 

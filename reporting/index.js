@@ -5,6 +5,7 @@ const db = require('../src/db');
 const { returnRate, classAttendence, participantAvg } = require("./sessions");
 const { classBooking } = require("./transactions");
 const { newUsers } = require("./users");
+const { truncate } = require('fs');
 
 /**
  * disconnect from mongo DB at end of run
@@ -23,6 +24,38 @@ async function connect() {
   })
 }
 
+const reporting = new mongoose.Schema({
+  week: {
+    type: Number,
+    required: true,
+  },
+  year: {
+    type: Number,
+    required: true,
+  }
+});
+
+reporting.index({ week: -1, year: -1 }, { unique: true});
+mongoose.model('reporting', reporting);
+
+const instructorReporting = new mongoose.Schema({
+  week: {
+    type: Number,
+    required: true,
+  },
+  year: {
+    type: Number,
+    required: true,
+  },
+  instructorId: {
+    type: String,
+    required: true,
+  }
+});
+
+reporting.index({ week: -1, year: -1, instructorId: 1 }, { unique: true});
+mongoose.model('instructor', instructorReporting);
+
 async function run() {
   console.log("Running queries");
 
@@ -33,47 +66,31 @@ async function run() {
     process.exit();
   }
 
-  let n = null;
-
   try {
-    n = await newUsers();
+    await newUsers();
   } catch(err) {
     console.error(err);
     disconnect();
     return process.exit(1);
   }
 
-  console.log("\nData:\n", n);
-
-  let trans;
-  let att;
-
   try {
-    trans = await classBooking();
-    att = await classAttendence();
+    await classBooking();
+    await classAttendence();
   } catch(err) {
     console.error(err);
     disconnect();
     return process.exit(1);
   }
 
-  console.log("\nData:\n", trans);
-  console.log("\nData:\n", att);
-
-  let s;
-  let avg;
-
   try {
-    s = await returnRate();
-    avg = await participantAvg();
+    await returnRate();
+    await participantAvg();
   } catch(err) {
     console.error(err);
     disconnect();
     return process.exit(1);
   }
-
-  console.log("\nData:\n", s);
-  console.log("\nData:\n", avg);
 
   process.exit();
 }
