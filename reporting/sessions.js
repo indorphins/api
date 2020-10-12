@@ -13,8 +13,8 @@ async function newParticipants() {
         }
       },
       instructorId: "$instructor_id",
-      year: { $year: "$start_date"},
-      week: { $week: "$start_date" },
+      year: { $isoWeekYear: "$start_date"},
+      week: { $isoWeek: "$start_date" },
     } 
   };
 
@@ -274,8 +274,8 @@ async function classAttendence() {
           }
         }
       },
-      year: { $year: "$start_date"},
-      week: { $week: "$start_date" },
+      year: { $isoWeekYear: "$start_date"},
+      week: { $isoWeek: "$start_date" },
     } 
   };
 
@@ -347,8 +347,8 @@ async function returnRate() {
       noShow: {
         $setDifference: ["$users_enrolled", "$users_joined"],
       },
-      year: { $year: "$start_date"},
-      week: { $week: "$start_date" },
+      year: { $isoWeekYear: "$start_date"},
+      week: { $isoWeek: "$start_date" },
     } 
   };
 
@@ -497,8 +497,8 @@ async function participantAvg() {
           }
         }
       },
-      year: { $year: "$start_date"},
-      week: { $week: "$start_date" },
+      year: { $isoWeekYear: "$start_date"},
+      week: { $isoWeek: "$start_date" },
     } 
   };
 

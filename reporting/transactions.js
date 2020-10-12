@@ -5,8 +5,8 @@ async function classBooking() {
   let formatted = { 
     $project: {
       userId: "$userId",
-      year: { $year: "$created_date"},
-      week: { $week: "$created_date" },
+      year: { $isoWeekYear: "$created_date"},
+      week: { $isoWeek: "$created_date" },
       type: "$type",
       amount: { 
         $cond: { 

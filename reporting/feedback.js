@@ -4,8 +4,8 @@ async function classFeedbackForms() {
 
   let format = {
     $project: {
-      year: { $year: "$created_date"},
-      week: { $week: "$created_date" },
+      year: { $isoWeekYear: "$created_date"},
+      week: { $isoWeek: "$created_date" },
       instructorId: "$instructorId",
       instructorRating: "$instructorRating",
       classRating: "$classRating",
