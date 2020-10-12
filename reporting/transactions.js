@@ -88,6 +88,24 @@ async function classBooking() {
     $project: {
       week: "$_id.week",
       year: "$_id.year",
+      startDate: {
+        $dateFromParts : {
+          'isoWeekYear': "$_id.year",
+          'isoWeek': "$_id.week",
+          'isoDayOfWeek': 1,
+        }
+      },
+      endDate: {
+        $dateFromParts : {
+          'isoWeekYear': "$_id.year",
+          'isoWeek': "$_id.week",
+          'isoDayOfWeek': 7,
+          'hour': 23,
+          'minute': 59,
+          'second': 59,
+          'millisecond': 999,
+        }
+      },
       totalBooked: {
         $cond: {
           if: { $isArray: "$debits.total"},
