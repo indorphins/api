@@ -1,46 +1,233 @@
 const Session = require('../src/db/Session');
-const ClassFeedback = require('../src/db/ClassFeedback');
 
-async function classFeedbackForms() {
-
+async function newParticipants() {
   let format = {
     $project: {
-      year: { $year: "$created_date"},
-      week: { $week: "$created_date" },
-      instructorId: "$instructorId",
-      instructorRating: "$instructorRating",
-      classRating: "$classRating",
-      videoRating: "$videoRating",
+      users: {
+        $filter: {
+          input: "$users_joined",
+          as: "user",
+          cond: {
+            $not: [ { $eq: ["$instructor_id", "$$user"]}]
+          }
+        }
+      },
+      instructorId: "$instructor_id",
+      year: { $year: "$start_date"},
+      week: { $week: "$start_date" },
     } 
-  }
+  };
+
+  let unwind = {
+    $unwind: "$users"
+  };
 
   let group = {
     $group: {
       _id: {
-        year: "$year",
-        week: "$week",
-        instructorId: "$instructorId",
+        userId: "$users"
       },
-      instructorRating: {
-        $avg: "$instructorRating",
+      sessions: {
+        $push: {
+          week: "$week",
+          year: "$year",
+          instructorId: "$instructorId",
+        }
       },
-      classRating: {
-        $avg: "$classRating",
+    }
+  }
+
+  let sessions = {
+    $unwind: "$sessions",
+  }
+
+  let count = {
+    $group: {
+      _id: {
+        week: "$sessions.week",
+        year: "$sessions.year",
+        userId: "$_id.userId",
       },
-      videoRating: {
-        $avg: "$videoRating",
+      instructors: {
+        $addToSet: "$sessions.instructorId",
+      },
+      count: {
+        $sum: 1,
       }
     }
-  };
+  }
+
+  let sortByDate = {
+    $sort: {
+      "_id.year": 1,
+      "_id.week": 1,
+      "_id.userId": 1,
+    }
+  }
+
+  let userGroup = {
+    $group: {
+      _id: "$_id.userId",
+      data: {
+        $push: {
+          week: "$_id.week",
+          year: "$_id.year",
+          count: "$count",
+          instructors: "$instructors",
+        }
+      },
+    }
+  }
+
+  let allTimeAttended = {
+    $project: {
+      data: {
+        $function: {
+          body: `function(data) {
+            let updated = [];
+            let sum = 0;
+            for (var i = 0; i < data.length; i++) {
+              let current = data[i];
+              current.prevAllTime = sum;
+              current.allTime = sum + current.count;
+              updated.push(current);
+              sum = sum + current.count;
+            }
+
+            return updated;
+          }`,
+          args: ["$data"],
+          lang: "js"
+        }
+      }
+    }
+  }
+
+  let flat = {
+    $unwind: "$data",
+  }
+
+  let insFlat = {
+    $unwind: {
+      path: "$data.instructors",
+      preserveNullAndEmptyArrays: true,
+    }
+  }
+
+  let isNew = {
+    $set: {
+      isNew: {
+        $cond: {
+          if: { $gt: ["$data.prevAllTime", 0]},
+          then: false,
+          else: true,
+        }
+      }
+    }
+  }
+
+  let countNew = {
+    $group: {
+      _id: {
+        year: "$data.year",
+        week: "$data.week",
+        instructorId: "$data.instructors",
+        isNew: "$isNew",
+      },
+      totalUsers: {
+        $push: "$_id",
+      },
+      uniqueUsers: {
+        $addToSet: "$_id",
+      },
+    }
+  }
+
+  let size = {
+    $project: {
+      totalUsers: {
+        $size: "$totalUsers",
+      },
+      uniqueUsers: {
+        $size: "$uniqueUsers",
+      }
+    }
+  }
+
+  let instructorGroup = {
+    $group: {
+      _id: {
+        year: "$_id.year",
+        week: "$_id.week",
+        instructorId: "$_id.instructorId",
+      },
+      data: {
+        $push: {
+          isNew: "$_id.isNew",
+          totalUsers: "$totalUsers",
+          uniqueUsers: "$uniqueUsers",
+        }
+      }
+    }
+  }
+
+  let filter = {
+    $project: {
+      new: {
+        $first: {
+          $filter: {
+            input: "$data",
+            as: "d",
+            cond: {
+              $eq: ["$$d.isNew", true],
+            }
+          }
+        }
+      },
+      existing: {
+        $first: {
+          $filter: {
+            input: "$data",
+            as: "d",
+            cond: {
+              $eq: ["$$d.isNew", false],
+            }
+          }
+        }
+      }
+    }
+  }
 
   let report = {
     $project: {
-      week: "$_id.week",
-      year: "$id_.year",
-      instructorId: "$_id.instructorId",
-      averageInstructorRating: "$instructorRating",
-      averageClassRating: "$classRating",
-      averageVideoRating: "$videoRating",
+      totalNewUser: {
+        $cond: {
+          if: { $gt: ["$new.totalUsers", null] },
+          then: "$new.totalUsers",
+          else: 0,
+        }
+      },
+      uniqueNewUser: {
+        $cond: {
+          if: { $gt: ["$new.uniqueUsers", null] },
+          then: "$new.uniqueUsers",
+          else: 0,
+        }
+      },
+      totalExistingUser: {
+        $cond: {
+          if: { $gt: ["$existing.totalUsers", null] },
+          then: "$existing.totalUsers",
+          else: 0,
+        }
+      },
+      uniqueExistingUser: {
+        $cond: {
+          if: { $gt: ["$existing.uniqueUsers", null] },
+          then: "$existing.uniqueUsers",
+          else: 0,
+        }
+      }
     }
   }
 
@@ -53,9 +240,22 @@ async function classFeedbackForms() {
     }
   }
 
-  return ClassFeedback.aggregate([
+  return Session.aggregate([
     format,
+    unwind,
     group,
+    sessions,
+    count,
+    sortByDate,
+    userGroup,
+    allTimeAttended,
+    flat,
+    insFlat,
+    isNew,
+    countNew,
+    size,
+    instructorGroup,
+    filter,
     report,
     save,
   ])
@@ -380,5 +580,5 @@ module.exports = {
   returnRate: returnRate,
   classAttendence: classAttendence,
   participantAvg: participantAvg,
-  classFeedbackForms: classFeedbackForms,
+  newParticipants: newParticipants,
 }

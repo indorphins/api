@@ -2,10 +2,10 @@ const process = require('process');
 const mongoose = require('mongoose');
 const db = require('../src/db');
 
-const { returnRate, classAttendence, participantAvg, classFeedbackForms } = require("./sessions");
+const { returnRate, classAttendence, participantAvg, newParticipants } = require("./sessions");
+const { classFeedbackForms } = require("./feedback");
 const { classBooking } = require("./transactions");
 const { newUsers } = require("./users");
-const { truncate } = require('fs');
 
 /**
  * disconnect from mongo DB at end of run
@@ -87,6 +87,7 @@ async function run() {
     await returnRate();
     await participantAvg();
     await classFeedbackForms();
+    await newParticipants();
   } catch(err) {
     console.error(err);
     disconnect();
