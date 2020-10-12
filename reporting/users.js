@@ -62,7 +62,7 @@ async function newUsers() {
     $project: {
       week: "$_id.week",
       year: "$_id.year",
-      user: "$user",
+      newUserTotals: "$user",
     }
   }
 
