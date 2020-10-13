@@ -14,10 +14,7 @@ async function init() {
   }
   
   try {
-    redisClient = redis.createClient({
-      port: process.env.REDIS_PORT,
-      host: process.env.REDIS_HOST,
-    });
+    redisClient = redis.createClient(data);
   } catch (err) {
     throw err;
   }
