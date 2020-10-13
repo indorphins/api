@@ -66,6 +66,28 @@ async function newUsers() {
     }
   }
 
+  let flat = {
+    $project: {
+      week: "$week",
+      year: "$year",
+      newUsers: {
+        $cond: { $ne: ["$newUserTotals.standard", undefined]},
+        then: "$newUserTotals.standard",
+        else: 0,
+      },
+      newInstructors: {
+        $cond: { $ne: ["$newUserTotals.instructor", undefined]},
+        then: "$newUserTotals.instructor",
+        else: 0,
+      },
+      newAdmins: {
+        $cond: { $ne: ["$newUserTotals.admin", undefined]},
+        then: "$newUserTotals.admin",
+        else: 0,
+      }
+    }
+  }
+
   let save = {
     $merge: {
       into: "reportings",
