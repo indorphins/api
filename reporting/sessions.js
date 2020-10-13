@@ -586,9 +586,6 @@ async function returnRate() {
           }
         }
       },
-      noShow: {
-        $setDifference: ["$users_enrolled", "$users_joined"],
-      },
       year: { $isoWeekYear: "$start_date"},
       week: { $isoWeek: "$start_date" },
     } 
@@ -610,12 +607,7 @@ async function returnRate() {
       },
       joined: {
         $addToSet: "$joined"
-      }, 
-      noShow: {
-        $sum: {
-          $size: "$noShow"
-        }
-      }
+      },
     }
   }
 
@@ -636,7 +628,6 @@ async function returnRate() {
           week: "$_id.week",
           year: "$_id.year",
           joined: "$joined",
-          noShow: "$noShow",
         }
       }
     }
@@ -695,7 +686,6 @@ async function returnRate() {
       uniqueAttended: {
         $size: "$weeks.joined",
       },
-      totalNoShows: "$weeks.noShow",
       percentageReturned: "$weeks.percentageReturned",
     }
   }
@@ -818,6 +808,12 @@ async function participantAvg() {
       totalAttended: "$totalAttended",
       averageAttended: "$avgAttended",
       totalEnrolled: "$totalEnrolled",
+      totalNoShows: {
+        $subtract: [
+          "$totalEnrolled",
+          "$totalAttended",
+        ]
+      }
     }
   }
 
