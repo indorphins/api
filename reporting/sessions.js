@@ -187,10 +187,16 @@ async function ecoSystemRate() {
   let report = {
     $project: {
       ecoSystemRate: {
-        $divide: [
-          "$multiple",
-          { $add: ["$multiple", "$notMultiple"]}
-        ]
+        $cond: {
+          if: { gt: [{ $add: ["$multiple", "$notMultiple"]}, 0]},
+          then: {
+            $divide: [
+              "$multiple",
+              { $add: ["$multiple", "$notMultiple"]}
+            ]
+          },
+          else: 0,
+        } 
       }
     }
   }
