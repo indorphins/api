@@ -736,7 +736,14 @@ async function participantAvg() {
         }
       },
       enrolled: {
-        $size: "$users_enrolled"
+        $cond: {
+          if: { $isArray: "$users_enrolled"},
+          then: {
+            $size: "$users_enrolled",
+          },
+          else: 0
+        }
+        
       },
       year: { $isoWeekYear: "$start_date"},
       week: { $isoWeek: "$start_date" },
@@ -815,10 +822,13 @@ async function participantAvg() {
       averageAttended: "$avgAttended",
       totalEnrolled: "$totalEnrolled",
       totalNoShows: {
-        $subtract: [
-          "$totalEnrolled",
-          "$totalAttended",
-        ]
+        $cond: {
+          if: { $gt: ["$totalEnrolled", 0] },
+          then: {
+            $subtract: ["$totalEnrolled", "$totalAttended"]
+          },
+          else: 0,
+        }
       }
     }
   }
@@ -827,7 +837,7 @@ async function participantAvg() {
     $set: {
       attendenceRate: {
         $cond: {
-          if: { gt: ["$totalEnrolled", 0]},
+          if: { $gt: ["$totalEnrolled", 0]},
           then: {
             $divide: ["$totalAttended", "$totalEnrolled"]
           },
