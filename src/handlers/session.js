@@ -23,9 +23,9 @@ async function updateSession(req, res) {
     instructor_id: course.instructor,
     class_id: classId,
     session_id: sessionId,
-    /*users_enrolled: course.participants.map(item => {
+    users_enrolled: course.participants.map(item => {
       return item.id;
-    }),*/
+    }),
     $addToSet: {
       users_joined: userData.id
     },
