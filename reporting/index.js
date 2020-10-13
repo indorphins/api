@@ -36,6 +36,7 @@ const reporting = new mongoose.Schema({
 });
 
 reporting.index({ week: -1, year: -1 }, { unique: true});
+reporting.index({ startDate: -1, endDate: -1 }, { unique: true});
 mongoose.model('reporting', reporting);
 
 const instructorReporting = new mongoose.Schema({
@@ -54,6 +55,7 @@ const instructorReporting = new mongoose.Schema({
 });
 
 instructorReporting.index({ week: -1, year: -1, instructorId: 1 }, { unique: true});
+instructorReporting.index({ startDate: -1, endDate: -1 }, { unique: true});
 mongoose.model('instructorreporting', instructorReporting);
 
 async function run() {
