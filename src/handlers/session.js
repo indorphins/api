@@ -11,14 +11,7 @@ async function updateSession(req, res) {
   let course;
 
   try {
-    sessionData = await Session.findOneAndUpdate(
-      { class_id: classId, session_id: sessionId }, 
-      {
-        $addToSet: {
-          users_joined: userData.id
-        }
-      },
-      { new: true })
+    course = await Class.findOne({id: classId});
   } catch (err) {
     log.warn("Error updating session ", err);
     res.status(500).json({
@@ -26,36 +19,31 @@ async function updateSession(req, res) {
     });
   }
 
-  if (!sessionData) {
-    try {
-      course = await Class.findOne({id: classId});
-    } catch (err) {
-      log.warn("Error updating session ", err);
-      res.status(500).json({
-        message: 'Error updating session'
-      });
-    }
+  const newSession = {
+    instructor_id: course.instructor,
+    class_id: classId,
+    session_id: sessionId,
+    users_enrolled: course.participants.map(item => {
+      return item.id;
+    }),
+    $addToSet: {
+      users_joined: userData.id
+    },
+    start_date: course.start_date,
+    type: course.type,
+  }
 
-    const newSession = {
-      instructor_id: course.instructor,
-      class_id: classId,
-      session_id: sessionId,
-      users_enrolled: course.participants.map(item => {
-        return item.id;
-      }),
-      users_joined: [userData.id],
-      start_date: course.start_date,
-      type: course.type,
-    }
-
-    try {
-      sessionData = await Session.create(newSession);
-    } catch (err) {
-      log.warn("Error creating new session ", err);
-      res.status(500).json({
-        message: 'Database error'
-      })
-    }
+  try {
+    sessionData = await Session.findOneAndUpdate(
+      { class_id: classId, session_id: sessionId }, 
+      newSession,
+      { new: true, upsert: true }
+    );
+  } catch (err) {
+    log.warn("Error updating session ", err);
+    res.status(500).json({
+      message: 'Error updating session'
+    });
   }
 
   res.status(200).json(sessionData);
@@ -115,6 +103,20 @@ async function createSession(req, res) {
     users_enrolled: [],
     users_joined: [],
     start_date: startDate,
+  }
+
+  let c;
+
+  try {
+    c = await Class.findOne({ id: classId});
+  } catch (err) {
+    log.warn("Error fetching class info", err);
+  }
+
+  if (c && c.participants) {
+    newSession.users_enrolled = c.participants.map(item => {
+      return item.id;
+    });
   }
 
   try {
