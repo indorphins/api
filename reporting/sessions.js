@@ -325,7 +325,7 @@ async function classAttendence() {
       },
       uniqueAttended: {
         $size: "$unique",
-      }
+      },
     }
   }
 
@@ -515,6 +515,9 @@ async function participantAvg() {
           }
         }
       },
+      enrolled: {
+        $size: "$users_enrolled"
+      },
       year: { $isoWeekYear: "$start_date"},
       week: { $isoWeek: "$start_date" },
     } 
@@ -529,6 +532,9 @@ async function participantAvg() {
       },
       classes: {
         $sum: 1,
+      },
+      totalEnrolled: {
+        $sum: "$enrolled"
       },
       totalAttended: {
         $sum: "$joined",
@@ -549,13 +555,10 @@ async function participantAvg() {
   }
 
   let instructorData = {
-    $project: {
+    $set: {
       instructor: { 
         $first: "$instructor",
       },
-      classes: "$classes",
-      totalAttended: "$totalAttended",
-      avgAttended: "$avgJoined",
     }
   }
 
@@ -590,6 +593,21 @@ async function participantAvg() {
       totalClasses: "$classes",
       totalAttended: "$totalAttended",
       averageAttended: "$avgAttended",
+      totalEnrolled: "$totalEnrolled",
+    }
+  }
+
+  let attendenceRate = {
+    $set: {
+      attendenceRate: {
+        $cond: {
+          if: { gt: ["$totalEnrolled", 0]},
+          then: {
+            $divide: ["$totalAttended", "$totalEnrolled"]
+          },
+          else: 0
+        }
+      }
     }
   }
 
@@ -608,6 +626,7 @@ async function participantAvg() {
     instructorLookup,
     instructorData,
     report,
+    attendenceRate,
     save,
   ])
 }
