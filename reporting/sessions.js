@@ -1,5 +1,229 @@
 const Session = require('../src/db/Session');
 
+async function ecoSystemRate() {
+  let format = {
+    $project: {
+      users: {
+        $filter: {
+          input: "$users_joined",
+          as: "user",
+          cond: {
+            $not: [ { $eq: ["$instructor_id", "$$user"]}]
+          }
+        }
+      },
+      instructorId: "$instructor_id",
+      year: { $isoWeekYear: "$start_date"},
+      week: { $isoWeek: "$start_date" },
+    } 
+  };
+
+  let unwind = {
+    $unwind: "$users"
+  };
+
+  let group = {
+    $group: {
+      _id: {
+        year: "$year",
+        week: "$week",
+        userId: "$users",
+      },
+      uniqueInstructors: {
+        $addToSet: "$instructorId",
+      }
+    }
+  }
+
+  let sortByDate = {
+    $sort: {
+      "_id.year": 1,
+      "_id.week": 1,
+      "_id.userId": 1,
+    }
+  }
+
+  let userGroup = {
+    $group: {
+      _id: "$_id.userId",
+      data: {
+        $push: {
+          week: "$_id.week",
+          year: "$_id.year",
+          unique: "$uniqueInstructors",
+        }
+      }
+    }
+  }
+
+  let getPrevInstructors = {
+    $set: {
+      data: {
+        $function: {
+          body: `function(data) {
+            let updated = [];
+            for (var i = 0; i < data.length; i++) {
+              let current = data[i];
+              let prev = data[i-1];
+
+              if (prev) {
+                let a = current.unique;
+                let b = prev.unique;
+                let missing = b.filter(item => {return a.indexOf(item) < 0;});
+                current.prevInstructors = a.concat(missing);
+              } else {
+                current.prevInstructors = [];
+              }
+
+              updated.push(current);
+            }
+
+            return updated;
+          }`,
+          args: ["$data"],
+          lang: "js"
+        }
+      }
+    }
+  }
+
+  let dataUnwind = {
+    $unwind: "$data"
+  }
+  
+  let insUnwind = {
+    $unwind: "$data.unique"
+  }
+
+  let insGroup = {
+    $group: {
+      _id: {
+        year: "$data.year",
+        week: "$data.week",
+        instructorId: "$data.unique",
+      },
+      userData: {
+        $push: {
+          userId: "$_id",
+          prevUniqueInstructors: {
+            $filter: {
+              input: "$data.prevInstructors",
+              as: "d",
+              cond: {
+                $not: [ { $eq: ["$data.unique", "$$d"]}]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  let userUnwind = {
+    $unwind: "$userData"
+  }
+
+  let prevInsCount = {
+    $set: {
+      prevInstructorCount: {
+        $size: "$userData.prevUniqueInstructors",
+      }
+    }
+  }
+
+  let makeBool = {
+    $set: {
+      tookMultiple: {
+        $cond: {
+          if: { $gt: ["$prevInstructorCount", 0]},
+          then: true,
+          else: false,
+        }
+      }
+    }
+  }
+
+  let multiGroup = {
+    $group: {
+      _id: {
+        year: "$_id.year",
+        week: "$_id.week",
+        instructorId: "$_id.instructorId",
+      },
+      data: {
+        $push: {
+          userId: "$userData.userId",
+          prevInstructors: "$userData.prevUniqueInstructors",
+          tookMultiple: "$tookMultiple"
+        },
+      }
+    }
+  }
+  
+
+  let calc = {
+    $project: {
+      multiple: {
+        $size: {
+          $filter: {
+            input: "$data",
+            as: "d",
+            cond: { $eq: ["$$d.tookMultiple", true]}
+          }
+        }
+      },
+      notMultiple: {
+        $size: {
+          $filter: {
+            input: "$data",
+            as: "d",
+            cond: { $eq: ["$$d.tookMultiple", false]}
+          }
+        }
+      }
+    }
+  }
+
+  let report = {
+    $project: {
+      ecoSystemRate: {
+        $divide: [
+          "$multiple",
+          { $add: ["$multiple", "$notMultiple"]}
+        ]
+      }
+    }
+  }
+
+  let save = {
+    $merge: {
+      into: "instructorreportings",
+      on: "_id",
+      whenMatched: "merge",
+      whenNotMatched: "insert",
+    }
+  }
+
+  return Session.aggregate([
+    format,
+    unwind,
+    group,
+    sortByDate,
+    userGroup,
+    getPrevInstructors,
+    dataUnwind,
+    insUnwind,
+    insGroup,
+    userUnwind,
+    prevInsCount,
+    makeBool,
+    multiGroup,
+    calc,
+    report,
+    save,
+  ]);
+}
+
 async function newParticipants() {
   let format = {
     $project: {
@@ -636,4 +860,5 @@ module.exports = {
   classAttendence: classAttendence,
   participantAvg: participantAvg,
   newParticipants: newParticipants,
+  ecoSystemRate: ecoSystemRate,
 }
