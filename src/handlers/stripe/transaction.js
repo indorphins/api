@@ -7,6 +7,7 @@ const User = require('../../db/User');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
 const utils = require('../../utils/index');
+const { v4: uuidv4 } = require('uuid');
 
 const APPLICATION_FEE_PERCENT = 20;
 
@@ -24,8 +25,8 @@ async function create(req, res) {
   const userId = req.ctx.userData.id;
   const userType = req.ctx.userData.type;
   let created = new Date().toISOString();
-  let user, classObj, price;
-  let nextClassDate;
+  let user, classObj, nextClassDate, paymentIntent;
+  let price = 0;
 
   if (!classId || !paymentMethod) {
     return res.status(400).json({
@@ -111,7 +112,6 @@ async function create(req, res) {
       },
     };
 
-    let paymentIntent;
     try {
       paymentIntent = await stripe.paymentIntents.create(intent)
     } catch (err) {
@@ -122,26 +122,6 @@ async function create(req, res) {
     }
 
     log.debug("Payment succeeded", paymentIntent.id);
-
-    let data = {
-      amount: price,
-      paymentId: paymentIntent.id,
-      classId: classObj.id,
-      userId: userId,
-      status: paymentIntent.status,
-      type: 'debit',
-      created_date: created
-    };
-
-    try {
-      await Transaction.create(data);
-    } catch (err) {
-      log.warn("add transaction to db", err);
-      return res.status(500).json({
-        message: "Error creating transaction",
-        error: err.message,
-      });
-    }
     
     if (classObj.recurring) {
       const now = new Date();
@@ -204,6 +184,35 @@ async function create(req, res) {
         }
       }
     }
+  }
+
+  let data = {
+    amount: price,
+    paymentId: uuidv4(),
+    classId: classObj.id,
+    userId: userId,
+    status: 'succeeded',
+    type: 'debit',
+    created_date: created
+  };
+
+  if (paymentIntent) {
+    if (paymentIntent.id) {
+      data.paymentId = paymentIntent.id;
+    }
+    if (paymentIntent.status) {
+      data.status = paymentIntent.status;
+    }
+  }
+
+  try {
+    await Transaction.create(data);
+  } catch (err) {
+    log.warn("add transaction to db", err);
+    return res.status(500).json({
+      message: "Error creating transaction",
+      error: err.message,
+    });
   }
 
   let participant = {
@@ -312,7 +321,12 @@ async function refund(req, res) {
 
     let transactions;
     try {
-      transactions = await Transaction.find({ classId: classId, userId: userId, type: 'debit' }).sort({created_date: "desc"});
+      transactions = await Transaction.find({ 
+        classId: classId,
+        userId: userId,
+        type: 'debit',
+        amount: { $gt: 0 },
+      }).sort({created_date: "desc"});
     } catch (err) {
       log.warn("Couldn't find corresponding transaction for class", err);
     }
@@ -385,10 +399,13 @@ async function refund(req, res) {
           userId: userId,
           subscriptionId: sub.id, 
           type: 'debit',
+          amount: { $gt: 0 }
         }).sort({created_date: "desc"});
       } catch (err) {
         log.warn("Couldn't find corresponding transaction for class", err);
       }
+
+      log.debug("transactions", transactions);
 
       if (transactions && transactions[0] && transactions.length === 1) {
         if (transactions[0].created_date < course.start_date) {
