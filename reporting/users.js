@@ -71,19 +71,25 @@ async function newUsers() {
       week: "$week",
       year: "$year",
       newUsers: {
-        $cond: { $ne: ["$newUserTotals.standard", undefined]},
-        then: "$newUserTotals.standard",
-        else: 0,
+        $cond: {
+          if: { $ne: ["$newUserTotals.standard", undefined]},
+          then: "$newUserTotals.standard",
+          else: 0,
+        }
       },
       newInstructors: {
-        $cond: { $ne: ["$newUserTotals.instructor", undefined]},
-        then: "$newUserTotals.instructor",
-        else: 0,
+        $cond: {
+          if: { $ne: ["$newUserTotals.instructor", undefined]},
+          then: "$newUserTotals.instructor",
+          else: 0,
+        }
       },
       newAdmins: {
-        $cond: { $ne: ["$newUserTotals.admin", undefined]},
-        then: "$newUserTotals.admin",
-        else: 0,
+        $cond: {
+          if: { $ne: ["$newUserTotals.admin", undefined]},
+          then: "$newUserTotals.admin",
+          else: 0,
+        }
       }
     }
   }
@@ -103,6 +109,7 @@ async function newUsers() {
     weekGroup,
     flattened,
     report,
+    flat,
     save
   ])
 }
