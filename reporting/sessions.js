@@ -819,7 +819,7 @@ async function participantAvg() {
       },
       totalClasses: "$classes",
       totalAttended: "$totalAttended",
-      averageAttended: "$avgAttended",
+      averageAttended: "$avgJoined",
       totalEnrolled: "$totalEnrolled",
       totalNoShows: {
         $cond: {
