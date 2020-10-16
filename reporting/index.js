@@ -6,6 +6,7 @@ const { returnRate, classAttendence, participantAvg, newParticipants, ecoSystemR
 const { classFeedbackForms } = require("./feedback");
 const { classBooking } = require("./transactions");
 const { newUsers } = require("./users");
+const { userSessionsCollection, userSessionsAgg, instructorSessionsAgg } = require("./usersessions");
 
 /**
  * disconnect from mongo DB at end of run
@@ -55,7 +56,7 @@ const instructorReporting = new mongoose.Schema({
 });
 
 instructorReporting.index({ week: -1, year: -1, instructorId: 1 }, { unique: true});
-instructorReporting.index({ startDate: -1, endDate: -1 }, { unique: true});
+instructorReporting.index({ startDate: -1, endDate: -1 }, { unique: false});
 mongoose.model('instructorreporting', instructorReporting);
 
 async function run() {
@@ -86,11 +87,21 @@ async function run() {
   }
 
   try {
-    await returnRate();
     await participantAvg();
+    await returnRate();
     await classFeedbackForms();
     await newParticipants();
     await ecoSystemRate();
+  } catch(err) {
+    console.error(err);
+    disconnect();
+    return process.exit(1);
+  }
+
+  try {
+    await userSessionsCollection();
+    await userSessionsAgg();
+    await instructorSessionsAgg();
   } catch(err) {
     console.error(err);
     disconnect();
