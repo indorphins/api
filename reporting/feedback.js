@@ -35,7 +35,7 @@ async function classFeedbackForms() {
   let report = {
     $project: {
       week: "$_id.week",
-      year: "$id_.year",
+      year: "$_id.year",
       instructorId: "$_id.instructorId",
       averageInstructorRating: "$instructorRating",
       averageClassRating: "$classRating",
