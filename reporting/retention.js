@@ -1,6 +1,61 @@
 const { UserSessions } = require('./usersessions');
 
-async function weeklyRetention() {
+async function cohortSize() {
+  let filter = {
+    $match: {
+      accountCreated: {
+        $exists: true,
+      }
+    }
+  }
+
+  let format = {
+    $project: {
+      created: {
+        year: { $year: "$accountCreated" },
+        month: { $month: "$accountCreated" },
+      },
+    }
+  }
+
+  let cohortGroup = {
+    $group: {
+      _id: {
+        createdYear: "$created.year",
+        createdMonth: "$created.month",
+      },
+      cohort: {
+        $sum: 1,
+      }
+    }
+  }
+
+  let report = {
+    $project: {
+      newUsers: "$cohort",
+    }
+  }
+
+  let save = {
+    $merge: {
+      into: "monthlyreportings",
+      on: "_id",
+      whenMatched: "merge",
+      whenNotMatched: "insert",
+    }
+  }
+
+
+  return UserSessions.aggregate([
+    filter,
+    format,
+    cohortGroup,
+    report,
+    save,
+  ])
+}
+
+async function monthlyRetention() {
   let d = new Date();
 
   let filter = {
@@ -15,12 +70,12 @@ async function weeklyRetention() {
     $project: {
       today: {
         year: { $year: d},
-        week: { $isoWeek: d},
+        month: { $month: d},
         
       },
       created: {
         year: { $year: "$accountCreated" },
-        week: { $isoWeek: "$accountCreated" },
+        month: { $month: "$accountCreated" },
       },
       classDates: {
         $cond: {
@@ -31,7 +86,7 @@ async function weeklyRetention() {
               as: "d",
               in: {
                 year: { $year: "$$d" },
-                week: { $isoWeek: "$$d" },
+                month: { $month: "$$d" },
               }
             }
           },
@@ -41,29 +96,18 @@ async function weeklyRetention() {
     }
   }
 
-  let fillUserMissingWeeks = {
+  let fillUserMissingMonths = {
     $set: {
       data: {
         $function: {
           body: `function(today, created, classDates) {
-            function getISOWeeks(y) {
-              var d,
-                  isLeap;
-            
-              d = new Date(y, 0, 1);
-              isLeap = new Date(y, 1, 29).getMonth() === 1;
-            
-              //check for a Jan 1 that's a Thursday or a leap year that has a 
-              //Wednesday jan 1. Otherwise it's 52
-              return d.getDay() === 4 || isLeap && d.getDay() === 3 ? 53 : 52
-            }
-            
             let diff = today.year - created.year;
+
             let final = [{
-                index: 1,
-                week: created.week,
-                year: created.year,
-                tookClass: false,
+              index: 1,
+              month: created.month,
+              year: created.year,
+              tookClass: false,
             }];
             let index = 1;
             
@@ -74,65 +118,57 @@ async function weeklyRetention() {
                 years.push(created.year + i);
               }
             
-              let yearWeeks = years.map(function(item) {
-                return {
-                  year: item,
-                  week: getISOWeeks(item),
-                };   
-              });
             
-            
-              yearWeeks.forEach(function(yearIndex) {
-            
-                if (yearIndex.year === created.year) {
-                  let createdDiff = yearIndex.week - created.week;
-            
+              years.forEach(function(yearIndex) {
+          
+                if (yearIndex === created.year) {
+                  let createdDiff = 12 - created.month;
+      
                   for (var i = 1; i <= createdDiff; i++) {
                     index = index + 1;
                     final.push({
                       index: index,
-                      week: created.week + i,
-                      year: yearIndex.year,
+                      month: created.month + i,
+                      year: yearIndex,
                       tookClass: false,
                     });
                   }
-                } else if (yearIndex.year === today.year) {
-            
-                  let todayDiff = today.week;
-            
+                } else if (yearIndex === today.year) {
+        
+                  let todayDiff = today.month;
+      
                   for (var i = 1; i <= todayDiff; i++) {
                     index = index + 1;
                     final.push({
                       index: index,
-                      week: i,
-                      year: yearIndex.year,
+                      month: i,
+                      year: yearIndex,
                       tookClass: false,
                     });
                   }
-            
+        
                 } else {
-                  for (var i = 1; i <= yearIndex.week; i++) {
+                  for (var i = 1; i <= 12; i++) {
                     index = index + 1;
                     final.push({
                       index: index,
-                      week: i,
-                      year: yearIndex.year,
+                      month: i,
+                      year: yearIndex,
                       tookClass: false,
                     });
                   }
                 }
-              });
-            
+            });
             
             } else {
             
-              let wDiff = today.week - created.week;
-            
+              let wDiff = today.month - created.month;
+          
               for (var i = 1; i <= wDiff; i++) {
                 index = index + 1;
                 final.push({
                   index: index,
-                  week: created.week + i,
+                  month: created.month + i,
                   year: created.year,
                   tookClass: false,
                 });
@@ -141,9 +177,9 @@ async function weeklyRetention() {
             
             classDates.forEach(function(c) {
               let match = final.filter(function(item) {
-                return item.week === c.week && item.year === c.year;
+                return item.month === c.month && item.year === c.year;
               })[0];
-            
+          
               if (match) {
                 match.tookClass = true;
               }
@@ -169,8 +205,8 @@ async function weeklyRetention() {
     $group: {
       _id: {
         createdYear: "$created.year",
-        createdWeek: "$created.week",
-        weekIndex: "$data.index",
+        createdMonth: "$created.month",
+        monthIndex: "$data.index",
         tookClass: "$data.tookClass",
       },
       total: {
@@ -182,8 +218,8 @@ async function weeklyRetention() {
   let sort = {
     $sort: {
       "_id.createdYear": 1,
-      "_id.createdWeek": 1,
-      "_id.weekIndex": 1,
+      "_id.createdMonth": 1,
+      "_id.monthIndex": 1,
     }
   }
 
@@ -210,15 +246,15 @@ async function weeklyRetention() {
     $group: {
       _id: {
         createdYear: "$_id.createdYear",
-        createdWeek: "$_id.createdWeek",
-        weekIndex: "$_id.weekIndex",
+        createdMonth: "$_id.createdMonth",
+        monthIndex: "$_id.monthIndex",
       },
       totalTookClass: {
         $sum: "$totalTookClass",
       },
       totalNoClass: {
         $sum: "$totalNoClass",
-      },
+      }
     }
   }
 
@@ -234,16 +270,17 @@ async function weeklyRetention() {
     }
   }
 
-  let createdWeekGroup = {
+  let createdMonthGroup = {
     $group: {
       _id: {
         createdYear: "$_id.createdYear",
-        createdWeek: "$_id.createdWeek",
+        createdMonth: "$_id.createdMonth",
       },
       data: {
         $push: {
-          weekIndex: "$_id.weekIndex",
+          monthIndex: "$_id.monthIndex",
           retentionRate: "$retentionRate",
+          cohortSize: "$total",
         }
       }
     }
@@ -252,7 +289,7 @@ async function weeklyRetention() {
   let sortCreated = {
     $sort: {
       "_id.createdYear": 1,
-      "_id.createdWeek": 1,
+      "_id.createdMonth": 1,
     }
   }
 
@@ -272,18 +309,18 @@ async function weeklyRetention() {
 
   let mapped = {
     $project: {
-      weeks: {
+      monthlyRetention: {
         $function: {
           body: `function(data) {
             let updated = data.sort(function(a, b) {
-              return a.weekIndex - b.weekIndex;
+              return a.monthIndex - b.monthIndex;
             });
 
             let mapped = {};
 
             for (var i = 0; i < updated.length; i++) {
               let current = updated[i];
-              mapped[current.weekIndex] = current.retentionRate;
+              mapped[current.monthIndex] = current.retentionRate;
             }
 
             return mapped;
@@ -295,10 +332,19 @@ async function weeklyRetention() {
     }
   }
 
+  let save = {
+    $merge: {
+      into: "monthlyreportings",
+      on: "_id",
+      whenMatched: "merge",
+      whenNotMatched: "insert",
+    }
+  }
+
   return UserSessions.aggregate([
     filter,
     format,
-    fillUserMissingWeeks,
+    fillUserMissingMonths,
     unwind,
     tookClassGroup,
     sort,
@@ -306,14 +352,16 @@ async function weeklyRetention() {
     indexGroup,
     sort,
     retention,
-    createdWeekGroup,
+    createdMonthGroup,
     sortCreated,
     setSize,
     recent,
     mapped,
+    save,
   ])
 }
 
 module.exports = {
-  weeklyRetention: weeklyRetention,
+  monthlyRetention: monthlyRetention,
+  cohortSize: cohortSize,
 }

@@ -6,8 +6,8 @@ const { returnRate, classAttendence, participantAvg, newParticipants, ecoSystemR
 const { classFeedbackForms } = require("./feedback");
 const { classBooking } = require("./transactions");
 const { newUsers } = require("./users");
-const { userSessionsCollection, userSessionsAgg, userTransactionsAgg } = require("./usersessions");
-const { weeklyRetention } = require("./retention");
+const { userSessionsCollection, userTransactionsAgg } = require("./usersessions");
+const { monthlyRetention, cohortSize } = require("./retention");
 
 /**
  * disconnect from mongo DB at end of run
@@ -70,7 +70,7 @@ async function run() {
     process.exit();
   }
 
-  /*try {
+  try {
     await newUsers();
   } catch(err) {
     console.error(err);
@@ -97,14 +97,13 @@ async function run() {
     console.error(err);
     disconnect();
     return process.exit(1);
-  }*/
+  }
 
   try {
     await userSessionsCollection();
-    //await userSessionsAgg();
     await userTransactionsAgg();
-    let a = await weeklyRetention();
-    console.log(a);
+    await cohortSize();
+    await monthlyRetention();
   } catch(err) {
     console.error(err);
     disconnect();

@@ -206,7 +206,7 @@ async function ecoSystemRate() {
       into: "instructorreportings",
       on: "_id",
       whenMatched: "merge",
-      whenNotMatched: "insert",
+      whenNotMatched: "discard",
     }
   }
 
@@ -466,7 +466,7 @@ async function newParticipants() {
       into: "instructorreportings",
       on: "_id",
       whenMatched: "merge",
-      whenNotMatched: "insert",
+      whenNotMatched: "discard",
     }
   }
 
@@ -701,7 +701,7 @@ async function returnRate() {
       into: "instructorreportings",
       on: "_id",
       whenMatched: "merge",
-      whenNotMatched: "insert",
+      whenNotMatched: "discard",
     }
   }
 
@@ -778,6 +778,12 @@ async function participantAvg() {
       localField: "_id.instructorId",
       foreignField: "id",
       as: "instructor"
+    }
+  }
+
+  let instructorFilter = {
+    $match: {
+      "instructor.type": "instructor"
     }
   }
 
@@ -860,6 +866,7 @@ async function participantAvg() {
     formatData,
     group,
     instructorLookup,
+    instructorFilter,
     instructorData,
     report,
     attendenceRate,
