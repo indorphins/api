@@ -57,6 +57,9 @@ const User = new mongoose.Schema({
   },
   birthday: {
     type: String,
+  },
+  campaigns: {
+    type: Array,
   }
 });
 
