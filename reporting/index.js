@@ -6,7 +6,7 @@ const { returnRate, classAttendence, participantAvg, newParticipants, ecoSystemR
 const { classFeedbackForms } = require("./feedback");
 const { classBooking } = require("./transactions");
 const { newUsers } = require("./users");
-const { userSessionsCollection, userTransactionsAgg } = require("./usersessions");
+const { userSessionsCollection, userTransactionsAgg, classCountBuckets } = require("./usersessions");
 const { monthlyRetention, cohortSize } = require("./retention");
 
 /**
@@ -60,15 +60,7 @@ instructorReporting.index({ week: -1, year: -1, instructorId: 1 }, { unique: tru
 instructorReporting.index({ startDate: -1, endDate: -1 }, { unique: false});
 mongoose.model('instructorreporting', instructorReporting);
 
-async function run() {
-  console.log("Running queries");
-
-  try {
-    connect();
-  } catch(e) {
-    console.error(e)
-    process.exit();
-  }
+async function weekly() {
 
   try {
     await newUsers();
@@ -98,19 +90,34 @@ async function run() {
     disconnect();
     return process.exit(1);
   }
+}
 
+async function monthly() {
   try {
     await userSessionsCollection();
     await userTransactionsAgg();
-    await cohortSize();
-    await monthlyRetention();
+    //await cohortSize();
+    //await monthlyRetention();
+    let a = await classCountBuckets();
+    console.log(a);
   } catch(err) {
     console.error(err);
     disconnect();
     return process.exit(1);
   }
 
+  disconnect();
   process.exit();
 }
 
-run();
+console.log("Running queries");
+
+try {
+  connect();
+} catch(e) {
+  console.error(e)
+  process.exit();
+}
+
+//weekly();
+monthly();
