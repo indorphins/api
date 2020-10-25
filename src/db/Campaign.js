@@ -35,6 +35,9 @@ const CampaignSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  expires: {
+    type: Date,
+  },
   date: {
     type: Date,
     required: true,
