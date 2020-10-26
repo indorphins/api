@@ -2,8 +2,12 @@ const express = require('express');
 const middleware = require('../middleware');
 const user = require('../handlers/user');
 const stripe = require('../handlers/stripe');
+const campaign = require('../handlers/campaign');
+const router = express.Router();
 
-let router = express.Router();
+router.post('/referFriend', middleware.authentication);
+router.post('/referFriend', campaign.referFriend);
+
 router.post('/', middleware.authentication);
 router.post('/', user.createUser);
 
