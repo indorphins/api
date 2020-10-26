@@ -31,6 +31,10 @@ const CampaignSchema = new mongoose.Schema({
     type: Boolean,
     required: true,
   },
+  newUser:  {
+    type: Boolean,
+    required: true,
+  },
   description: {
     type: String,
     required: true,
