@@ -17,8 +17,16 @@ async function referFriend(req, res) {
 
   if (!campaign) {
 
-    const num = Math.floor(Math.random() * 1e13);
-    const id = base62.encode(num);
+    let num = Math.floor(Math.random() * 1e13);
+    let id = base62.encode(num);
+
+    let exists = await Campaign.findOne({id: id});
+
+    while (exists) {
+      num = Math.floor(Math.random() * 1e13);
+      id = base62.encode(num);
+      exists = await Campaign.findOne({id: id});
+    }
 
     const newCampaign = {
       id: id,
