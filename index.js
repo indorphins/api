@@ -11,6 +11,7 @@ const sessionRouter = require('./src/routes/session');
 const messageRouter = require('./src/routes/message');
 const archiveRouter = require('./src/routes/archive');
 const reportsRouter = require('./src/routes/report');
+const campaignRouter = require('./src/routes/campaign');
 const stripe = require('./src/handlers/stripe');
 const redis = require('./src/cache');
 const auth = require('./src/auth');
@@ -51,6 +52,7 @@ app.use('/session', sessionRouter)
 app.use('/message', messageRouter);
 app.use('/archive', archiveRouter);
 app.use('/report', reportsRouter);
+app.use('/campaign', campaignRouter)
 
 app.get('/healthy', (req, res) => {
 	res.setHeader('Content-Type', 'text/plain');

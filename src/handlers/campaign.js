@@ -1,6 +1,7 @@
 const Campaign = require('../db/Campaign');
 const base62 = require("base62/lib/ascii");
 const log = require('../log');
+const isBefore = require('date-fns/isBefore')
 
 // Creates a refer a friend campaign, overwriting any that may exist already for the user
 async function referFriend(req, res) {
@@ -12,7 +13,6 @@ async function referFriend(req, res) {
     campaign = await Campaign.findOne({referrerId: userData.id});
   } catch (err) {
     log.warn("Database error finding campaign ", err);
-    throw err;
   }
 
   if (!campaign) {
@@ -37,7 +37,7 @@ async function referFriend(req, res) {
       campaign = await Campaign.create(newCampaign);
     } catch (err) {
       log.warn("Database error creating campaign ", err);
-      res.status(500).json({
+      return res.status(500).json({
         message: "Database error creating campaign"
       });
     }
@@ -48,6 +48,49 @@ async function referFriend(req, res) {
   res.status(200).json(campaign);
 }
 
+async function get(req, res) {
+  const id = req.params.id;
+
+  let campaign;
+
+  try {
+    campaign = await Campaign.findOne({id: id});
+  } catch (err) {
+    log.warn("Database error fetching campaign by id ", err);
+    return res.status(500).json({
+      message: "Database error"
+    })
+  }
+
+  if (!campaign) {
+    log.warn("No campaign found by ID ", id);
+    return res.status(404).json({
+      message: "Campaign not found"
+    })
+  }
+
+  if (campaign.expires) {
+    const now = new Date();
+    const expiry = new Date(campaign.expires);
+    if (isBefore(expiry, now)) {
+      log.warn("Campaign expired ", id);
+      return res.status(410).json({
+        message: 'Campaign expired'
+      })
+    }
+  }
+
+  if (!campaign.active) {
+    log.warn("Campaign inactive ", id);
+    return res.status(410).json({
+      message: 'Campaign inactive'
+    })
+  }
+
+  res.status(200).json(campaign);
+}
+
 module.exports = {
-  referFriend
+  referFriend,
+  get
 }
