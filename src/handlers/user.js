@@ -1,5 +1,6 @@
 const uuid = require('uuid');
 const User = require('../db/User');
+const Campaign = require('../db/Campaign');
 const log = require('../log');
 const knownAccounts = require('../db/known_accounts.json');
 
@@ -66,7 +67,8 @@ async function getUser(req, res) {
 	}
 
 	let query = { id: id };
-	let user;
+  let user;
+  let referCampaign;
 
 	try {
 		user = await User.findOne(query);
@@ -75,16 +77,27 @@ async function getUser(req, res) {
 		return res.status(404).json({
 			message: err,
 		});
-	}
-
+  }
+  
 	if (!user) {
 		return res.status(404).json({
 			message: 'User not found',
 		});
-	}
+  }
+  
+  try {
+    referCampaign = await Campaign.findOne({referrerId: id});
+  } catch (err) {
+    log.info("no user refer friend campaign");
+  }
+
+  let data = Object.assign({}, user._doc);
+  if (referCampaign) {
+    data = Object.assign(data, {referrerId: referCampaign.id});
+  }
 
 	res.status(200).json({
-		data: user,
+		data: data,
 	});
 }
 
