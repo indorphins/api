@@ -96,20 +96,21 @@ async function create(req, res) {
     });
   }
 
+  let campaignInfo;
+
   // Instructors and admins don't pay for classes
   if (classObj.cost && classObj.cost > 0 && userType === 'standard') {
     price = Number(classObj.cost) * 100;
 
-    const campaignId = req.params.campaignId;
-    let campaignInfo;
+    const campaignId = req.params.campaignId || null;
 
     if (campaignId) {
       try {
-        campaignInfo = isValidCampaignForUser(campaignId, userData);
+        campaignInfo = await isValidCampaignForUser(campaignId, userData);
       } catch (err) {
         log.warn("Error determining campaign validity ", err);
       }
-      
+
       if (campaignInfo && campaignInfo.valid) {
         const campaign = campaignInfo.campaign;
         const cost = Number(classObj.cost) * 100;

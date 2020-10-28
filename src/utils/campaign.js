@@ -81,7 +81,7 @@ async function isValidCampaignForUser(campaignId, userData) {
       }
 
       if (!discountAppliedErr) {
-        discountApplied = getCampaignSuccessMessage(userData, campaign);
+        discountApplied = getCampaignSuccessMessage(userData, campaign, remaining);
       }
     }
   }
@@ -134,7 +134,7 @@ function updateUserCampaigns(userData, campaign, isReferrer) {
   return userData;
 }
 
-function getCampaignSuccessMessage(userData, campaign) {
+function getCampaignSuccessMessage(userData, campaign, remaining) {
   const isReferrer = userData.id === campaign.referrerId;
   let message;
 
