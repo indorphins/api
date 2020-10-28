@@ -36,7 +36,8 @@ const Transaction = new mongoose.Schema({
 
 Transaction.index({ created_date: 0 });
 Transaction.index({ campaignId: 1 }, { sparse: true } );
-Transaction.index({ classId: 1, userId: 1 }); // Needed still?
+Transaction.index({ classId: 1, userId: 1 });
+Transaction.index({ userId: 1 });
 Transaction.index({ classId: 1, userId: 1, type: 1 });
 
 module.exports = mongoose.model('Transaction', Transaction);

@@ -8,7 +8,9 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
 const utils = require('../../utils/index');
 const { v4: uuidv4 } = require('uuid');
-
+const Campaign = require('../../db/Campaign');
+const { isValidCampaignForUser, updateUserCampaigns } = require('../../utils/campaign');
+const campaign = require('../../utils/campaign');
 const APPLICATION_FEE_PERCENT = 20;
 
 /**
@@ -22,6 +24,7 @@ const APPLICATION_FEE_PERCENT = 20;
 async function create(req, res) {
   const classId = req.params.id;
   const paymentMethod = req.params.payment_method_id;
+  const userData = req.ctx.userData;
   const userId = req.ctx.userData.id;
   const userType = req.ctx.userData.type;
   let created = new Date().toISOString();
@@ -96,6 +99,40 @@ async function create(req, res) {
   // Instructors and admins don't pay for classes
   if (classObj.cost && classObj.cost > 0 && userType === 'standard') {
     price = Number(classObj.cost) * 100;
+
+    const campaignId = req.params.campaignId;
+    let campaignInfo;
+
+    if (campaignId) {
+      try {
+        campaignInfo = isValidCampaignForUser(campaignId, userData);
+      } catch (err) {
+        log.warn("Error determining campaign validity ", err);
+      }
+      
+      if (campaignInfo && campaignInfo.valid) {
+        const campaign = campaignInfo.campaign;
+        const cost = Number(classObj.cost) * 100;
+        const isReferrer = userData.id === campaign.referrerId;
+
+        if (isReferrer) {
+          if (campaign.referrerDiscountRate) {
+            price = cost * (1 - campaign.referrerDiscountRate);
+          } 
+          if (campaign.referrerDiscountAmount) {
+            price = cost - campaign.referrerDiscountAmount;
+          }
+        } else {
+          if (campaign.discountRate) {
+            price = cost * (1 - campaign.discountRate);
+          } 
+          if (campaign.discountAmount) {
+            price = cost - campaign.discountAmount;
+          }
+        }
+      }
+    }
+
     let intent = {
       payment_method_types: ['card'],
       amount: price,
@@ -122,6 +159,40 @@ async function create(req, res) {
     }
 
     log.debug("Payment succeeded", paymentIntent.id);
+
+    // Process saving/updating campaigns to users and referrers
+    if (campaignInfo && campaignInfo.valid) {
+      const campaign = campaignInfo.campaign;
+      const isReferrer = userData.id === campaign.referrerId;
+      let updatedUser = updateUserCampaigns(userData, campaign, false); 
+
+      try {
+        User.update({ id: userData.id }, updatedUser);
+      } catch (err) {
+        log.warn("Database error updating user post-campaign application ", err);
+      }
+
+      // Fetch and update the referrer with referrer multiplier if not the current user and this is the first use of the campaign for user
+      if (!campaignInfo.existingCampaign && !isReferrer && campaign.referrerDiscountMultiplier && campaign.referrerDiscountMultiplier > 0) {
+        let referrer;
+
+        try {
+          referrer = User.findOne({ id: campaign.referrerId });
+        } catch(err) {
+          log.warn("Database error finding campaign referrer user ", err);
+        }
+
+        if (referrer) {
+          updatedUser = updateUserCampaigns(referrer, campaign, true);
+
+          try {
+            User.update({ id: referrer.id }, updatedUser);
+          } catch (err) {
+            log.warn("Database error updating referrer post-campaign application ", err);
+          }
+        }
+      }
+    }
     
     if (classObj.recurring) {
       const now = new Date();
@@ -257,7 +328,11 @@ async function create(req, res) {
 
   let combined = Object.assign({}, updatedClass._doc);
   combined.instructor = Object.assign({}, instructorData._doc);
-  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts";
+  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts. Amount charged: " + `$${price}.`;
+
+  if (campaignInfo && campaignInfo.msg) {
+    message += ` ${campaignInfo.msg}`;
+  }
   
   res.status(200).json({
     message: message,
