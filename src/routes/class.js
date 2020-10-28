@@ -34,6 +34,9 @@ router.post('/:id/feedback/:sessionId', feedbackHandlers.post);
 router.post('/:id/payment/:payment_method_id', middleware.authentication);
 router.post('/:id/payment/:payment_method_id', stripeHandlers.transaction.create);
 
+router.post('/:id/payment/:payment_method_id/campaign/:campaignId', middleware.authentication);
+router.post('/:id/payment/:payment_method_id/campaign/:campaignId', stripeHandlers.transaction.create);
+
 router.delete('/:id/payment/', middleware.authentication);
 router.delete('/:id/payment/', stripeHandlers.transaction.refund);
 

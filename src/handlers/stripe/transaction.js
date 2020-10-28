@@ -8,7 +8,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
 const utils = require('../../utils/index');
 const { v4: uuidv4 } = require('uuid');
-
+const Campaign = require('../../db/Campaign');
+const { isValidCampaignForUser, updateUserCampaigns } = require('../../utils/campaign');
 const APPLICATION_FEE_PERCENT = 20;
 
 /**
@@ -22,10 +23,13 @@ const APPLICATION_FEE_PERCENT = 20;
 async function create(req, res) {
   const classId = req.params.id;
   const paymentMethod = req.params.payment_method_id;
+  const userData = req.ctx.userData;
   const userId = req.ctx.userData.id;
   const userType = req.ctx.userData.type;
+  const campaignId = req.params.campaignId;
   let created = new Date().toISOString();
   let user, classObj, nextClassDate, paymentIntent;
+  let campaign, campaignInfo;
   let price = 0;
 
   if (!classId || !paymentMethod) {
@@ -96,32 +100,64 @@ async function create(req, res) {
   // Instructors and admins don't pay for classes
   if (classObj.cost && classObj.cost > 0 && userType === 'standard') {
     price = Number(classObj.cost) * 100;
-    let intent = {
-      payment_method_types: ['card'],
-      amount: price,
-      currency: 'usd',
-      customer: user.customerId,
-      confirm: true,
-      transfer_data: {
-        destination: instructorAccount.accountId,
-      },
-      application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
-      payment_method: paymentMethod,
-      metadata: {
-        class_id: classId,
-      },
-    };
 
-    try {
-      paymentIntent = await stripe.paymentIntents.create(intent)
-    } catch (err) {
-      log.error('payment intent error', err);
-      return res.status(400).json({
-        message: err.message
-      });
+    if (campaignId) {
+      try {
+        campaign = await Campaign.findOne({id: campaignId});
+      } catch (err) {
+        log.warn("Campaign lookup", err);
+      }
+
+      if (campaign) {
+        log.debug("Active campaign", campaign);
+        try {
+          campaignInfo = await isValidCampaignForUser(campaign, userData, price);
+        } catch (err) {
+          log.warn("Error determining campaign validity ", err);
+        }
+        
+        log.debug("Campaign Info", campaignInfo);
+        if (campaignInfo && (campaignInfo.price || campaignInfo.price === 0)) {
+          price = campaignInfo.price;
+        }
+      }
     }
 
-    log.debug("Payment succeeded", paymentIntent.id);
+    if (price < 100) {
+      price = 0;
+    }
+
+    if (price > 0) {
+      let intent = {
+        payment_method_types: ['card'],
+        amount: price,
+        currency: 'usd',
+        customer: user.customerId,
+        confirm: true,
+        transfer_data: {
+          destination: instructorAccount.accountId,
+        },
+        application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
+        payment_method: paymentMethod,
+        metadata: {
+          class_id: classId,
+        },
+      };
+
+      try {
+        paymentIntent = await stripe.paymentIntents.create(intent)
+      } catch (err) {
+        log.error('payment intent error', err);
+        return res.status(400).json({
+          message: err.message
+        });
+      }
+
+      log.debug("Payment succeeded", paymentIntent.id);
+    }
+
+    // Process saving/updating campaigns to users and referrers
+    await updateUserCampaigns(userData, campaign, campaignInfo);
     
     if (classObj.recurring) {
       const now = new Date();
@@ -257,7 +293,11 @@ async function create(req, res) {
 
   let combined = Object.assign({}, updatedClass._doc);
   combined.instructor = Object.assign({}, instructorData._doc);
-  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts";
+  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts. Amount charged: " + `$${price / 100}.`;
+
+  if (campaignInfo && campaignInfo.msg) {
+    message += ` ${campaignInfo.msg}`;
+  }
   
   res.status(200).json({
     message: message,

@@ -19,6 +19,7 @@
 	"homepage": "https://github.com/alexlindsay/indorphins-be#readme",
 	"dependencies": {
 		"@sendgrid/mail": "^7.2.1",
+		"base62": "^2.0.1",
 		"bunyan": "^1.8.12",
 		"bunyan-format": "^0.2.1",
 		"cookie-parser": "^1.4.5",
