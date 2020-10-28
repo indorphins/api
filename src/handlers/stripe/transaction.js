@@ -10,7 +10,6 @@ const utils = require('../../utils/index');
 const { v4: uuidv4 } = require('uuid');
 const Campaign = require('../../db/Campaign');
 const { isValidCampaignForUser, updateUserCampaigns } = require('../../utils/campaign');
-const campaign = require('../../utils/campaign');
 const APPLICATION_FEE_PERCENT = 20;
 
 /**
@@ -27,8 +26,10 @@ async function create(req, res) {
   const userData = req.ctx.userData;
   const userId = req.ctx.userData.id;
   const userType = req.ctx.userData.type;
+  const campaignId = req.params.campaignId;
   let created = new Date().toISOString();
   let user, classObj, nextClassDate, paymentIntent;
+  let campaign, campaignInfo;
   let price = 0;
 
   if (!classId || !paymentMethod) {
@@ -100,35 +101,24 @@ async function create(req, res) {
   if (classObj.cost && classObj.cost > 0 && userType === 'standard') {
     price = Number(classObj.cost) * 100;
 
-    const campaignId = req.params.campaignId;
-    let campaignInfo;
-
     if (campaignId) {
       try {
-        campaignInfo = isValidCampaignForUser(campaignId, userData);
+        campaign = await Campaign.findOne({id: campaignId});
       } catch (err) {
-        log.warn("Error determining campaign validity ", err);
+        log.warn("Campaign lookup", err);
       }
-      
-      if (campaignInfo && campaignInfo.valid) {
-        const campaign = campaignInfo.campaign;
-        const cost = Number(classObj.cost) * 100;
-        const isReferrer = userData.id === campaign.referrerId;
 
-        if (isReferrer) {
-          if (campaign.referrerDiscountRate) {
-            price = cost * (1 - campaign.referrerDiscountRate);
-          } 
-          if (campaign.referrerDiscountAmount) {
-            price = cost - campaign.referrerDiscountAmount;
-          }
-        } else {
-          if (campaign.discountRate) {
-            price = cost * (1 - campaign.discountRate);
-          } 
-          if (campaign.discountAmount) {
-            price = cost - campaign.discountAmount;
-          }
+      if (campaign) {
+        log.debug("Active campaign", campaign);
+        try {
+          campaignInfo = await isValidCampaignForUser(campaign, userData, price);
+        } catch (err) {
+          log.warn("Error determining campaign validity ", err);
+        }
+        
+        log.debug("Campaign Info", campaignInfo);
+        if (campaignInfo && campaignInfo.price) {
+          price = campaignInfo.price;
         }
       }
     }
@@ -161,38 +151,7 @@ async function create(req, res) {
     log.debug("Payment succeeded", paymentIntent.id);
 
     // Process saving/updating campaigns to users and referrers
-    if (campaignInfo && campaignInfo.valid) {
-      const campaign = campaignInfo.campaign;
-      const isReferrer = userData.id === campaign.referrerId;
-      let updatedUser = updateUserCampaigns(userData, campaign, false); 
-
-      try {
-        User.update({ id: userData.id }, updatedUser);
-      } catch (err) {
-        log.warn("Database error updating user post-campaign application ", err);
-      }
-
-      // Fetch and update the referrer with referrer multiplier if not the current user and this is the first use of the campaign for user
-      if (!campaignInfo.existingCampaign && !isReferrer && campaign.referrerDiscountMultiplier && campaign.referrerDiscountMultiplier > 0) {
-        let referrer;
-
-        try {
-          referrer = User.findOne({ id: campaign.referrerId });
-        } catch(err) {
-          log.warn("Database error finding campaign referrer user ", err);
-        }
-
-        if (referrer) {
-          updatedUser = updateUserCampaigns(referrer, campaign, true);
-
-          try {
-            User.update({ id: referrer.id }, updatedUser);
-          } catch (err) {
-            log.warn("Database error updating referrer post-campaign application ", err);
-          }
-        }
-      }
-    }
+    await updateUserCampaigns(userData, campaign, campaignInfo);
     
     if (classObj.recurring) {
       const now = new Date();

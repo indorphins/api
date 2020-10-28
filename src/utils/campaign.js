@@ -1,4 +1,4 @@
-const Campaign = require('../db/Campaign');
+const User = require('../db/User');
 const Transaction = require('../db/Transaction');
 const log = require('../log');
 const isBefore = require('date-fns/isBefore');
@@ -13,157 +13,182 @@ const isBefore = require('date-fns/isBefore');
  * @returns {Object} campaign: object, the campaign; valid: boolean; msg: error/success message string (empty if valid);
  *                   existingCampaign: boolean, if campaign is already in user's list of campaigns
  */
-async function isValidCampaignForUser(campaignId, userData) {
-  let existingCampaign = false;
-  let discountAppliedErr;
-  let discountApplied;
-  let campaign;
+async function isValidCampaignForUser(campaign, userData, price) {
+  const isReferrer = userData.id === campaign.referrerId;
+  let match = userData.campaigns.filter(c => { c.campaignId === campaign.id});
+  let existing = match[0];
+  let data = {};
 
-  try {
-    campaign = await Campaign.findOne({id: campaignId});
-  } catch (err) {
-    log.warn("Database error on campaign lookup for transaction checkout ", err);
-    discountAppliedErr = "Sorry, there was an error applying your promo code.";
+  if (!campaign.active) {
+    log.warn("Campaign inactive ", id);
+    data.msg = "Sorry, this deal is no longer active.";
+    return data;
   }
 
-  if (!campaign) {
-    log.warn("No campaign found by ID ", id);
-    discountAppliedErr = "Sorry, that promo doesn't exist.";
+  if (campaign.expires) {
+    const now = new Date();
+    const expiry = new Date(campaign.expires);
+    if (isBefore(expiry, now)) {
+      log.warn("Campaign expired ", id);
+      data.msg = "Sorry, this deal is no longer active."
+      return data;
+    }
+  }
+
+  if (existing && existing.remaining <= 0) {
+    data.msg = "Sorry, you've already used this bangin' deal."
+    return data;
+  }
+
+  if (isReferrer && !existing) {
+    data.msg = "Sorry, you need a friend to signup and book a class before you can use this discount."
+    return data;
+  }
+
+  if (campaign.newUser && !isReferrer) {
+    let transactions;
+
+    try {
+      transactions = await Transaction.find({ userId: userData.id });
+    } catch (err) {
+      log.warn("Database error fetching transactions for campaign newUser check ", err);
+      data.msg = "Sorry, there was an error applying your discount code.";
+      return data;
+    }
+
+    if (transactions && transactions.length > 0) {
+      data.msg = "Sorry, this discount is only available to new users.";
+      return data;
+    }
+  }
+  
+  let discountRate;
+  let discountAmount;
+  let discountText;
+  let multiplier;
+
+  if (isReferrer) {
+    if (campaign.referrerDiscountRate) discountRate = campaign.referrerDiscountRate;
+    if (campaign.referrerDiscountAmount) discountAmount = campaign.referrerDiscountAmount;
+    multiplier = campaign.referrerDiscountMultiplier - 1;
   } else {
-    if (campaign.expires) {
-      const now = new Date();
-      const expiry = new Date(campaign.expires);
-      if (isBefore(expiry, now)) {
-        log.warn("Campaign expired ", id);
-        discountAppliedErr = "Sorry, this deal isn't going on anymore."
-      }
-    }
+    if (campaign.discountRate) discountRate = campaign.discountRate;
+    if (campaign.discountAmount) discountAmount = campaign.discountAmount;
+    multiplier = campaign.discountMultiplier - 1;
+  }
 
-    if (!campaign.active) {
-      log.warn("Campaign inactive ", id);
-      discountAppliedErr = "Sorry, this deal isn't valid anymore.";
-    }
+  if (discountRate) {
+    price = Math.floor(price * (1 - discountRate));
+    discountText = (discountRate*100) + "%";
+  } 
 
-    let remaining = campaign.discountMultiplier - 1;
+  if (discountAmount) {
+    price = price - discountAmount;
+    discountText = "$" + (discountAmount / 100);
+  }
 
-    // If the user has already exhausted this code, don't apply discount
-    if (userData.campaigns) {
-      // iterate over each campaign object and check for a match
-      userData.campaigns.forEach(c => {
-        if (c.campaignId === campaignId) {
-          if (c.remaining <= 0) {
-            discountAppliedErr = "Sorry, you've already used up this sweet deal.";
-          } else {
-            remaining = c.remaining - 1
-            existingCampaign = true;
-          }
-        }
-      })
+  data.msg = `${discountText} off!`;
 
-      if (campaign.newUser && !existingCampaign) {
-        let transactions;
-  
-        try {
-          transactions = await Transaction.find({ userId: userData.id });
-        } catch (err) {
-          log.warn("Database error fetching transactions for campaign newUser check ", err);
-          discountAppliedErr = "Sorry, there was an error applying your promo code.";
-        }
-  
-        if (transactions && transactions.length > 0) {
-          discountAppliedErr = "Sorry, this discount is only available to new users.";
-        }
-      }
-   
-  
-      if (campaign.discountMultiplier < 0) {
-        discountAppliedErr = "Sorry, this promotion doesn't work.";
-      }
+  if (existing && existing.remaining) {
+    multiplier = remaining - 1;
+  }
 
-      if (!discountAppliedErr) {
-        discountApplied = getCampaignSuccessMessage(userData, campaign);
-      }
+  data.msg = `${discountText} off!`;
+  if (multiplier) {
+    if (multiplier > 1) {
+      data.msg = data.msg + ` And ${discountText} off your next ${multiplier} classes.`;
+    } 
+    
+    if (multiplier === 1) {
+      data.msg = data.msg + ` And ${discountText} off your next class.`;
     }
   }
 
-  return {
-    campaign: campaign,
-    valid: discountAppliedErr ? false : true,
-    msg: discountAppliedErr ? discountAppliedErr : discountApplied,
-    existingCampaign: existingCampaign
+  if (existing) {
+    data.saved = true;
+  } else {
+    data.saved = false;
   }
+
+  data.remaining = multiplier;
+  data.price = price;
+  return data;
 };
 
 /**
  * Updates the user's data to establish they just used a campaign code
- * This either adds the campaign or updates an existing to have one less "remaining" uses of the campaign code
- * If isReferrer is true, it does the logic to add discounts to the referrer's campaign 
- * in the event that someone else used their code and they're now eligible to receive referral benefits
  * 
- * Returns the updated userData to be used for a db update 
  * @param {Object} userData 
  * @param {Object} campaign 
- * @param {Boolean} isReferrer 
- * @returns {Object} 
+ * @param {Object} campaignInfo 
  */
-function updateUserCampaigns(userData, campaign, isReferrer) {
-  let updated = false;
+async function updateUserCampaigns(userData, campaign, campaignInfo) {
+  if (!campaignInfo || !campaignInfo.price) return;
 
-  if (userData && userData.campaigns) {
-    userData.campaigns.forEach(c => {
-      if (c.campaignId === campaign.id) {
-        // If updating the referrer, add the referrer multiplier otherwise decrement remaining classes by 1
-        c.remaining += isReferrer ? campaign.referrerDiscountMultiplier : -1;
-        updated = true;
-      }
-    })
-  }
-
-  if (!updated) {
-    const newCampaign = {
-      campaignId: campaign.id,
-      remaining: isReferrer ? campaign.referrerDiscountMultiplier : campaign.discountMultiplier - 1
-    }
-    if (userData.campaigns) {
-      userData.campaigns.push(newCampaign)
-    } else {
-      userData.campaigns = [newCampaign];
-    }
-  }
-
-  return userData;
-}
-
-function getCampaignSuccessMessage(userData, campaign) {
-  const isReferrer = userData.id === campaign.referrerId;
-  let message;
-
-  if (isReferrer) {
-    if (campaign.referrerDiscountAmount) {
-      message = `$${campaign.referrerDiscountAmount} off!`;
-      if (remaining > 0) {
-        message += ` And $${campaign.referrerDiscountAmount} off your next ${remaining > 1 ? `${remaining} classes` : 'class'}!`;
-      }
-    } else if (campaign.referrerDiscountRate) {
-      message = `${campaign.referrerDiscountRate}% off!`;
-      if (remaining > 0) {
-        message += ` And ${campaign.referrerDiscountRate}% off your next ${remaining > 1 ? `${remaining} classes` : 'class'}!`;
-      }
-    }
+  let exists = userData.campaigns.find((item) => item.campaignId = campaign.id);
+  let match = exists ? exists[0] : null;
+  
+  if (match) {
+    match.remaining = campaignInfo.remaining;
   } else {
-    if (campaign.discountAmount) {
-      message = `$${campaign.discountAmount} off!`;
-      if (remaining > 0) {
-        message += ` And $${campaign.discountAmount} off your next ${remaining > 1 ? `${remaining} classes` : 'class'}!`;
+    let data = {
+      campaignId: campaign.id,
+      remaining: campaignInfo.remaining,
+    }
+
+    if (userData.campaigns) {
+      userData.campaigns.push(data);
+    } else {
+      userData.campaigns = [data];
+    }
+  }
+
+  log.debug("Saving user campaign rewards", userData);
+
+  try {
+    await User.update({ id: userData.id }, userData);
+  } catch (err) {
+    // don't return here in case the referrer gets a discount we want to try and process that
+    log.warn("Database error updating user post-campaign application ", err);
+  }
+
+  // Fetch and update the referrer's user data if they get a discount and the booking user is using a new campaign
+  if (!campaignInfo.saved && (campaign.referrerDiscountRate || campaign.referrerDiscountAmount)) {
+    let referrer;
+
+    try {
+      referrer = await User.findOne({ id: campaign.referrerId });
+    } catch(err) {
+      return log.warn("Database error finding campaign referrer user ", err);
+    }
+
+    if (referrer) {
+      let exists = referrer.campaigns.find((item) => item.campaignId = campaign.id);
+      let match = exists ? exists[0] : null;
+
+      if (match) {
+        match.remaining = match.remaining + campaign.referrerDiscountMultiplier;
+      } else {
+        let data = {
+          campaignId: campaign.id,
+          remaining: campaign.referrerDiscountMultiplier,
+        }
+    
+        if (referrer.campaigns) {
+          referrer.campaigns.push(data);
+        } else {
+          referrer.campaigns = [data];
+        }
       }
-    } else if (campaign.discountRate) {
-      message = `${campaign.discountRate}% off!`;
-      if (remaining > 0) {
-        message += ` And ${campaign.discountRate}% off your next ${remaining > 1 ? `${remaining} classes` : 'class'}!`;
+
+      log.debug("Saving referrer campaign rewards", referrer);
+      try {
+        await User.update({ id: referrer.id }, referrer);
+      } catch (err) {
+        return log.warn("Database error updating referrer post-campaign application ", err);
       }
     }
-  } 
-  return message;
+  }
 }
 
 module.exports = {
