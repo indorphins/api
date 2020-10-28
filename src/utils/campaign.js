@@ -45,7 +45,7 @@ async function isValidCampaignForUser(campaign, userData, price) {
     return data;
   }
 
-  if (campaign.newUser && !isReferrer) {
+  if (campaign.newUser && !isReferrer && !existing) {
     let transactions;
 
     try {
