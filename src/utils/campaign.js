@@ -13,7 +13,7 @@ const isBefore = require('date-fns/isBefore');
  * @returns {Object} campaign: object, the campaign; valid: boolean; msg: error/success message string (empty if valid);
  *                   existingCampaign: boolean, if campaign is already in user's list of campaigns
  */
-function isValidCampaignForUser(campaignId, userData) {
+async function isValidCampaignForUser(campaignId, userData) {
   let existingCampaign = false;
   let discountAppliedErr;
   let discountApplied;
