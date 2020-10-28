@@ -123,32 +123,38 @@ async function create(req, res) {
       }
     }
 
-    let intent = {
-      payment_method_types: ['card'],
-      amount: price,
-      currency: 'usd',
-      customer: user.customerId,
-      confirm: true,
-      transfer_data: {
-        destination: instructorAccount.accountId,
-      },
-      application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
-      payment_method: paymentMethod,
-      metadata: {
-        class_id: classId,
-      },
-    };
-
-    try {
-      paymentIntent = await stripe.paymentIntents.create(intent)
-    } catch (err) {
-      log.error('payment intent error', err);
-      return res.status(400).json({
-        message: err.message
-      });
+    if (price < 100) {
+      price = 0;
     }
 
-    log.debug("Payment succeeded", paymentIntent.id);
+    if (price > 0) {
+      let intent = {
+        payment_method_types: ['card'],
+        amount: price,
+        currency: 'usd',
+        customer: user.customerId,
+        confirm: true,
+        transfer_data: {
+          destination: instructorAccount.accountId,
+        },
+        application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
+        payment_method: paymentMethod,
+        metadata: {
+          class_id: classId,
+        },
+      };
+
+      try {
+        paymentIntent = await stripe.paymentIntents.create(intent)
+      } catch (err) {
+        log.error('payment intent error', err);
+        return res.status(400).json({
+          message: err.message
+        });
+      }
+
+      log.debug("Payment succeeded", paymentIntent.id);
+    }
 
     // Process saving/updating campaigns to users and referrers
     await updateUserCampaigns(userData, campaign, campaignInfo);
