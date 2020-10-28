@@ -117,7 +117,7 @@ async function create(req, res) {
         }
         
         log.debug("Campaign Info", campaignInfo);
-        if (campaignInfo && campaignInfo.price) {
+        if (campaignInfo && (campaignInfo.price || campaignInfo.price === 0)) {
           price = campaignInfo.price;
         }
       }

@@ -15,8 +15,8 @@ const isBefore = require('date-fns/isBefore');
  */
 async function isValidCampaignForUser(campaign, userData, price) {
   const isReferrer = userData.id === campaign.referrerId;
-  let match = userData.campaigns.filter(c => { c.campaignId === campaign.id});
-  let existing = match[0];
+  let existing = userData.campaigns.find(c => c.campaignId === campaign.id);
+  log.debug("Existing user campaign data", existing);
   let data = {};
 
   if (!campaign.active) {
@@ -90,7 +90,7 @@ async function isValidCampaignForUser(campaign, userData, price) {
   data.msg = `${discountText} off!`;
 
   if (existing && existing.remaining) {
-    multiplier = remaining - 1;
+    multiplier = existing.remaining - 1;
   }
 
   data.msg = `${discountText} off!`;
@@ -123,10 +123,9 @@ async function isValidCampaignForUser(campaign, userData, price) {
  * @param {Object} campaignInfo 
  */
 async function updateUserCampaigns(userData, campaign, campaignInfo) {
-  if (!campaignInfo || !campaignInfo.price) return;
+  if (!campaignInfo || (!campaignInfo.price && campaignInfo.price !== 0)) return;
 
-  let exists = userData.campaigns.find((item) => item.campaignId = campaign.id);
-  let match = exists ? exists[0] : null;
+  let match = userData.campaigns.find((item) => item.campaignId === campaign.id);
   
   if (match) {
     match.remaining = campaignInfo.remaining;
@@ -152,8 +151,12 @@ async function updateUserCampaigns(userData, campaign, campaignInfo) {
     log.warn("Database error updating user post-campaign application ", err);
   }
 
-  // Fetch and update the referrer's user data if they get a discount and the booking user is using a new campaign
-  if (!campaignInfo.saved && (campaign.referrerDiscountRate || campaign.referrerDiscountAmount)) {
+  // Fetch and update the referrer's user data if they get a discount and the booking user is using a campaign they have not before
+  if (
+    !campaignInfo.saved && 
+    userData.id !== campaign.referrerId &&
+    (campaign.referrerDiscountRate || campaign.referrerDiscountAmount)
+  ) {
     let referrer;
 
     try {
@@ -163,8 +166,7 @@ async function updateUserCampaigns(userData, campaign, campaignInfo) {
     }
 
     if (referrer) {
-      let exists = referrer.campaigns.find((item) => item.campaignId = campaign.id);
-      let match = exists ? exists[0] : null;
+      let match = referrer.campaigns.find((item) => item.campaignId === campaign.id);
 
       if (match) {
         match.remaining = match.remaining + campaign.referrerDiscountMultiplier;
