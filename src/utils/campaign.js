@@ -140,9 +140,9 @@ function getCampaignSuccessMessage(userData, campaign, remaining) {
 
   if (isReferrer) {
     if (campaign.referrerDiscountAmount) {
-      message = `$${campaign.referrerDiscountAmount} off!`;
+      message = `$${campaign.referrerDiscountAmount / 100} off!`;
       if (remaining > 0) {
-        message += ` And $${campaign.referrerDiscountAmount} off your next ${remaining > 1 ? `${remaining} classes` : 'class'}!`;
+        message += ` And $${campaign.referrerDiscountAmount / 100} off your next ${remaining > 1 ? `${remaining} classes` : 'class'}!`;
       }
     } else if (campaign.referrerDiscountRate) {
       message = `${campaign.referrerDiscountRate}% off!`;
@@ -152,9 +152,9 @@ function getCampaignSuccessMessage(userData, campaign, remaining) {
     }
   } else {
     if (campaign.discountAmount) {
-      message = `$${campaign.discountAmount} off!`;
+      message = `$${campaign.discountAmount / 100} off!`;
       if (remaining > 0) {
-        message += ` And $${campaign.discountAmount} off your next ${remaining > 1 ? `${remaining} classes` : 'class'}!`;
+        message += ` And $${campaign.discountAmount / 100} off your next ${remaining > 1 ? `${remaining} classes` : 'class'}!`;
       }
     } else if (campaign.discountRate) {
       message = `${campaign.discountRate}% off!`;
