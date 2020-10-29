@@ -232,6 +232,10 @@ async function create(req, res) {
     created_date: created
   };
 
+  if (campaignId) {
+    data.campaignId = campaignId;
+  }
+
   if (paymentIntent) {
     if (paymentIntent.id) {
       data.paymentId = paymentIntent.id;
