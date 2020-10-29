@@ -36,7 +36,7 @@ async function referFriend(req, res) {
       referrerDiscountAmount: 1000,
       referrerDiscountMultiplier: 1,
       newUser: true,
-      description: "Get $$ for you and your friends when they book a class with your code.",
+      description: `thanks to ${userData.username}`,
       active: true,
       date: new Date().toISOString(),
     };
