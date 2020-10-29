@@ -165,7 +165,7 @@ async function updateUserCampaigns(userData, campaign, campaignInfo) {
       return log.warn("Database error finding campaign referrer user ", err);
     }
 
-    if (referrer) {
+    if (referrer && referrer.type === "standard") {
       let match = referrer.campaigns.find((item) => item.campaignId === campaign.id);
 
       if (match) {
