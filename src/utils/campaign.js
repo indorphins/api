@@ -64,6 +64,7 @@ async function isValidCampaignForUser(campaign, userData, price) {
   
   let discountRate;
   let discountAmount;
+  let discountPrice;
   let discountText;
   let multiplier;
 
@@ -78,40 +79,43 @@ async function isValidCampaignForUser(campaign, userData, price) {
   }
 
   if (discountRate) {
-    price = Math.floor(price * (1 - discountRate));
+    discountPrice = Math.floor(price * (1 - discountRate));
     discountText = (discountRate*100) + "%";
   } 
 
   if (discountAmount) {
-    price = price - discountAmount;
+    discountPrice = price - discountAmount;
     discountText = "$" + (discountAmount / 100);
   }
 
-  data.msg = `${discountText} off!`;
 
   if (existing && existing.remaining) {
     multiplier = existing.remaining - 1;
   }
 
-  data.msg = `${discountText} off!`;
-  if (multiplier) {
-    if (multiplier > 1) {
-      data.msg = data.msg + ` And ${discountText} off your next ${multiplier} classes.`;
-    } 
-    
-    if (multiplier === 1) {
-      data.msg = data.msg + ` And ${discountText} off your next class.`;
+  if (discountPrice || discountPrice === 0) {
+    data.msg = `${discountText} off!`
+
+    if (multiplier) {
+      if (multiplier > 1) {
+        data.msg = data.msg + ` And ${discountText} off your next ${multiplier} classes.`;
+      } 
+      
+      if (multiplier === 1) {
+        data.msg = data.msg + ` And ${discountText} off your next class.`;
+      }
     }
-  }
-
-  if (existing) {
-    data.saved = true;
-  } else {
-    data.saved = false;
-  }
-
-  data.remaining = multiplier;
-  data.price = price;
+  
+    if (existing) {
+      data.saved = true;
+    } else {
+      data.saved = false;
+    }
+  
+    data.remaining = multiplier;
+    data.price = discountPrice;
+  };
+  
   return data;
 };
 
