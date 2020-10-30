@@ -127,6 +127,8 @@ async function create(req, res) {
       price = 0;
     }
 
+    const appFeeAmount = Math.round(price * (APPLICATION_FEE_PERCENT / 100));
+
     if (price > 0) {
       let intent = {
         payment_method_types: ['card'],
@@ -137,7 +139,7 @@ async function create(req, res) {
         transfer_data: {
           destination: instructorAccount.accountId,
         },
-        application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
+        application_fee_amount: appFeeAmount,
         payment_method: paymentMethod,
         metadata: {
           class_id: classId,
