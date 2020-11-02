@@ -299,7 +299,13 @@ async function create(req, res) {
 
   let combined = Object.assign({}, updatedClass._doc);
   combined.instructor = Object.assign({}, instructorData._doc);
-  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts. Amount charged: " + `$${price / 100}.`;
+  
+  let displayedPrice = price / 100;
+  if (!utils.isInteger(displayedPrice)) {
+    displayedPrice = displayedPrice.toFixed(2);
+  }
+
+  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts. Amount charged: " + `$${displayedPrice}.`;
 
   if (campaignInfo && campaignInfo.msg) {
     message += ` ${campaignInfo.msg}`;

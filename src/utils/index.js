@@ -187,6 +187,10 @@ function tConvert(time) {
   return time.join('');
 }
 
+function isInteger(n) {
+  return n === +n && n === (n|0);
+}
+
 module.exports = {
   createClassSku,
   getNextDate,
@@ -197,5 +201,6 @@ module.exports = {
   getEmailSender,
   createDefaultMessageText,
   createClassJoinedSubject,
-  createClassJoinedBody
+  createClassJoinedBody,
+  isInteger
 }
