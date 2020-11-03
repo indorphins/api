@@ -85,7 +85,7 @@ async function isValidCampaignForUser(campaign, userData, price) {
 
   if (discountAmount) {
     discountPrice = price - discountAmount;
-    discountText = "$" + (discountAmount / 100);
+    discountText = "$" + (discountAmount / 100).toFixed(2);
   }
 
 
@@ -149,7 +149,7 @@ async function updateUserCampaigns(userData, campaign, campaignInfo) {
   log.debug("Saving user campaign rewards", userData);
 
   try {
-    await User.update({ id: userData.id }, userData);
+    await User.updateOne({ id: userData.id }, userData);
   } catch (err) {
     // don't return here in case the referrer gets a discount we want to try and process that
     log.warn("Database error updating user post-campaign application ", err);
