@@ -3,12 +3,18 @@ const redis = require('redis');
 let redisClient;
 
 async function init() {
+  let data =  {
+    port: process.env.REDIS_PORT,
+    host: process.env.REDIS_HOST,
+  }
+
+  let pw = process.env.REDIS_PASSWORD;
+  if (pw && pw !== "") {
+    data.password = pw;
+  }
+  
   try {
-    redisClient = redis.createClient({
-      port: process.env.REDIS_PORT,
-      host: process.env.REDIS_HOST,
-      password: process.env.REDIS_PASSWORD
-    });
+    redisClient = redis.createClient(data);
   } catch (err) {
     throw err;
   }

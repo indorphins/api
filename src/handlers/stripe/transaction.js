@@ -7,7 +7,9 @@ const User = require('../../db/User');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
 const utils = require('../../utils/index');
-
+const { v4: uuidv4 } = require('uuid');
+const Campaign = require('../../db/Campaign');
+const { isValidCampaignForUser, updateUserCampaigns } = require('../../utils/campaign');
 const APPLICATION_FEE_PERCENT = 20;
 
 /**
@@ -21,11 +23,14 @@ const APPLICATION_FEE_PERCENT = 20;
 async function create(req, res) {
   const classId = req.params.id;
   const paymentMethod = req.params.payment_method_id;
+  const userData = req.ctx.userData;
   const userId = req.ctx.userData.id;
   const userType = req.ctx.userData.type;
+  const campaignId = req.params.campaignId;
   let created = new Date().toISOString();
-  let user, classObj, price;
-  let nextClassDate;
+  let user, classObj, nextClassDate, paymentIntent;
+  let campaign, campaignInfo;
+  let price = 0;
 
   if (!classId || !paymentMethod) {
     return res.status(400).json({
@@ -95,53 +100,66 @@ async function create(req, res) {
   // Instructors and admins don't pay for classes
   if (classObj.cost && classObj.cost > 0 && userType === 'standard') {
     price = Number(classObj.cost) * 100;
-    let intent = {
-      payment_method_types: ['card'],
-      amount: price,
-      currency: 'usd',
-      customer: user.customerId,
-      confirm: true,
-      transfer_data: {
-        destination: instructorAccount.accountId,
-      },
-      application_fee_amount: price * (APPLICATION_FEE_PERCENT / 100),
-      payment_method: paymentMethod,
-      metadata: {
-        class_id: classId,
-      },
-    };
 
-    let paymentIntent;
-    try {
-      paymentIntent = await stripe.paymentIntents.create(intent)
-    } catch (err) {
-      log.error('payment intent error', err);
-      return res.status(400).json({
-        message: err.message
-      });
+    if (campaignId) {
+      try {
+        campaign = await Campaign.findOne({id: campaignId});
+      } catch (err) {
+        log.warn("Campaign lookup", err);
+      }
+
+      if (campaign) {
+        log.debug("Active campaign", campaign);
+        try {
+          campaignInfo = await isValidCampaignForUser(campaign, userData, price);
+        } catch (err) {
+          log.warn("Error determining campaign validity ", err);
+        }
+        
+        log.debug("Campaign Info", campaignInfo);
+        if (campaignInfo && (campaignInfo.price || campaignInfo.price === 0)) {
+          price = campaignInfo.price;
+        }
+      }
     }
 
-    log.debug("Payment succeeded", paymentIntent.id);
-
-    let data = {
-      amount: price,
-      paymentId: paymentIntent.id,
-      classId: classObj.id,
-      userId: userId,
-      status: paymentIntent.status,
-      type: 'debit',
-      created_date: created
-    };
-
-    try {
-      await Transaction.create(data);
-    } catch (err) {
-      log.warn("add transaction to db", err);
-      return res.status(500).json({
-        message: "Error creating transaction",
-        error: err.message,
-      });
+    if (price < 100) {
+      price = 0;
     }
+
+    const appFeeAmount = Math.round(price * (APPLICATION_FEE_PERCENT / 100));
+
+    if (price > 0) {
+      let intent = {
+        payment_method_types: ['card'],
+        amount: price,
+        currency: 'usd',
+        customer: user.customerId,
+        confirm: true,
+        transfer_data: {
+          destination: instructorAccount.accountId,
+        },
+        application_fee_amount: appFeeAmount,
+        payment_method: paymentMethod,
+        metadata: {
+          class_id: classId,
+        },
+      };
+
+      try {
+        paymentIntent = await stripe.paymentIntents.create(intent)
+      } catch (err) {
+        log.error('payment intent error', err);
+        return res.status(400).json({
+          message: err.message
+        });
+      }
+
+      log.debug("Payment succeeded", paymentIntent.id);
+    }
+
+    // Process saving/updating campaigns to users and referrers
+    await updateUserCampaigns(userData, campaign, campaignInfo);
     
     if (classObj.recurring) {
       const now = new Date();
@@ -206,6 +224,39 @@ async function create(req, res) {
     }
   }
 
+  let data = {
+    amount: price,
+    paymentId: uuidv4(),
+    classId: classObj.id,
+    userId: userId,
+    status: 'succeeded',
+    type: 'debit',
+    created_date: created
+  };
+
+  if (campaignId) {
+    data.campaignId = campaignId;
+  }
+
+  if (paymentIntent) {
+    if (paymentIntent.id) {
+      data.paymentId = paymentIntent.id;
+    }
+    if (paymentIntent.status) {
+      data.status = paymentIntent.status;
+    }
+  }
+
+  try {
+    await Transaction.create(data);
+  } catch (err) {
+    log.warn("add transaction to db", err);
+    return res.status(500).json({
+      message: "Error creating transaction",
+      error: err.message,
+    });
+  }
+
   let participant = {
     id: userId,
     username: req.ctx.userData.username,
@@ -248,7 +299,17 @@ async function create(req, res) {
 
   let combined = Object.assign({}, updatedClass._doc);
   combined.instructor = Object.assign({}, instructorData._doc);
-  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts";
+  
+  let displayedPrice = price / 100;
+  if (!utils.isInteger(displayedPrice)) {
+    displayedPrice = displayedPrice.toFixed(2);
+  }
+
+  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts. Amount charged: " + `$${displayedPrice}.`;
+
+  if (campaignInfo && campaignInfo.msg) {
+    message += ` ${campaignInfo.msg}`;
+  }
   
   res.status(200).json({
     message: message,
@@ -312,7 +373,12 @@ async function refund(req, res) {
 
     let transactions;
     try {
-      transactions = await Transaction.find({ classId: classId, userId: userId, type: 'debit' }).sort({created_date: "desc"});
+      transactions = await Transaction.find({ 
+        classId: classId,
+        userId: userId,
+        type: 'debit',
+        amount: { $gt: 0 },
+      }).sort({created_date: "desc"});
     } catch (err) {
       log.warn("Couldn't find corresponding transaction for class", err);
     }
@@ -385,10 +451,13 @@ async function refund(req, res) {
           userId: userId,
           subscriptionId: sub.id, 
           type: 'debit',
+          amount: { $gt: 0 }
         }).sort({created_date: "desc"});
       } catch (err) {
         log.warn("Couldn't find corresponding transaction for class", err);
       }
+
+      log.debug("transactions", transactions);
 
       if (transactions && transactions[0] && transactions.length === 1) {
         if (transactions[0].created_date < course.start_date) {

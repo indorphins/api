@@ -4,13 +4,14 @@ const Session = require('../../src/db/Session');
 const { v4: uuidv4 } = require('uuid');
 
 const types = ["Ballet", "Boxing", "Aerobics"]
-const instructorId = "9bbacc10-d85d-11ea-8161-f36c28222179";
+const instructorId = "3dcb6c50-0aa7-11eb-9180-65cbbff60f45";
 const participants = [
   instructorId,
   "05805490-d849-11ea-8161-f36c28222179",
   "36ca5d00-d84b-11ea-8161-f36c28222179",
   "asdfasdfasdgasfd",
-  "qowieuytlqerwng"
+  "qowieuytlqerwng",
+  "woeriutoweirujtowieruj"
 ];
 
 /**

@@ -1,0 +1,1 @@
+sh -ac '. ../${APP_ENV}.env; node index.js'
