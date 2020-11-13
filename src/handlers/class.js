@@ -87,43 +87,56 @@ async function getClasses(req, res) {
  */
 async function createClass(req, res) {
 
-  let classData = req.body;
-  let newClass = null;
-  let productSkuData = null;
+  let cData = req.body;
 
-  classData.id = uuid.v1();
-  classData.created_date = new Date().toISOString();
-  classData.available_spots = classData.total_spots;
-  classData.instructor = req.ctx.userData.id;
-  classData.participants = [];
-
-  try {
-    productSkuData = await utils.createClassSku(classData);
-  } catch (err) {
-    log.warn('Error creating class sku: ', err);
-    return res.status(400).json({
-      message: "issue creating class sku",
-      error: err
-    });
+  if (!Array.isArray(cData)) {
+    cData = [cData];
   }
 
-  classData.product_sku = productSkuData.product_sku;
-  classData.product_price_id = productSkuData.product_price_id;
+  let newClasses = [];
 
-  try {
-    newClass = await Class.create(classData);
-  } catch (err) {
-    log.warn('Error creating class: ', err);
-    return res.status(400).json({
-      message: "issue creating class",
-      error: err
-    });
+  for (let i = 0; i < cData.length; i++) {
+    let classData = cData[i];
+    let newClass = null;
+    let productSkuData = null;
+  
+    classData.id = uuid.v1();
+    classData.created_date = new Date().toISOString();
+    classData.available_spots = classData.total_spots;
+    classData.instructor = req.ctx.userData.id;
+    classData.participants = [];
+  
+    try {
+      productSkuData = await utils.createClassSku(classData);
+    } catch (err) {
+      log.warn('Error creating class sku: ', err);
+      return res.status(400).json({
+        message: "issue creating class sku",
+        error: err
+      });
+    }
+  
+    classData.product_sku = productSkuData.product_sku;
+    classData.product_price_id = productSkuData.product_price_id;
+  
+  
+    try {
+      newClass = await Class.create(classData);
+    } catch (err) {
+      log.warn('Error creating class: ', err);
+      return res.status(400).json({
+        message: "issue creating class",
+        error: err
+      });
+    }
+  
+    log.debug('New class created', newClass);
+    newClasses.push(newClass);
   }
 
-  log.debug('New class created', newClass);
   res.status(201).json({
     message: "New class added",
-    data: newClass,
+    data: newClasses,
   });
 };
 
