@@ -1,4 +1,5 @@
 const { UserSessions } = require('./usersessions');
+const Transaction = require('../src/db/Transaction');
 
 async function cohortSize() {
   let filter = {
@@ -21,8 +22,8 @@ async function cohortSize() {
   let cohortGroup = {
     $group: {
       _id: {
-        createdYear: "$created.year",
-        createdMonth: "$created.month",
+        month: "$created.month",
+        year: "$created.year",
       },
       cohort: {
         $sum: 1,
@@ -273,8 +274,8 @@ async function monthlyRetention() {
   let createdMonthGroup = {
     $group: {
       _id: {
-        createdYear: "$_id.createdYear",
-        createdMonth: "$_id.createdMonth",
+        month: "$_id.createdMonth",
+        year: "$_id.createdYear",
       },
       data: {
         $push: {
@@ -288,8 +289,8 @@ async function monthlyRetention() {
 
   let sortCreated = {
     $sort: {
-      "_id.createdYear": 1,
-      "_id.createdMonth": 1,
+      "_id.year": 1,
+      "_id.month": 1,
     }
   }
 
@@ -361,7 +362,119 @@ async function monthlyRetention() {
   ])
 }
 
+async function CustomerCount() {
+
+  let filter = {
+    $match: {
+      type: "debit"
+    }
+  }
+
+  let format = {
+    $set: {
+      month: {
+        $month: "$created_date"
+      },
+      year: {
+        $year: "$created_date"
+      }
+    }
+  }
+
+  let group = {
+    $group: {
+      _id: {
+        month: "$month",
+        year: "$year",
+        userId: "$userId"
+      },
+      totalClasses: {
+        $sum: 1
+      }
+    }
+  }
+
+  let group2 = {
+    $group: {
+      _id: {
+        month: "$_id.month",
+        year: "$_id.year",
+      },
+      customerCount: {
+        $sum: 1
+      }
+    }
+  }
+
+  return Transaction.aggregate([
+    filter,
+    format,
+    group,
+    group2,
+  ])
+}
+
+async function NewCustomerCount() {
+  let filter = {
+    $match: {
+      type: "debit"
+    }
+  }
+
+  let group = {
+    $group: {
+      _id: {
+        userId: "$userId"
+      },
+      transactionDates: {
+        $push: "$created_date"
+      }
+    }
+  }
+
+  let first = {
+    $set: {
+      firstClass: {
+        $first: "$transactionDates"
+      }
+    }
+  }
+
+  let format = {
+    $set: {
+      month: {
+        $month: "$firstClass"
+      },
+      year: {
+        $year: "$firstClass"
+      }
+    }
+  }
+
+  let newCust = {
+    $group: {
+      _id: {
+        month: "$month",
+        year: "$year",
+      },
+      newCustomers: {
+        $sum: 1,
+      }
+    }
+  }
+
+  return Transaction.aggregate([
+    filter,
+    group,
+    first,
+    format,
+    newCust,
+  ])
+}
+
 module.exports = {
   monthlyRetention: monthlyRetention,
   cohortSize: cohortSize,
+  CustomerCount: CustomerCount,
+  NewCustomerCount: NewCustomerCount,
 }

@@ -48,6 +48,9 @@ async function userTransactions() {
   let group = {
     $group: {
       _id: "$userId",
+      totalSpent: {
+        $sum: "$amount"
+      },
       classDates: {
         $push: "$created_date",
       }
@@ -298,6 +301,132 @@ async function classCountBuckets() {
   ])
 }
 
+async function ARPU() {
+  let format = {
+    $project: {
+      userId: "$userId",
+      amount: { 
+        $cond: { 
+          if: { $eq: ["$type", "debit"] },
+          then: "$amount",
+          else: {$multiply: [-1, "$amount"]}
+        }
+      }
+    }
+  }
+
+  let group = {
+    $group: {
+      _id:  "$userId",
+      totalSpent: {
+        $sum: "$amount"
+      }
+    }
+  }
+
+  let avg = {
+    $group: {
+      _id:  null,
+      averageLifetimeRevPerUser: {
+        $avg: "$totalSpent"
+      }
+    }
+  }
+
+  return Transaction.aggregate([
+    format,
+    group,
+    avg,
+  ]);
+}
+
+async function monthlyARPU() {
+
+
+  let getMonth = {
+    $set: {
+      month: {
+        $month: "$created_date",
+      },
+      year: {
+        $year: "$created_date",
+      },
+      amount: { 
+        $cond: { 
+          if: { $eq: ["$type", "debit"] },
+          then: "$amount",
+          else: {$multiply: [-1, "$amount"]}
+        }
+      }
+    }
+  }
+
+  let avg = {
+    $group: {
+      _id: {
+        userId: "$userId",
+        month: "$month",
+        year: "$year",
+      },
+      totalSpent: {
+        $sum: "$amount"
+      }
+    }
+  }
+
+  let group = {
+    $group: {
+      _id: {
+        month: "$_id.month",
+        year: "$_id.year",
+      },
+      averageRevPerUser: {
+        $avg: "$totalSpent"
+      }
+    }
+  }
+  
+  let save = {
+    $merge: {
+      into: "monthlyreportings",
+      on: "_id",
+      whenMatched: "merge",
+      whenNotMatched: "insert",
+    }
+  }
+
+  return Transaction.aggregate([
+    getMonth,
+    avg,
+    group,
+    save,
+  ]);
+}
+
+async function promoCodes() {
+  let filter = {
+    $match: {
+      campaignId: {
+        $ne: null
+      }
+    }
+  }
+
+  let group = {
+    $group: {
+      _id: null,
+      promoCodesUsed: {
+        $sum: 1,
+      }
+    }
+  }
+
+  return Transaction.aggregate([
+    filter,
+    group,
+  ])
+}
+
 module.exports = {
   UserSessions: UserSessions,
   userSessionsCollection: userSessionsCollection,
@@ -305,4 +434,7 @@ module.exports = {
   instructorSessionsAgg: instructorSessionsAgg,
   userTransactionsAgg: userTransactions,
   classCountBuckets: classCountBuckets,
+  ARPU: ARPU,
+  monthlyARPU,
+  promoCodes: promoCodes,
 }

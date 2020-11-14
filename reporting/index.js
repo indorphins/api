@@ -6,8 +6,8 @@ const { returnRate, classAttendence, participantAvg, newParticipants, ecoSystemR
 const { classFeedbackForms } = require("./feedback");
 const { classBooking } = require("./transactions");
 const { newUsers } = require("./users");
-const { userSessionsCollection, userTransactionsAgg, classCountBuckets } = require("./usersessions");
-const { monthlyRetention, cohortSize } = require("./retention");
+const { ARPU, monthlyARPU, promoCodes, userSessionsCollection, userTransactionsAgg, classCountBuckets } = require("./usersessions");
+const { monthlyRetention, cohortSize, CustomerCount, NewCustomerCount } = require("./retention");
 
 /**
  * disconnect from mongo DB at end of run
@@ -38,7 +38,7 @@ const reporting = new mongoose.Schema({
 });
 
 reporting.index({ week: -1, year: -1 }, { unique: true});
-reporting.index({ startDate: -1, endDate: -1 }, { unique: true});
+reporting.index({ startDate: -1, endDate: -1 }, { unique: true, sparse: true});
 mongoose.model('reporting', reporting);
 
 const instructorReporting = new mongoose.Schema({
@@ -57,7 +57,7 @@ const instructorReporting = new mongoose.Schema({
 });
 
 instructorReporting.index({ week: -1, year: -1, instructorId: 1 }, { unique: true});
-instructorReporting.index({ startDate: -1, endDate: -1 }, { unique: false});
+instructorReporting.index({ startDate: -1, endDate: -1 }, { unique: false, sparse: true});
 mongoose.model('instructorreporting', instructorReporting);
 
 async function weekly() {
@@ -90,16 +90,31 @@ async function weekly() {
     disconnect();
     return process.exit(1);
   }
+
+  disconnect();
+  process.exit();
 }
 
 async function monthly() {
   try {
-    await userSessionsCollection();
+    /*await userSessionsCollection();
     await userTransactionsAgg();
-    //await cohortSize();
-    //await monthlyRetention();
-    let a = await classCountBuckets();
-    console.log(a);
+    await monthlyRetention();
+    await cohortSize();
+    await monthlyARPU();*/
+
+    /*let a = await ARPU();
+    console.log(a);*/
+
+    let b = await CustomerCount();
+    console.log(b);
+
+    let c = await NewCustomerCount();
+    console.log(c);
+
+    /*let c = await promoCodes();
+    console.log(c);*/
+
   } catch(err) {
     console.error(err);
     disconnect();

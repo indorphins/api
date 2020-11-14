@@ -829,7 +829,7 @@ async function participantAvg() {
       totalEnrolled: "$totalEnrolled",
       totalNoShows: {
         $cond: {
-          if: { $gt: ["$totalEnrolled", 0] },
+          if: { $gt: ["$totalEnrolled", "$totalAttended"] },
           then: {
             $subtract: ["$totalEnrolled", "$totalAttended"]
           },
@@ -843,11 +843,11 @@ async function participantAvg() {
     $set: {
       attendenceRate: {
         $cond: {
-          if: { $gt: ["$totalEnrolled", 0]},
+          if: { $gt: ["$totalEnrolled", "$totalAttended"]},
           then: {
             $divide: ["$totalAttended", "$totalEnrolled"]
           },
-          else: 0
+          else: 1
         }
       }
     }
