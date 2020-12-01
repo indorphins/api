@@ -21,6 +21,9 @@ const Sub = new mongoose.Schema({
   },
   created_date: {
     type: Date,
+  },
+  cost: {
+    type: Number
   }
 });
 
