@@ -14,7 +14,7 @@ const Sub = new mongoose.Schema({
   },
   status: {
     type: String,
-  },
+  },  
   start_date: {
     type: Date,
   },
@@ -26,6 +26,12 @@ const Sub = new mongoose.Schema({
   },
   cost: {
     type: Object
+  },
+  period_start: {
+    type: Date
+  }, 
+  period_end: {
+    type: Date
   }
 });
 
