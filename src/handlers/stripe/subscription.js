@@ -199,7 +199,6 @@ async function getProductsPrices(req, res) {
     })
   })
 
-
   log.info("Successfully got product and prices ", productPrices);
   res.status(200).json(productPrices);
 }
@@ -209,6 +208,31 @@ async function cancelSubscription(req, res) {
   // must cancel the user's subscription and remove them from all booked classes (under the sub)
   // refund user based on classes not taken / total classes in subscription * sub cost
   
+}
+
+// Fetch user subscription data from mongo - returns latest subscription if multiple exist
+async function getSubscription(req, res) {
+  const userData = req.ctx.userData;
+
+  let sub;
+
+  try {
+    sub = Subscription.find({ user_id: userData.id })
+  } catch (err) {
+    log.warn("Database error fetching user subs ", err);
+    return res.status(500).json({
+      message: "Database error"
+    })
+  }
+
+  let s = null;
+
+  if (sub.length > 0) {
+    s = sub[0];
+  }
+
+  log.info("Found user sub data ", s);
+  res.status(200).json(s);
 }
 
 async function subscriptionWebhook(req, res) {
