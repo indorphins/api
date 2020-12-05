@@ -390,10 +390,167 @@ async function subscriptionWebhook(req, res) {
 
 }
 
+/**
+ * Checks if user has an active or trial subscription
+ * If they have classes left in their sub add to the class 
+ * Replaces create transaction
+ * @param {Object} req 
+ * @param {Object} res 
+ */
+async function addToClass(req, res) {
+  const userData = req.ctx.userData;
+  const userType = userData.type;
+  const userId = userData.id;
+  const classId = req.params.id;
+
+  let course;
+
+  try {
+    course = await Class.findOne({ id: classId });
+  } catch (err) {
+    log.warn("Database error");
+    return res.status(500).json({
+      message: 'Database error'
+    })
+  }
+
+  if (!course) {
+    log.warn("No class found to add user to");
+    return res.status(404).json({
+      message: 'No class found by id'
+    })
+  }
+
+  if (course.participants.indexOf(userId) >= 0) {
+    log.info("User already in class");
+    return res.status(400).json({
+      message: "User already booked in class"
+    })
+  }
+
+  if (course.available_spots <= 0) {
+    log.info("Class full");
+    return res.status(400).json({
+      message: "Class full"
+    })
+  }
+
+  let subs;
+
+  try {
+    subs = await Subscription.find({ user_id : userId }).sort({ created_date: -1 });
+  } catch (err) {
+    log.warn("Database error ", err);
+    return res.status(500).json({
+      message: "Database err"
+    })
+  }
+
+  if (!subs || subs.length === 0) {
+    log.warn("No subscriptions found");
+    return res.status(404).json({
+      message: 'No subscriptions found'
+    })
+  }
+
+  const sub = subs[0];
+
+  if (sub.status !== 'ACTIVE' || sub.status !== 'TRIAL') {
+    log.warn("User subscription not valid");
+    return res.status(400).json({
+      message: 'Inactive subscription'
+    })
+  }
+
+  if (sub.classes_left === 0) {
+    log.warn("No more classes left in subscription");
+    return res.status(400).json({
+      message: 'No more classes left in subscription'
+    })
+  }
+
+  // Add to class participants and decrement classes_left if valid
+  let participant = {
+    id: userId,
+    username: userData.username,
+  };
+
+  let updateData = {
+    $push: {
+      participants: participant
+    }
+  }
+
+  // Instructors don't take up a spot since they play for free
+  if (userType === 'standard') {
+    updateData.$inc = {
+      available_spots: -1
+    };
+  }
+
+  let updatedClass;
+  try {
+    updatedClass = Class.findOneAndUpdate({ id: course.id }, updateData, {new: true});
+  } catch (err) {
+    log.error("error updating class", err);
+    return res.status(500).json({
+      message: "Error adding participant",
+      error: err.message,
+    });
+  }
+
+  if (sub.classes_left > 0) {
+    let subUpdate = {
+      $inc: {
+        classes_left: -1
+      }
+    }
+
+    try {
+      sub = Subscription.findOneAndUpdate({ id: sub.id }, subUpdate, {new: true})
+    } catch (err) {
+      log.warn("Error updating subscription");
+      return res.status(500).json({
+        message: "Error updating subscription"
+      })
+    }
+  }
+
+  let instructorData;
+  try {
+    instructorData = await User.findOne({id: classObj.instructor});
+  } catch(err) {
+    log.error("fetch instructor user record", err);
+    return res.status(500).json({
+      message: "Error fetching instructor",
+      error: err.message,
+    });
+  }
+
+  let combined = Object.assign({}, updatedClass._doc);
+  combined.instructor = Object.assign({}, instructorData._doc);
+  
+  let displayedPrice = price / 100;
+  if (!utils.isInteger(displayedPrice)) {
+    displayedPrice = displayedPrice.toFixed(2);
+  }
+
+  let message = "You're in! You'll be able to join class from this page 5 minutes before class starts."
+  if (sub.classes_left > 0) {
+    message += ` Classes left in subscription: ${sub.classes_left - 1}`;
+  }
+
+  res.status(200).json({
+    message: message,
+    course: combined,
+  });
+}
+
 module.exports = {
   createSubscription,
   getProductsPrices,
   cancelSubscription,
   getSubscription,
+  addToClass,
   subscriptionWebhook
 }
