@@ -165,7 +165,8 @@ async function createSubscription(req, res) {
     period_start: fromUnixTime(stripeSub.current_period_start),
     period_end: fromUnixTime(stripeSub.current_period_end),
     classes_left: product.metadata.max_classes,
-    max_classes: product.metadata.max_classes
+    max_classes: product.metadata.max_classes,
+    proration_behavior: 'none'
   }
 
   try {
@@ -270,9 +271,18 @@ async function cancelSubscription(req, res) {
     })
   }
 
-  let activeSub = subs.filter(sub => {
+  let activeSubs = subs.filter(sub => {
     return sub.status === "ACTIVE" || sub.status === "TRIAL"
   })
+
+  if (activeSubs.length === 0) {
+    log.warn('User has no active subscriptions');
+    return res.status(404).json({
+      message: 'User has no active subscriptions'
+    })
+  } 
+
+  let activeSub = activeSubs[0];
 
   // Cancel the sub on stripes end
   let cancelled;
@@ -291,22 +301,51 @@ async function cancelSubscription(req, res) {
   if (activeSub.classes_left < 0) {
     refund = getSubscriptionCostOverDays(activeSub, Date(), activeSub.period_end);
   } else if (activeSub.classes_left > 0) {
-    refund = activeSub.classes_left / activeSub.max_classes * activeSub.cost.amount / 100;
+    refund = activeSub.classes_left / activeSub.max_classes * activeSub.cost.amount;
   }
 
-  if (refund !== 0) {
-    // issue a payment intent refund
-    // TODO
-    // create Transaction to record it
-  }
+  if (refund > 0 && activeSub.latest_payment) {
+    // issue a payment intent refund using latest_payment
+    let refundTransaction;
+    try {
+      refundTransaction = await stripe.refunds.create({
+        payment_intent: activeSub.latest_payment,
+        amount: refund
+      });
+    } catch (err) {
+      log.warn('Stripe - create refund error: ', err);
+      let re = /is already fully reversed/g
+      if (!err.message.match(re)) {
+        return res.status(400).json({
+          message: err.message,
+        });
+      }
+    }
 
+    if (refundTransaction) {
+      try {
+        await Transaction.create({
+          amount: refund,
+          paymentId: refundTransaction.id,
+          userId: userData.id,
+          status: refundTransaction.status,
+          type: 'credit',
+          subscription_id: activeSub.id,
+          created_date: new Date().toISOString()
+        });
+      } catch (err) {
+        return res.status(500).json({
+          message: err.message
+        });
+      }
+  }
 
   // remove user from all future classes
   let classes;
   const now = new Date().toISOString();
 
   try {
-    classes = await Class.updateMany({ participants: userData.id, start_date: { $gte: now } }, { $pull: { participants: userData.id }})
+    classes = await Class.updateMany({ participants: userData.id, start_date: { $gte: now } }, { $pull: { participants: { $in: [userData.id] }}})
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
@@ -316,7 +355,7 @@ async function cancelSubscription(req, res) {
 
   // update subscription to CANCELLED
   try {
-    await Subscription.update({ id: activeSub.id }, { $set: { status: 'CANCELLED' }});
+    await Subscription.updateOne({ id: activeSub.id }, { $set: { status: 'CANCELLED' }});
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
@@ -329,7 +368,7 @@ async function cancelSubscription(req, res) {
   })
 }
 
-// Returns cost of the subscription over the number of days it was active between startDate and endDate
+// Returns cost IN CENTS of the subscription over the number of days it was active between startDate and endDate
 function getSubscriptionCostOverDays(sub, startDate, endDate) {
   console.log("Sub start ", sub.period_start)
   console.log("Sub end ", sub.period_end)
@@ -337,7 +376,7 @@ function getSubscriptionCostOverDays(sub, startDate, endDate) {
   console.log("Compare end ", endDate);
 
   const totalDays = differenceInDays(sub.period_start, sub.period_end);
-  const cost = sub.cost.amount / 100;
+  const cost = sub.cost.amount;
   let daysInRange = 0;
 
   if (isBefore(sub.period_start, startDate)) {

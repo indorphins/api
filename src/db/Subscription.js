@@ -21,9 +21,11 @@ const Sub = new mongoose.Schema({
   created_date: {
     type: Date,
   },
+  // item user bought - has price property with the price id
   item: {
     type: Object
   },
+  // cost object containing amount and recurring
   cost: {
     type: Object
   },
@@ -38,6 +40,10 @@ const Sub = new mongoose.Schema({
   },
   max_classes: {
     type: Number
+  },
+  // payment intent id for the last invoice tied to this subscription
+  latest_payment: {
+    type: String
   }
 });
 
