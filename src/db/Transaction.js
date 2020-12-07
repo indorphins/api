@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const Transaction = new mongoose.Schema({
   classId: {
     type: String,
-    required: true,
   },
   userId: {
     type: String,
@@ -25,7 +24,7 @@ const Transaction = new mongoose.Schema({
   created_date: {
     type: Date,
   },
-  // Type values: debit, credit
+  // Type values: debit (money to us), credit (money to user)
   type: {
     type: String,
   },
