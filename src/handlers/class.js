@@ -269,6 +269,7 @@ async function deleteClass(req, res) {
           userId: p.id,
           subscriptionId: sub.id,
           type: 'credit',
+          classId: c.id,
           created_date: new Date().toISOString()
         });
       } catch (err) {
