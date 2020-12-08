@@ -364,28 +364,46 @@ async function refund(req, res) {
       return res.status(400).json({ message: "This class has already occurred and cannot be left or refunded" });
     }
 
-    let refundWindow = new Date(course.start_date);
-    refundWindow.setDate(refundWindow.getDate() - 1);
-    if (now >= refundWindow && now < course.start_date) {
-      return res.status(400).json({ message: "This class is scheduled to start in the next 24 hours and cannot be left or refunded" });
-    }
+    // Find the user's subscription and add a class back to it if limited max_classes
+    let subscriptions, subscription, sub;
 
-    let transactions;
     try {
-      transactions = await Transaction.find({ 
-        classId: classId,
-        userId: userId,
-        type: 'debit',
-        amount: { $gt: 0 },
-      }).sort({created_date: "desc"});
-    } catch (err) {
-      log.warn("Couldn't find corresponding transaction for class", err);
-    }
+      subscriptions = await Subscription.find({ $and: [{userId: userId} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
+      } catch (err) {
+        log.warn("Couldn't find corresponding subscriptions for user", err);
+      }
+      
+      if (subscriptions && subscriptions[0]) {
+        subscription = subscriptions[0];
+      }
 
-    if (transactions && transactions[0]) {
-      transaction = transactions[0];
-    }
+      // Add back class to classes_left if not unlimited sub (classes left > -1) and classes_left < max_classes
+      if (subscription && subscription.classes_left > -1 && subscription.classes_left < subscription.max_classes) {
+        try {
+          sub = await Subscription.updateOne({ id: subscription.id }, { $inc: { classes_left: 1 }})
+        } catch (err) {
+          log.warn('Refund class - add class back to subscription ', err);
+          return res.status(400).json({
+            message: err.message,
+          });
+        }
+      }
 
+      try {
+        await Transaction.create({
+          amount: 0,
+          userId: userId,
+          subscriptionId: sub.id,
+          type: 'credit',
+          classId: course.id,
+          created_date: new Date().toISOString()
+        });
+      } catch (err) {
+        log.warn('Refund cancel - error creating credit Transaction ', err);
+        return res.status(500).json({
+          message: err.message
+        });
+      }
   } else {
 
     let refundWindow = new Date(course.start_date);
@@ -471,6 +489,7 @@ async function refund(req, res) {
     }
   }
 
+  // There should be no transaction found here to trigger refund charge
   if (transaction) {
     let refundTransaction;
     try {
