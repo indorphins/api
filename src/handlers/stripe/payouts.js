@@ -7,8 +7,15 @@ const log = require('../../log');
 // Gets a map of each instructors share of subscription money between startDate and endDate
 // BASED ON ASSUMPTION THAT NO SPOTS WERE BOOKED WITH A "BOOKED ONCE" FLOW
 async function getInstructorsSubShare(req, res) {
-  const startDate = req.body.start_date;
-  const endDate = req.body.end_date;
+  const startDate = req.params.start_date;
+  const endDate = req.params.end_date;
+  const userData = req.ctx.userData;
+
+  if (userData.type !== 'admin') {
+    res.status(403).json({
+      message: "Account type forbidden"
+    })
+  }
 
   // get all subs that include days between start and end date
   const start = new Date(startDate).toISOString();
@@ -142,4 +149,8 @@ async function payoutInstructor(instructorId) {
   // Use Stripe api to make direct payment from our company stripe account
   // to the instuctor's connected account for their share
 
+}
+
+module.exports = {
+  getInstructorsSubShare
 }
