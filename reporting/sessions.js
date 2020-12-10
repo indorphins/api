@@ -814,8 +814,6 @@ async function participantAvg() {
       },
       instructor: { 
         username: "$instructor.username",
-        first_name: "$instructor.first_name",
-        last_name: "$instructor.last_name",
       },
       totalClasses: "$classes",
       totalAttended: "$totalAttended",
