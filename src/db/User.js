@@ -9,7 +9,8 @@ const User = new mongoose.Schema({
 	username: {
 		type: String,
 		required: true,
-	},
+  },
+  // DEPRECATED
 	first_name: {
 		type: String,
 	},
