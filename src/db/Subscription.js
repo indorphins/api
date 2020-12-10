@@ -5,6 +5,7 @@ const Sub = new mongoose.Schema({
     type: String,
     required: true,
   },
+  // Deprecated - used in old subscriptionSchedules flows
   class_id: {
     type: String,
   },
@@ -13,13 +14,10 @@ const Sub = new mongoose.Schema({
     type: String,
     required: true
   },
-  // ACTIVE TRIAL CANCELLED PAYMENT_FAILED
+  // ACTIVE TRIAL CANCELED PAYMENT_FAILED
   status: {
     type: String,
     required: true
-  },  
-  start_date: {
-    type: Date,
   },
   created_date: {
     type: Date,

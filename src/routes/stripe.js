@@ -4,4 +4,6 @@ const stripe = require('../handlers/stripe');
 
 router.get('/verify', stripe.account.callback);
 
+router.post('/webhook', stripe.webhook.invoiceWebhook)
+
 module.exports = router;

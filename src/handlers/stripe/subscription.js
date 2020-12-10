@@ -286,10 +286,10 @@ async function cancelSubscription(req, res) {
   let activeSub = activeSubs[0];
 
   // Cancel the sub on stripes end
-  let cancelled;
+  let canceled;
 
   try {
-    cancelled = await stripe.subscriptions.del(sub.id);
+    canceled = await stripe.subscriptions.del(sub.id);
   } catch (err) {
     log.warn("Stripe API error on subscription delete ", err);
     return res.status(500).json({
@@ -355,9 +355,9 @@ async function cancelSubscription(req, res) {
     })
   }
 
-  // update subscription to CANCELLED
+  // update subscription to CANCELED
   try {
-    await Subscription.updateOne({ id: activeSub.id }, { $set: { status: 'CANCELLED' }});
+    await Subscription.updateOne({ id: activeSub.id }, { $set: { status: 'CANCELED' }});
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
@@ -366,7 +366,7 @@ async function cancelSubscription(req, res) {
   }
 
   res.status(200).json({
-    message: 'Subscription cancelled'
+    message: 'Subscription canceled'
   })
 }
 
