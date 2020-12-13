@@ -4,7 +4,6 @@ const middleware = require('../middleware');
 const subscriptionHandlers = require("../handlers/stripe/subscription");
 
 // Get all stripe products
-router.get('/products', middleware.authentication);
 router.get('/products', subscriptionHandlers.getProductsPrices);
 
 // Get user's most recent subscription

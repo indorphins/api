@@ -51,6 +51,10 @@ const Sub = new mongoose.Schema({
   // payment intent id for the last invoice tied to this subscription
   latest_payment: {
     type: String
+  },
+  trial_length: {
+    type: Number,
+    required: true
   }
 });
 
