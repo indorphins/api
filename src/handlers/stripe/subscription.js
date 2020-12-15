@@ -158,7 +158,7 @@ async function createSubscription(req, res) {
   options = {
     id: stripeSub.id,
     user_id: userData.id,
-    status: freeTrial ? 'TRIAL' : 'CREATED',
+    status: freeTrial ? 'TRIAL' : 'ACTIVE',
     created_date: fromUnixTime(stripeSub.created).toISOString(),
     item: { price: price.id },
     cost: { 
@@ -309,7 +309,9 @@ async function getRefundAmount(req, res, next) {
   let refund = 0;
 
   if (activeSub.classes_left < 0) {
-    refund = getSubscriptionCostOverDays(activeSub, Date(), activeSub.period_end);
+    const start = new Date();
+    const end = new Date(activeSub.period_end);
+    refund = getSubscriptionCostOverDays(activeSub, start, end);
   } else if (activeSub.classes_left > 0) {
     refund = activeSub.classes_left / activeSub.max_classes * activeSub.cost.amount;
   }
@@ -327,6 +329,7 @@ async function cancelSubscription(req, res) {
   const userData = req.ctx.userData;
   const refund = req.ctx.refund;
   const activeSub = req.ctx.activeSub;
+  const now = req.body.now;
 
   if (!refund || !activeSub) {
     log.warn("No refund or subscription to cancel");
@@ -337,7 +340,7 @@ async function cancelSubscription(req, res) {
 
   // Cancel the sub on stripes end
   try {
-    let canceled = await stripe.subscriptions.del(activeSub.id);
+    await stripe.subscriptions.del(activeSub.id);
   } catch (err) {
     log.warn("Stripe API error on subscription delete ", err);
     return res.status(500).json({
@@ -345,7 +348,7 @@ async function cancelSubscription(req, res) {
     })
   }
 
-  log.info("Canceled stripe subscription through stripe api ", canceled);
+  console.log("Deleted sub on stripe side with refund ", refund);
 
   if (refund > 0 && activeSub.latest_payment) {
     // issue a payment intent refund using latest_payment
@@ -364,6 +367,8 @@ async function cancelSubscription(req, res) {
         });
       }
     }
+
+    console.log("Created refund ", refundTransaction)
 
     if (refundTransaction) {
       try {
@@ -386,22 +391,23 @@ async function cancelSubscription(req, res) {
 
   // remove user from all future classes
   let classes;
-  const now = new Date().toISOString();
+  const nowDate = new Date(now).toISOString();
 
   try {
-    classes = await Class.updateMany({ participants: userData.id, start_date: { $gte: now } }, { $pull: { participants: userData.id }})
+    classes = await Class.updateMany({ 'participants.id': userData.id, start_date : { $gte: nowDate }}, { $pull: { participants: { id: userData.id } }});
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
       message: "Database error"
     })
   }
-
-  console.log("FOUND Classes to remove user from ", classes);
 
   // update subscription to CANCELED
+  let sub;
+
+  activeSub.status = 'CANCELED';
   try {
-    await Subscription.updateOne({ id: activeSub.id }, { $set: { status: 'CANCELED' }});
+    sub = await Subscription.updateOne({ id: activeSub.id }, activeSub, {new: true});
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
@@ -409,9 +415,7 @@ async function cancelSubscription(req, res) {
     })
   }
 
-  res.status(200).json({
-    message: 'Subscription canceled'
-  })
+  res.status(200).json(activeSub);
 }
 
 // Returns cost IN CENTS of the subscription over the number of days it was active between startDate and endDate
@@ -423,21 +427,23 @@ function getSubscriptionCostOverDays(sub, startDate, endDate) {
 
   const totalDays = differenceInDays(sub.period_start, sub.period_end);
   const cost = sub.cost.amount;
+  const start = new Date(sub.period_start);
+  const end = new Date(sub.period_end);
   let daysInRange = 0;
 
-  if (isBefore(sub.period_start, startDate)) {
+  if (isBefore(start, startDate)) {
     // get days diff from start date to period end or end date whichever is closer
-    if (isBefore(sub.period_end, endDate)) {
-      daysInRange = differenceInDays(startDate, sub.period_end);
+    if (isBefore(end, endDate)) {
+      daysInRange = differenceInDays(startDate, end);
     } else {
       daysInRange = differenceInDays(startDate, endDate);
     }
   } else {
     // get days diff from period start to period end or end date whichever is closer
-    if (isBefore(sub.period_end, endDate)) {
-      daysInRange = differenceInDays(sub.period_start, sub.period_end);
+    if (isBefore(end, endDate)) {
+      daysInRange = differenceInDays(start, end);
     } else {
-      daysInRange = differenceInDays(sub.period_start, endDate);
+      daysInRange = differenceInDays(start, endDate);
     }
   }
 
