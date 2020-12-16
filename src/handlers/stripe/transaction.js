@@ -368,32 +368,34 @@ async function refund(req, res) {
     let subscriptions, subscription, sub;
 
     try {
-      subscriptions = await Subscription.find({ $and: [{userId: userId} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
+      subscriptions = await Subscription.find({ $and: [{user_id: userId} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
+    } catch (err) {
+      log.warn("Couldn't find corresponding subscriptions for user", err);
+    }
+
+    if (subscriptions && subscriptions[0]) {
+      subscription = subscriptions[0];
+    }
+
+
+    // Add back class to classes_left if not unlimited sub (classes left > -1) and classes_left < max_classes
+    if (subscription && subscription.classes_left > -1 && subscription.classes_left < subscription.max_classes) {
+      try {
+        sub = await Subscription.updateOne({ id: subscription.id }, { $inc: { classes_left: 1 }}, {new: true})
       } catch (err) {
-        log.warn("Couldn't find corresponding subscriptions for user", err);
+        log.warn('Refund class - add class back to subscription ', err);
+        return res.status(400).json({
+          message: err.message,
+        });
       }
-      
-      if (subscriptions && subscriptions[0]) {
-        subscription = subscriptions[0];
-      }
+    }
 
-      // Add back class to classes_left if not unlimited sub (classes left > -1) and classes_left < max_classes
-      if (subscription && subscription.classes_left > -1 && subscription.classes_left < subscription.max_classes) {
-        try {
-          sub = await Subscription.updateOne({ id: subscription.id }, { $inc: { classes_left: 1 }})
-        } catch (err) {
-          log.warn('Refund class - add class back to subscription ', err);
-          return res.status(400).json({
-            message: err.message,
-          });
-        }
-      }
-
+    if (subscription) {
       try {
         await Transaction.create({
           amount: 0,
           userId: userId,
-          subscriptionId: sub.id,
+          subscriptionId: subscription.id,
           type: 'credit',
           classId: course.id,
           created_date: new Date().toISOString()
@@ -404,6 +406,7 @@ async function refund(req, res) {
           message: err.message
         });
       }
+    }
   } else {
 
     let refundWindow = new Date(course.start_date);
@@ -512,10 +515,9 @@ async function refund(req, res) {
       try {
         await Transaction.create({
           amount: transaction.amount,
-          paymentId: refundTransaction.id,
+          subscriptionId: subscription.id,
           classId: classId,
           userId: userId,
-          status: refundTransaction.status,
           type: 'credit',
           created_date: new Date().toISOString()
         });
@@ -524,7 +526,6 @@ async function refund(req, res) {
           message: err.message
         });
       }
-
       message = message + ", and your recent payment refunded";
     }
   }
