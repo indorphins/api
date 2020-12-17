@@ -131,7 +131,9 @@ async function createSubscription(req, res) {
     items: [
       {price: price.id}
     ],
-    proration_behavior: 'none'
+    proration_behavior: 'none',
+    payment_behavior: 'error_if_incomplete',
+    collection_method: 'charge_automatically'
   };
 
   if (freeTrial) options.trial_period_days = parseInt(product.metadata.trial_length);
@@ -179,6 +181,19 @@ async function createSubscription(req, res) {
     return res.status(500).json({
       message: "Database Error"
     })
+  }
+
+  options = {
+    userId: userData.id,
+    status: 'created subscription',
+    subscription_id: sub.id,
+    created_date: new Date().toISOString()
+  }
+
+  try {
+    await Transaction.create(options);
+  } catch (err) {
+    log.warn("Error creating transaction for subscription creation ", err);
   }
 
   log.info("Successfully created subscription ", sub);
@@ -257,18 +272,6 @@ async function getUnlimitedSubProduct(req, res) {
 
   log.info("Successfully got product and prices ", productPrices);
   res.status(200).json(productPrices);
-}
-
-async function fetchRefund(req, res) {
-  const refund = req.ctx.refund;
-
-  if (!refund) {
-    return res.status(404).json({
-      message: 'Refund not fetched'
-    })
-  }
-
-  res.status(200).json(refund);
 }
 
 async function getRefundAmount(req, res, next) {
@@ -402,11 +405,10 @@ async function cancelSubscription(req, res) {
   }
 
   // remove user from all future classes
-  let classes;
   const nowDate = new Date(now).toISOString();
 
   try {
-    classes = await Class.updateMany({ 'participants.id': userData.id, start_date : { $gte: nowDate }}, { $pull: { participants: { id: userData.id } }});
+    await Class.updateMany({ 'participants.id': userData.id, start_date : { $gte: nowDate }}, { $pull: { participants: { id: userData.id } }});
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
@@ -425,6 +427,19 @@ async function cancelSubscription(req, res) {
     return res.status(500).json({
       message: "Database error"
     })
+  }
+
+  let options = {
+    userId: userData.id,
+    status: 'canceled subscription',
+    subscription_id: sub.id,
+    created_date: new Date().toISOString()
+  }
+
+  try {
+    await Transaction.create(options);
+  } catch (err) {
+    log.warn("Error creating transaction for subscription cancellation ", err);
   }
 
   res.status(200).json({
@@ -592,8 +607,6 @@ async function addUserToClass(req, res) {
     });
   }
 
-  console.log("Updated course to ", updatedClass);
-
   if (sub.classes_left > 0) {
     let subUpdate = {
       $inc: {
@@ -660,5 +673,4 @@ module.exports = {
   getSubscriptionCostOverDays,
   addUserToClass,
   getRefundAmount,
-  fetchRefund
 }
