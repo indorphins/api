@@ -2,7 +2,6 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Subscription = require('../../db/Subscription');
 const Transaction = require('../../db/Transaction');
 const StripeUser = require('../../db/StripeUser');
-const Class = require('../../db/Class');
 const log = require('../../log');
 const fromUnixTime = require('date-fns/fromUnixTime');
 
@@ -49,6 +48,26 @@ async function invoiceWebhook(req, res) {
       log.warn("Database error in webhook ", err)
       return res.sendStatus(500);
     }
+
+    // Create a Transaction to document invoice paid
+    let transaction;
+    let options = {
+      userId: sub.user_id,
+      amount: dataObject.amount_paid,	
+      subscriptionId: sub.id,
+      type: 'debit',
+      status: dataObject.status,
+      paymentId: dataObject.payment_intent,
+      created_date: new Date().toISOString()
+    }
+    try {
+      transaction = await Transaction.create(options);
+    } catch (err) {
+      log.warn("Database error with webhook ", err);
+      return res.sendStatus(500);
+    }
+
+    log.info("Webook - invoice.paid - created Transaction ", transaction);
   }
 
   if (
@@ -64,13 +83,17 @@ async function invoiceWebhook(req, res) {
       return res.sendStatus(500);
     }
 
-    sub.status = 'PAYMENT_FAILED';
-    
-    try {
-      await Subscription.updateOne({ id: sub.id }, sub)
-    } catch (err) {
-      log.warn("Database error in webhook ", err)
-      return res.sendStatus(500);
+    if (sub) {
+      sub.status = 'PAYMENT_FAILED';
+
+      try {
+        await Subscription.updateOne({ id: sub.id }, sub)
+      } catch (err) {
+        log.warn("Database error in webhook ", err)
+        return res.sendStatus(500);
+      }
+    } else {
+      log.info("Webhook - invoice failed but no subscription tied to it ", dataObject);
     }
   }
 

@@ -19,9 +19,4 @@ router.delete('/', subscriptionHandlers.cancelSubscription);
 router.post('/', middleware.authentication);
 router.post('/', subscriptionHandlers.createSubscription);
 
-// Fetch the refund amount for cancellation without canceling 
-router.get('/refund', middleware.authentication);
-router.get('/refund', subscriptionHandlers.getRefundAmount);
-router.get('/refund', subscriptionHandlers.fetchRefund);
-
 module.exports = router;
