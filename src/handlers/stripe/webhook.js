@@ -22,7 +22,7 @@ async function invoiceWebhook(req, res) {
     event = stripe.webhooks.constructEvent(b, sig, process.env.STRIPE_WEBHOOK_SECRET);
     log.info('Stripe webhook event: ', event);
   } catch (err) {
-    log.warn('Stripe Webhook error: ', err);
+    log.warn('Stripe Webhook error constructing event: ', err);
     return res.sendStatus(400);
   }
   const dataObject = event.data.object;
