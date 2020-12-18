@@ -75,6 +75,7 @@ async function invoiceWebhook(req, res) {
     event.type === 'invoice.voided' ||
     event.type === 'invoice.marked_uncollectible'
   ) {
+    // the invoice.payment_failed chain of events does eventually trigger invoice.marked_uncollectible
     // Mark the user's subscription as PAYMENT_FAILED - no refund flow needed here 
     try {
       sub = await Subscription.findOne({ id: dataObject.subscription });
