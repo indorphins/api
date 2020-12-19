@@ -6,14 +6,14 @@ const User = require('../../db/User');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
 const utils = require('../../utils/index');
-const fromUnixTime = require('date-fns/fromUnixTime');
 
 async function createSubscription(req, res) {
   const userData = req.ctx.userData;
-  const sku = req.body.sku
-  const priceId = req.body.price;
+  const sku = req.params.sku
 
   let stripeUser;
+
+  // fetch the stripe user and 
 
   try {
     stripeUser = await StripeUser.findOne({ id: userData.id })
@@ -31,12 +31,12 @@ async function createSubscription(req, res) {
     })
   }
 
-  // fetch the prices (should be one monthly recurring one but could be more in the future) corresponding to the product they selected 
+  // fetch the price id corresponding to the product they selected 
 
-  let prices;
+  let price;
 
   try {
-    prices = await stripe.prices.list({product: sku});
+    price = await stripe.prices.retrieve(sku);
   } catch (err) {
     log.warn("Stripe API error ", err);
     return res.status(500).json({
@@ -44,56 +44,24 @@ async function createSubscription(req, res) {
     })
   }
 
-  if (!prices || !prices.data || prices.data.length === 0) {
-    log.warn("No prices tied to product");
+  if (!price || !price.id) {
+    log.warn("Invalid price sku");
     return res.status(404).json({
-      message: "No prices found"
+      message: "price sku not found"
     })
-  }
-
-  const price = prices.data.filter(p => {
-    return p.id === priceId;
-  });
-
-  if (!price) {
-    log.warn("Invalid price");
-    return res.status(400).json({
-      message: 'Invalid price'
-    })
-  }
-
-  console.log("PRICE object from prices array: ", price);
-
-  // Check if user has had a subscription before, if not give them free 30 day trial
-  let prevSub;
-
-  try {
-    prevSub = await Subscription.find({ user_id: userData.id });
-  } catch (err) {
-    log.warn("Database Error finding prev sub ", err);
-    return res.status(500).json({
-      message: "Database error"
-    })
-  }
-
-  let freeTrial = false;
-  if (!prevSub || prevSub.length === 0) {
-    freeTrial = true;
   }
 
   // create a stripe subscription based on the product the user selected to sign up for
+  // Need the price id of the recurring 
   let stripeSub;
-  let options = { 
-    customer: stripeUser.customerId,
-    items: [
-      {price: price.id}
-    ]
-  };
-
-  if (freeTrial) options.trial_period_days = 30;
 
   try {
-    stripeSub = await stripe.subscriptions.create(options)
+    stripeSub = await stripe.subscriptions.create({ 
+      customer: stripeUser.customerId,
+      items: [
+        {price: price.id}
+      ]
+    })
   } catch (err) {
     log.warn("Stripe API error on subscription creation ", err);
     return res.status(500).json({
@@ -110,19 +78,18 @@ async function createSubscription(req, res) {
   }
 
   // Create our own subscription object in our db
+  // TODO status - normalize across flow
   let sub;
-  options = {
+  const options = {
     id: stripeSub.id,
     user_id: userData.id,
-    status: freeTrial ? 'TRIAL' : 'CREATED',
-    created_date: fromUnixTime(stripeSub.created),
+    status: 'CREATED',
+    created_date: new Date(),
     item: { price: price.id },
     cost: { 
       amount: price.unit_amount,
       recurring: price.recurring
-    },
-    period_start: fromUnixTime(stripeSub.current_period_start),
-    period_end: fromUnixTime(stripeSub.current_period_end)
+    }
   }
 
   try {
@@ -134,74 +101,24 @@ async function createSubscription(req, res) {
     })
   }
 
-  log.info("Successfully created subscription ", sub);
-
-  return res.status(200).json(sub);
+  return res.status(200).json({
+    message: 'Subscription Created'
+  });
 }
 
-// Returns the product and prices data from stripe for frontend consumption
-async function getProductsPrices(req, res) {
-  let products;
+async function getInstructorsSubShare(instructorId, startDate, endDate) {
 
-  // Fetch all active products
-  try {
-    products = await stripe.products.list({ active: true });
-  } catch (err) {
-    log.error("Stripe API error fetching prodcuts ", err);
-    return res.status(500).json({
-      message: 'Error fetching prodcuts from stripe'
-    })
-  }
+  // Instructors get a share equal to the number of spots booked in classes hosted between start and end date 
+  // DIVIDED BY the total number of spots booked in all classes over that time
+  // TIMES the amount of subscription money generated during that time allotted for instructors (80%)
 
-  if (!products || !products.data || !products.data.length === 0) {
-    log.warn("No products found from stripe");
-    return res.status(404).json([]);
-  }
+}
 
-  let productPrices = []
+async function payoutInstructor(instructorId) {
 
-  // Fetch the pricing data tied to each product
-  products.data.forEach(product => {
-    let prices;
+  // Use Stripe api to make direct payment from our company stripe account
+  // to the instuctor's connected account for their share
 
-    try {
-      prices = await stripe.prices.list({product: product.id});
-    } catch (err) {
-      log.warn("Stripe API error fetching prices for product ", err);
-      return res.status(500).json({
-        message: "Stripe API Error fetching prices "
-      })
-    }
-  
-    if (!prices || !prices.data || prices.data.length === 0) {
-      log.warn("Invalid price sku - no prices tied to product");
-      return res.status(404).json({
-        message: "price sku not found"
-      })
-    }
-
-    // Handle more than one price for product (initially we won't have this but further down the line we may offer yearly, weekly, etc. options)
-    const priceData = prices.data.map(price => {
-      return {
-        id: price.id,
-        amount: price.unit_amount,
-        recurring: price.recurring 
-      }
-    });
-
-    productPrices.push({
-      product: {
-        id: product.id,
-        name: product.name,
-        description: product.description
-      },
-      price: priceData
-    })
-  })
-
-
-  log.info("Successfully got product and prices ", productPrices);
-  res.status(200).json(productPrices);
 }
 
 async function cancelSubscription(req, res) {
