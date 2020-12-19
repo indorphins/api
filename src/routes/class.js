@@ -37,8 +37,8 @@ router.post('/:id/payment/:payment_method_id', middleware.authentication);
 router.post('/:id/payment/:payment_method_id', stripeHandlers.transaction.create);
 
 // New subscription based add user to class route
-router.post('/:id/participants', middleware.authentication);
-router.post('/:id/participants', subscriptionHandlers.addUserToClass);
+router.post('/:id', middleware.authentication);
+router.post('/:id', subscriptionHandlers.addUserToClass);
 
 router.post('/:id/payment/:payment_method_id/campaign/:campaignId', middleware.authentication);
 router.post('/:id/payment/:payment_method_id/campaign/:campaignId', stripeHandlers.transaction.create);
