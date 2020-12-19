@@ -6,6 +6,7 @@ const log = require('../../log');
 
 // Gets a map of each instructors share of subscription money between startDate and endDate
 // BASED ON ASSUMPTION THAT NO SPOTS WERE BOOKED WITH A "BOOKED ONCE" FLOW
+// Booked once flow would go directly to the instructors anyway
 async function getInstructorsSubShare(req, res) {
   const startDate = req.params.start_date;
   const endDate = req.params.end_date;
@@ -25,8 +26,8 @@ async function getInstructorsSubShare(req, res) {
     $and: [
       {
         $or: [
-          { type: 'ACTIVE' },
-          { type: 'TRIAL' }
+          { status: 'ACTIVE' },
+          { status: 'TRIAL' }
         ]
       },
       {
@@ -56,9 +57,12 @@ async function getInstructorsSubShare(req, res) {
     })
   }
 
-  if (!subs || subs.length === 0) {
-    return res.status(404).json({
-      message: "No subscriptions active during input period"
+  let totalPot = 0;
+  if (subs && subs.length > 0) {
+    // Maybe could use a reducer here
+    subs.forEach(sub => {
+      let c = getSubscriptionCostOverDays(sub, start, end);
+      totalPot += c;
     })
   }
 
@@ -66,13 +70,6 @@ async function getInstructorsSubShare(req, res) {
   // Then get all the classes taught between start and end date
   // Then get the number of spots filled by each instructor in the time range
   
-  let totalPot = 0;
-  // Maybe could use a reducer here
-
-  subs.forEach(sub => {
-    totalPot += getSubscriptionCostOverDays(sub, startDate, endDate);
-  })
-
   let classes;
   filter = {
     $and: [
@@ -133,10 +130,14 @@ async function getInstructorsSubShare(req, res) {
   // TIMES the amount of subscription money generated during that time allotted for instructors (80%)
 
   let payouts = instructors.map(i => {
+    let booked = spotsBooked[i.id] ? spotsBooked[i.id] : 0;
+    let payout = booked / totalSpotsBooked * totalPot * .8 / 100;
     return {
       name: i.username,
       id: i.id,
-      payout: spotsBooked[i.id] / totalSpotsBooked * totalPot * .8
+      payout: payout.toFixed(2),
+      startDate: start,
+      endDate: end
     }
   });
 
