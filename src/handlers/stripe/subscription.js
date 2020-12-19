@@ -10,7 +10,6 @@ const fromUnixTime = require('date-fns/fromUnixTime');
 const isBefore = require('date-fns/isBefore');
 const differenceInDays = require('date-fns/differenceInCalendarDays');
 const unlimitedSubscriptionSku = process.env.UNLIMITED_SUB_SKU
-const uuid = require('uuid');
 
 async function createSubscription(req, res) {
   const userData = req.ctx.userData;
@@ -66,138 +65,114 @@ async function createSubscription(req, res) {
     })
   }
 
+  // Validate product is one of ours
+  let product;
+
+  try {
+    product = await stripe.products.retrieve(sku);
+  } catch (err) {
+    log.warn("Stripe API error ", err);
+    return res.status(500).json({
+      message: "Stripe API error"
+    })
+  }
+
+  if (!product) {
+    log.warn("Invalid product sku");
+    return res.status(404).json({
+      message: "Invalid product sku"
+    })
+  }
+
+  // Product must have metadata tied to the number of classes for this package
+  if (!product.metadata || !product.metadata.max_classes || !product.metadata.trial_length) {
+    log.warn("Product has no metadata or missing max_classes or trial_length properties");
+    return res.status(400).json({
+      message: "Invalid product metadata"
+    })
+  }
+
+  // fetch the prices (should be one monthly recurring one but could be more in the future) corresponding to the product they selected 
+  let prices;
+
+  try {
+    prices = await stripe.prices.list({product: sku});
+  } catch (err) {
+    log.warn("Stripe API error ", err);
+    return res.status(500).json({
+      message: "Stripe API Error"
+    })
+  }
+
+  if (!prices || !prices.data || prices.data.length === 0) {
+    log.warn("No prices tied to product");
+    return res.status(404).json({
+      message: "No prices found"
+    })
+  }
+
+  let price = prices.data.filter(p => {
+    return p.id === priceId;
+  });
+
+  if (!price || price.length === 0) {
+    log.warn("Invalid price");
+    return res.status(400).json({
+      message: 'Invalid price'
+    })
+  }
+
+  price = price[0];
+
+  // create a stripe subscription based on the product the user selected to sign up for
   let stripeSub;
+  let options = { 
+    customer: stripeUser.customerId,
+    items: [
+      {price: price.id}
+    ],
+    proration_behavior: 'none',
+    payment_behavior: 'error_if_incomplete',
+    collection_method: 'charge_automatically'
+  };
 
-  if (userData.type === 'standard') {
-    // Validate product is one of ours
-    let product;
+  if (freeTrial) options.trial_period_days = parseInt(product.metadata.trial_length);
 
-    try {
-      product = await stripe.products.retrieve(sku);
-    } catch (err) {
-      log.warn("Stripe API error ", err);
-      return res.status(500).json({
-        message: "Stripe API error"
-      })
-    }
+  try {
+    stripeSub = await stripe.subscriptions.create(options)
+  } catch (err) {
+    log.warn("Stripe API error on subscription creation ", err);
+    return res.status(500).json({
+      message: "Stripe API error"
+    })
+  }
 
-    if (!product) {
-      log.warn("Invalid product sku");
-      return res.status(404).json({
-        message: "Invalid product sku"
-      })
-    }
-
-    // Product must have metadata tied to the number of classes for this package
-    if (!product.metadata || !product.metadata.max_classes || !product.metadata.trial_length) {
-      log.warn("Product has no metadata or missing max_classes or trial_length properties");
-      return res.status(400).json({
-        message: "Invalid product metadata"
-      })
-    }
-
-    // fetch the prices (should be one monthly recurring one but could be more in the future) corresponding to the product they selected 
-    let prices;
-
-    try {
-      prices = await stripe.prices.list({product: sku});
-    } catch (err) {
-      log.warn("Stripe API error ", err);
-      return res.status(500).json({
-        message: "Stripe API Error"
-      })
-    }
-
-    if (!prices || !prices.data || prices.data.length === 0) {
-      log.warn("No prices tied to product");
-      return res.status(404).json({
-        message: "No prices found"
-      })
-    }
-
-    let price = prices.data.filter(p => {
-      return p.id === priceId;
-    });
-
-    if (!price || price.length === 0) {
-      log.warn("Invalid price");
-      return res.status(400).json({
-        message: 'Invalid price'
-      })
-    }
-
-    price = price[0];
-
-    // create a stripe subscription based on the product the user selected to sign up for
-    let options = { 
-      customer: stripeUser.customerId,
-      items: [
-        {price: price.id}
-      ],
-      proration_behavior: 'none',
-      payment_behavior: 'error_if_incomplete',
-      collection_method: 'charge_automatically'
-    };
-
-    if (freeTrial) options.trial_period_days = parseInt(product.metadata.trial_length);
-
-    try {
-      stripeSub = await stripe.subscriptions.create(options)
-    } catch (err) {
-      log.warn("Stripe API error on subscription creation ", err);
-      return res.status(500).json({
-        message: "Stripe API error"
-      })
-    }
-
-    if (!stripeSub) {
-      // Would need to handle cancelling the sub - but this case shouldn't ever happen and we can likely remove
-      log.warn("Subscription not returned ", err);
-      return res.status(404).json({
-        message: "Subscription not returned"
-      })
-    }
+  if (!stripeSub) {
+    // Would need to handle cancelling the sub - but this case shouldn't ever happen and we can likely remove
+    log.warn("Subscription not returned ", err);
+    return res.status(404).json({
+      message: "Subscription not returned"
+    })
   }
 
   // Create our own subscription object in our db
-  const now = new Date().toISOString();
-
-  if (stripeSub) {
-    options = {
-      id: stripeSub.id,
-      user_id: userData.id,
-      status: freeTrial ? 'TRIAL' : 'ACTIVE',
-      created_date: fromUnixTime(stripeSub.created).toISOString(),
-      item: { price: price.id },
-      cost: { 
-        amount: price.unit_amount,
-        recurring: price.recurring
-      },
-      period_start: fromUnixTime(stripeSub.current_period_start).toISOString(),
-      period_end: fromUnixTime(stripeSub.current_period_end).toISOString(),
-      classes_left: product.metadata.max_classes,
-      max_classes: product.metadata.max_classes,
-      trial_length: parseInt(product.metadata.trial_length)
-    }
-  } else {
-    // Arbitrary end date of 01-01-2024
-    options = {
-      id: uuid.v1(),
-      user_id: userData.id,
-      status: 'ACTIVE',
-      created_date: now,
-      item: {},
-      cost: { 
-        amount: 0,
-      },
-      period_start: now,
-      period_end: fromUnixTime(1704067200).toISOString(),
-      classes_left: -1,
-      max_classes: -1,
-      trial_length: 0
-    }
-  }
   let sub;
+  options = {
+    id: stripeSub.id,
+    user_id: userData.id,
+    status: freeTrial ? 'TRIAL' : 'ACTIVE',
+    created_date: fromUnixTime(stripeSub.created).toISOString(),
+    item: { price: price.id },
+    cost: { 
+      amount: price.unit_amount,
+      recurring: price.recurring
+    },
+    period_start: fromUnixTime(stripeSub.current_period_start).toISOString(),
+    period_end: fromUnixTime(stripeSub.current_period_end).toISOString(),
+    classes_left: product.metadata.max_classes,
+    max_classes: product.metadata.max_classes,
+    trial_length: parseInt(product.metadata.trial_length)
+  }
 
   try {
     sub = await Subscription.create(options)
@@ -212,7 +187,7 @@ async function createSubscription(req, res) {
     userId: userData.id,
     status: 'created subscription',
     subscriptionId: sub.id,
-    created_date: now
+    created_date: new Date().toISOString()
   }
 
   try {
@@ -348,14 +323,6 @@ async function getRefundAmount(req, res, next) {
 
   let refund = 0;
 
-
-  if (userData.type !== 'standard') {
-    req.ctx.refund = 0;
-    req.ctx.activeSub = activeSub;
-  
-    return next();
-  }
-
   if (activeSub.classes_left < 0) {
     const start = new Date();
     const end = new Date(activeSub.period_end);
@@ -388,54 +355,51 @@ async function cancelSubscription(req, res) {
 
   if (!refund) refund = 0;
 
-  if (userData.type === 'standard') {
+  // Cancel the sub on stripes end
+  try {
+    await stripe.subscriptions.del(activeSub.id);
+  } catch (err) {
+    log.warn("Stripe API error on subscription delete ", err);
+    return res.status(500).json({
+      message: 'Stripe API error'
+    })
+  }
 
-    // Cancel the sub on stripes end
+  if (refund > 0 && activeSub.latest_payment) {
+    // issue a payment intent refund using latest_payment
+    let refundTransaction;
     try {
-      await stripe.subscriptions.del(activeSub.id);
+      refundTransaction = await stripe.refunds.create({
+        payment_intent: activeSub.latest_payment,
+        amount: refund
+      });
     } catch (err) {
-      log.warn("Stripe API error on subscription delete ", err);
-      return res.status(500).json({
-        message: 'Stripe API error'
-      })
+      log.warn('Stripe - create refund error: ', err);
+      let re = /is already fully reversed/g
+      if (!err.message.match(re)) {
+        return res.status(400).json({
+          message: err.message,
+        });
+      }
     }
 
-    if (refund > 0 && activeSub.latest_payment) {
-      // issue a payment intent refund using latest_payment
-      let refundTransaction;
+    console.log("Created refund ", refundTransaction)
+
+    if (refundTransaction) {
       try {
-        refundTransaction = await stripe.refunds.create({
-          payment_intent: activeSub.latest_payment,
-          amount: refund
+        await Transaction.create({
+          amount: refund,
+          paymentId: refundTransaction.id,
+          userId: userData.id,
+          status: refundTransaction.status,
+          type: 'credit',
+          subscriptionId: activeSub.id,
+          created_date: new Date().toISOString()
         });
       } catch (err) {
-        log.warn('Stripe - create refund error: ', err);
-        let re = /is already fully reversed/g
-        if (!err.message.match(re)) {
-          return res.status(400).json({
-            message: err.message,
-          });
-        }
-      }
-
-      console.log("Created refund ", refundTransaction)
-
-      if (refundTransaction) {
-        try {
-          await Transaction.create({
-            amount: refund,
-            paymentId: refundTransaction.id,
-            userId: userData.id,
-            status: refundTransaction.status,
-            type: 'credit',
-            subscriptionId: activeSub.id,
-            created_date: new Date().toISOString()
-          });
-        } catch (err) {
-          return res.status(500).json({
-            message: err.message
-          });
-        }
+        return res.status(500).json({
+          message: err.message
+        });
       }
     }
   }
@@ -468,7 +432,7 @@ async function cancelSubscription(req, res) {
   let options = {
     userId: userData.id,
     status: 'canceled subscription',
-    subscriptionId: activeSub.id,
+    subscriptionId: sub.id,
     created_date: new Date().toISOString()
   }
 
@@ -486,6 +450,11 @@ async function cancelSubscription(req, res) {
 
 // Returns cost IN CENTS of the subscription over the number of days it was active between startDate and endDate
 function getSubscriptionCostOverDays(sub, startDate, endDate) {
+  console.log("Sub start ", sub.period_start)
+  console.log("Sub end ", sub.period_end)
+  console.log("Compare start ", startDate);
+  console.log("Compare end ", endDate);
+
   const totalDays = differenceInDays(sub.period_start, sub.period_end);
   const cost = sub.cost.amount;
   const start = new Date(sub.period_start);
