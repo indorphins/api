@@ -18,8 +18,8 @@ async function getInstructorsSubShare(req, res) {
   }
 
   // get all subs that include days between start and end date
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = new Date(startDate).toISOString();
+  const end = new Date(endDate).toISOString();
 
   let filter = {
     $and: [
@@ -33,12 +33,12 @@ async function getInstructorsSubShare(req, res) {
         $or: [
           {
             $and: [
-              { period_start: { $lte: start.toISOString() } },
-              { period_end: { $gte: start.toISOString() } },
+              { period_start: { $lte: start } },
+              { period_end: { $gte: start } },
             ],
             $and: [
-              { period_start: { $gte: start.toISOString() } },
-              { period_start: { $lte: end.toISOString() } }
+              { period_start: { $gte: start } },
+              { period_start: { $lte: end } }
             ]
           }
         ]
