@@ -75,12 +75,6 @@ function interpolate(string, values) {
   return final;
 }
 
-async function asyncForEach(array, callback) {
-  for (let index = 0; index < array.length; index++) {
-    await callback(array[index], index, array);
-  }
-}
-
 function getNextSession(now, c, /*optional*/ win) {
   let sw = sessionWindow;
   if (win) sw = win;
@@ -208,6 +202,5 @@ module.exports = {
   createDefaultMessageText,
   createClassJoinedSubject,
   createClassJoinedBody,
-  isInteger,
-  asyncForEach
+  isInteger
 }

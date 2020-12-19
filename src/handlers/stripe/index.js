@@ -54,8 +54,6 @@ async function addPaymentMethod(req, res) {
 
   const id = req.ctx.userData.id
   const email = req.ctx.userData.email;
-  const userData = req.ctx.userData;
-  
   let paymentData = req.body;
   const query = {
     id: id

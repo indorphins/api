@@ -9,11 +9,10 @@ const utils = require('../../utils/index');
 const fromUnixTime = require('date-fns/fromUnixTime');
 const isBefore = require('date-fns/isBefore');
 const differenceInDays = require('date-fns/differenceInCalendarDays');
-const unlimitedSubscriptionSku = process.env.UNLIMITED_SUB_SKU
 
 async function createSubscription(req, res) {
   const userData = req.ctx.userData;
-  const sku = req.body.sku;
+  const sku = req.body.sku
   const priceId = req.body.price;
 
   // Check if user has had a subscription before, if not give them free 14 day trial
@@ -85,8 +84,8 @@ async function createSubscription(req, res) {
   }
 
   // Product must have metadata tied to the number of classes for this package
-  if (!product.metadata || !product.metadata.max_classes || !product.metadata.trial_length) {
-    log.warn("Product has no metadata or missing max_classes or trial_length properties");
+  if (!product.metadata || !product.metadata.max_classes) {
+    log.warn("Product has no metadata");
     return res.status(400).json({
       message: "Invalid product metadata"
     })
@@ -111,18 +110,18 @@ async function createSubscription(req, res) {
     })
   }
 
-  let price = prices.data.filter(p => {
+  const price = prices.data.filter(p => {
     return p.id === priceId;
   });
 
-  if (!price || price.length === 0) {
+  if (!price) {
     log.warn("Invalid price");
     return res.status(400).json({
       message: 'Invalid price'
     })
   }
 
-  price = price[0];
+  console.log("PRICE object from prices array: ", price);
 
   // create a stripe subscription based on the product the user selected to sign up for
   let stripeSub;
@@ -134,7 +133,7 @@ async function createSubscription(req, res) {
     proration_behavior: 'none'
   };
 
-  if (freeTrial) options.trial_period_days = product.metadata.trial_length;
+  if (freeTrial) options.trial_period_days = 14;
 
   try {
     stripeSub = await stripe.subscriptions.create(options)
@@ -169,11 +168,10 @@ async function createSubscription(req, res) {
     period_end: fromUnixTime(stripeSub.current_period_end).toISOString(),
     classes_left: product.metadata.max_classes,
     max_classes: product.metadata.max_classes,
-    trial_length: product.metadata.trial_length
   }
 
   try {
-    sub = await Subscription.create(options)
+    sub = Subscription.create(options)
   } catch (err) {
     log.warn("Database error creating our Subscription ", err);
     return res.status(500).json({
@@ -186,13 +184,13 @@ async function createSubscription(req, res) {
   return res.status(200).json(sub);
 }
 
-// Returns the product and prices data for our unlimited subscriptoin from stripe for frontend consumption
-async function getUnlimitedSubProduct(req, res) {
+// Returns the product and prices data from stripe for frontend consumption
+async function getProductsPrices(req, res) {
   let products;
 
   // Fetch all active products
   try {
-    products = await stripe.products.retrieve(unlimitedSubscriptionSku);
+    products = await stripe.products.list({ active: true });
   } catch (err) {
     log.error("Stripe API error fetching prodcuts ", err);
     return res.status(500).json({
@@ -200,17 +198,15 @@ async function getUnlimitedSubProduct(req, res) {
     })
   }
 
-  if (!products) {
+  if (!products || !products.data || !products.data.length === 0) {
     log.warn("No products found from stripe");
-    return res.status(404).json({});
+    return res.status(404).json([]);
   }
 
-  products = [products];
-
-  let productPrices = {}
+  let productPrices = []
 
   // Fetch the pricing data tied to each product
-  await utils.asyncForEach(products, async (product) => {
+  products.data.forEach(async product => {
     let prices;
 
     try {
@@ -238,21 +234,14 @@ async function getUnlimitedSubProduct(req, res) {
       }
     });
 
-    let trialLength = 0;
-
-    if (product.metadata && product.metadata.trial_length) {
-      trialLength = product.metadata.trial_length;
-    }
-
-    productPrices = {
+    productPrices.push({
       product: {
         id: product.id,
         name: product.name,
-        description: product.description,
-        trial_length: trialLength
+        description: product.description
       },
       price: priceData
-    }
+    })
   })
 
   log.info("Successfully got product and prices ", productPrices);
@@ -451,7 +440,7 @@ async function getSubscription(req, res) {
   let sub;
 
   try {
-    sub = await Subscription.find({ user_id: userData.id }).sort({ created_date: -1 })
+    sub = Subscription.find({ user_id: userData.id }).sort({ created_date: -1 })
   } catch (err) {
     log.warn("Database error fetching user subs ", err);
     return res.status(500).json({
@@ -636,7 +625,7 @@ async function addUserToClass(req, res) {
 
 module.exports = {
   createSubscription,
-  getProductsPrices: getUnlimitedSubProduct,
+  getProductsPrices,
   cancelSubscription,
   getSubscription,
   getSubscriptionCostOverDays,
