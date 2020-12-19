@@ -247,8 +247,6 @@ async function deleteClass(req, res) {
         log.warn("Couldn't find corresponding subscriptions for user", err);
       }
 
-      console.log("Found user's subs ", subscriptions);
-      
       if (subscriptions && subscriptions[0]) {
         subscription = subscriptions[0];
       }
