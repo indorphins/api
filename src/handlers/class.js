@@ -66,7 +66,7 @@ async function getClasses(req, res) {
     total = await Class.find(filter).countDocuments();
     results = await Class.find(filter).sort(order).skip(page * limit).limit(limit);
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       message: err,
     });
   }
@@ -242,12 +242,10 @@ async function deleteClass(req, res) {
   if (!c.recurring) {
     await utils.asyncForEach(c.participants, async p => {
       try {
-        subscriptions = await Subscription.find({ $and: [{user_id: p.id} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
+        subscriptions = await Subscription.find({ $and: [{userId: p.id} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
       } catch (err) {
         log.warn("Couldn't find corresponding subscriptions for user", err);
       }
-
-      console.log("Found user's subs ", subscriptions);
       
       if (subscriptions && subscriptions[0]) {
         subscription = subscriptions[0];
