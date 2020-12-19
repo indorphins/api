@@ -13,6 +13,7 @@ const Transaction = new mongoose.Schema({
   },
   paymentId: {
     type: String,
+    required: true,
   },
   subscriptionId: {
     type: String,

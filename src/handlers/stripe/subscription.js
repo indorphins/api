@@ -437,7 +437,7 @@ async function subscriptionWebhook(req, res) {
  * @param {Object} req 
  * @param {Object} res 
  */
-async function addUserToClass(req, res) {
+async function addToClass(req, res) {
   const userData = req.ctx.userData;
   const userType = userData.type;
   const userId = userData.id;
@@ -478,7 +478,7 @@ async function addUserToClass(req, res) {
   let subs;
 
   try {
-    subs = await Subscription.find({ $and: [{userId: userId} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: -1 });
+    subs = await Subscription.find({ user_id : userId }).sort({ created_date: -1 });
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
@@ -494,6 +494,13 @@ async function addUserToClass(req, res) {
   }
 
   const sub = subs[0];
+
+  if (sub.status !== 'ACTIVE' || sub.status !== 'TRIAL') {
+    log.warn("User subscription not valid");
+    return res.status(400).json({
+      message: 'Inactive subscription'
+    })
+  }
 
   if (sub.classes_left === 0) {
     log.warn("No more classes left in subscription");
@@ -549,21 +556,6 @@ async function addUserToClass(req, res) {
     }
   }
 
-  try {
-    await Transaction.create({
-      amount: 0,
-      subscriptionId: activeSub.id,
-      userId: userId,
-      type: 'credit',
-      created_date: new Date().toISOString()
-    });
-  } catch (err) {
-    log.warn('Add user to class - error creating credit Transaction ', err);
-    return res.status(500).json({
-      message: err.message
-    });
-  }
-
   let instructorData;
   try {
     instructorData = await User.findOne({id: classObj.instructor});
@@ -599,6 +591,6 @@ module.exports = {
   getProductsPrices,
   cancelSubscription,
   getSubscription,
-  addUserToClass,
+  addToClass,
   subscriptionWebhook
 }
