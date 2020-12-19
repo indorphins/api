@@ -555,7 +555,6 @@ async function addUserToClass(req, res) {
       subscriptionId: activeSub.id,
       userId: userId,
       type: 'credit',
-      classId: course.id,
       created_date: new Date().toISOString()
     });
   } catch (err) {
