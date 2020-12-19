@@ -66,12 +66,10 @@ async function createSubscription(req, res) {
     })
   }
 
-  let stripeSub;
+  let stripeSub, price, product;
 
   if (userData.type === 'standard') {
     // Validate product is one of ours
-    let product;
-
     try {
       product = await stripe.products.retrieve(sku);
     } catch (err) {
@@ -115,7 +113,7 @@ async function createSubscription(req, res) {
       })
     }
 
-    let price = prices.data.filter(p => {
+    price = prices.data.filter(p => {
       return p.id === priceId;
     });
 
@@ -486,7 +484,7 @@ async function cancelSubscription(req, res) {
 
 // Returns cost IN CENTS of the subscription over the number of days it was active between startDate and endDate
 function getSubscriptionCostOverDays(sub, startDate, endDate) {
-  const totalDays = differenceInDays(sub.period_start, sub.period_end);
+  const totalDays = differenceInDays(sub.period_end, sub.period_start) + 1;
   const cost = sub.cost.amount;
   const start = new Date(sub.period_start);
   const end = new Date(sub.period_end);
@@ -495,16 +493,16 @@ function getSubscriptionCostOverDays(sub, startDate, endDate) {
   if (isBefore(start, startDate)) {
     // get days diff from start date to period end or end date whichever is closer
     if (isBefore(end, endDate)) {
-      daysInRange = differenceInDays(startDate, end);
+      daysInRange = differenceInDays(end, startDate) + 1;
     } else {
-      daysInRange = differenceInDays(startDate, endDate);
+      daysInRange = differenceInDays(endDate, startDate) + 1;
     }
   } else {
     // get days diff from period start to period end or end date whichever is closer
     if (isBefore(end, endDate)) {
-      daysInRange = differenceInDays(start, end);
+      daysInRange = differenceInDays(end, start) + 1;
     } else {
-      daysInRange = differenceInDays(start, endDate);
+      daysInRange = differenceInDays(endDate, start) + 1;
     }
   }
 
