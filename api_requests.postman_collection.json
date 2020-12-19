@@ -301,7 +301,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n\t\"username\": \"Jackson\"\n}",
+									"raw": "{\n\t\"last_name\": \"Jackson\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
