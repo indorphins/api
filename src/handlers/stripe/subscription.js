@@ -15,37 +15,6 @@ async function createSubscription(req, res) {
   const sku = req.body.sku
   const priceId = req.body.price;
 
-  // Check if user has had a subscription before, if not give them free 14 day trial
-  // If they have an active sub don't let them create another
-  let prevSubs;
-
-  try {
-    prevSubs = await Subscription.find({ user_id: userData.id });
-  } catch (err) {
-    log.warn("Database Error finding prev sub ", err);
-    return res.status(500).json({
-      message: "Database error"
-    })
-  }
-
-  let freeTrial = false;
-  if (!prevSubs || prevSubs.length === 0) {
-    freeTrial = true;
-  } 
-  
-  // Make sure there are no active subscriptions already
-  if (prevSubs && prevSubs.length > 0) {
-    for (let i = 0; i < prevSubs.length; i++) {
-      let s = prevSubs[i];
-      if (s.status === 'ACTIVE' || s.status === 'TRIAL') {
-        log.warn("User has " + s.status + " subscription - can't create another");
-        return res.status(400).json({
-          message: "You already have an active subscription"
-        })
-      }
-    }
-  }
-
   let stripeUser;
 
   try {
@@ -123,17 +92,46 @@ async function createSubscription(req, res) {
 
   console.log("PRICE object from prices array: ", price);
 
+  // Check if user has had a subscription before, if not give them free 30 day trial
+  let prevSubs;
+
+  try {
+    prevSubs = await Subscription.find({ user_id: userData.id });
+  } catch (err) {
+    log.warn("Database Error finding prev sub ", err);
+    return res.status(500).json({
+      message: "Database error"
+    })
+  }
+
+  let freeTrial = false;
+  if (!prevSubs || prevSubs.length === 0) {
+    freeTrial = true;
+  } 
+  
+  // Make sure there are no active subscriptions already
+  if (prevSubs && prevSubs.length > 0) {
+    for (let i = 0; i < prevSubs.length; i++) {
+      let s = prevSubs[i];
+      if (s.status === 'ACTIVE' || s.status === 'TRIAL') {
+        log.warn("User has " + s.status + " subscription - can't create another");
+        return res.status(400).json({
+          message: "You already have an active subscription"
+        })
+      }
+    }
+  }
+
   // create a stripe subscription based on the product the user selected to sign up for
   let stripeSub;
   let options = { 
     customer: stripeUser.customerId,
     items: [
       {price: price.id}
-    ],
-    proration_behavior: 'none'
+    ]
   };
 
-  if (freeTrial) options.trial_period_days = 14;
+  if (freeTrial) options.trial_period_days = 30;
 
   try {
     stripeSub = await stripe.subscriptions.create(options)
@@ -158,16 +156,17 @@ async function createSubscription(req, res) {
     id: stripeSub.id,
     user_id: userData.id,
     status: freeTrial ? 'TRIAL' : 'CREATED',
-    created_date: fromUnixTime(stripeSub.created).toISOString(),
+    created_date: fromUnixTime(stripeSub.created),
     item: { price: price.id },
     cost: { 
       amount: price.unit_amount,
       recurring: price.recurring
     },
-    period_start: fromUnixTime(stripeSub.current_period_start).toISOString(),
-    period_end: fromUnixTime(stripeSub.current_period_end).toISOString(),
+    period_start: fromUnixTime(stripeSub.current_period_start),
+    period_end: fromUnixTime(stripeSub.current_period_end),
     classes_left: product.metadata.max_classes,
     max_classes: product.metadata.max_classes,
+    proration_behavior: 'none'
   }
 
   try {
@@ -407,7 +406,7 @@ async function getSubscription(req, res) {
   let sub;
 
   try {
-    sub = Subscription.find({ user_id: userData.id }).sort({ created_date: -1 })
+    sub = Subscription.find({ user_id: userData.id })
   } catch (err) {
     log.warn("Database error fetching user subs ", err);
     return res.status(500).json({
