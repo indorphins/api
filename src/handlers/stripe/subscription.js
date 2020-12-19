@@ -134,7 +134,7 @@ async function createSubscription(req, res) {
     proration_behavior: 'none'
   };
 
-  if (freeTrial) options.trial_period_days = parseInt(product.metadata.trial_length);
+  if (freeTrial) options.trial_period_days = product.metadata.trial_length;
 
   try {
     stripeSub = await stripe.subscriptions.create(options)
@@ -169,7 +169,7 @@ async function createSubscription(req, res) {
     period_end: fromUnixTime(stripeSub.current_period_end).toISOString(),
     classes_left: product.metadata.max_classes,
     max_classes: product.metadata.max_classes,
-    trial_length: parseInt(product.metadata.trial_length)
+    trial_length: product.metadata.trial_length
   }
 
   try {
@@ -241,7 +241,7 @@ async function getUnlimitedSubProduct(req, res) {
     let trialLength = 0;
 
     if (product.metadata && product.metadata.trial_length) {
-      trialLength = parseInt(product.metadata.trial_length);
+      trialLength = product.metadata.trial_length;
     }
 
     productPrices = {
