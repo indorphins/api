@@ -381,7 +381,7 @@ function getSubscriptionCostOverDays(sub, startDate, endDate) {
   let daysInRange = 0;
 
   if (isBefore(sub.period_start, startDate)) {
-    // get days diff from start date to period end or end date whichever is closer
+    // get full days diff from start date to period end or end date whichever is closer
     if (isBefore(sub.period_end, endDate)) {
       daysInRange = differenceInDays(startDate, sub.period_end);
     } else {
@@ -600,7 +600,6 @@ module.exports = {
   getProductsPrices,
   cancelSubscription,
   getSubscription,
-  getSubscriptionCostOverDays,
   addUserToClass,
   subscriptionWebhook
 }

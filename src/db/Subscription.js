@@ -10,10 +10,8 @@ const Sub = new mongoose.Schema({
   },
   // user's id 
   user_id: {
-    type: String,
-    required: true
+    type: String
   },
-  // ACTIVE TRIAL CANCELLED PAYMENT_FAILED
   status: {
     type: String,
   },  
@@ -29,8 +27,7 @@ const Sub = new mongoose.Schema({
   },
   // cost object containing amount and recurring
   cost: {
-    type: Object,
-    required: true
+    type: Object
   },
   period_start: {
     type: Date
@@ -39,12 +36,10 @@ const Sub = new mongoose.Schema({
     type: Date
   },
   classes_left: {
-    type: Number,
-    required: true
+    type: Number
   },
   max_classes: {
-    type: Number,
-    required: true
+    type: Number
   },
   // payment intent id for the last invoice tied to this subscription
   latest_payment: {
