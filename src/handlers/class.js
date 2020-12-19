@@ -240,7 +240,7 @@ async function deleteClass(req, res) {
   let subscriptions, subscription, sub, transactions, transaction, refundTransaction;
 
   if (!c.recurring) {
-    await utils.asyncForEach(c.participants, async p => {
+    await asyncForEach(c.participants, async p => {
       try {
         subscriptions = await Subscription.find({ $and: [{userId: p.id} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
       } catch (err) {
@@ -281,7 +281,7 @@ async function deleteClass(req, res) {
     });
   } else {
 
-    await utils.asyncForEach(c.participants, async p => {
+    await asyncForEach(c.participants, async p => {
       const now = new Date();
       let nextSession = utils.getNextSession(now, c);
       let refundWindow = new Date(nextSession.date);
@@ -595,6 +595,13 @@ async function emailClass(req, res) {
   res.status(200).json({
     message: "Sent class email success"
   })
+}
+
+
+async function asyncForEach(array, callback) {
+  for (let index = 0; index < array.length; index++) {
+    await callback(array[index], index, array);
+  }
 }
 
 async function getClassParticipants(req, res) {
