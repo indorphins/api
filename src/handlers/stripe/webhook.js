@@ -4,12 +4,10 @@ const Transaction = require('../../db/Transaction');
 const StripeUser = require('../../db/StripeUser');
 const Class = require('../../db/Class');
 const log = require('../../log');
-const fromUnixTime = require('date-fns/fromUnixTime');
 
 /**
  * Webhook for stripe handling invoice events
  * Receives an event and the relevant data object
- * Anything higher than a 2XX response will cause the event to be repeated
  * @param {Object} req
  * @param {Object} res
  */
@@ -27,54 +25,187 @@ async function invoiceWebhook(req, res) {
     return res.sendStatus(400);
   }
   const dataObject = event.data.object;
-  let sub;
 
   if (event.type === 'invoice.paid') {
-    // update period start and end dates as well as status to ACTIVE
-    try {
-      sub = await Subscription.findOne({ id: dataObject.subscription });
-    } catch (err) {
-      log.warn("Database error in webhook ", err)
-      return res.sendStatus(500);
-    }
-
-    sub.status = 'ACTIVE';
-    sub.period_start = fromUnixTime(dataObject.period_start).toISOString();
-    sub.period_end = fromUnixTime(dataObject.period_end).toISOString();
-    sub.latest_payment = dataObject.payment_intent;
-
-    try {
-      await Subscription.updateOne({ id: sub.id }, sub)
-    } catch (err) {
-      log.warn("Database error in webhook ", err)
-      return res.sendStatus(500);
-    }
+    return updateInvoiceStatus(dataObject)
+      .then((transaction) => {
+        // No need to add user to recurring class as they will be in it after the first one-time payment
+        // TODO maybe notify them here of upcoming class
+        return res.sendStatus(200)
+      })
+      .catch((error) => {
+        log.warn('Stripe Webhook error - invoice.payment_succeeded - ', error);
+        return res.status(400).json({
+          message: error,
+        });
+      });
   }
-
   if (
     event.type === 'invoice.payment_failed' ||
     event.type === 'invoice.voided' ||
     event.type === 'invoice.marked_uncollectible'
   ) {
-    // Mark the user's subscription as PAYMENT_FAILED - no refund flow needed here 
-    try {
-      sub = await Subscription.findOne({ id: dataObject.subscription });
-    } catch (err) {
-      log.warn("Database error in webhook ", err)
-      return res.sendStatus(500);
-    }
+    // Update invoice and delete subscription on invoice failure and remove from class
+    return updateInvoiceStatus(dataObject)
+      .then((transaction) => {
+        return removeUserFromClass(
+          dataObject.metadata.class_id,
+          dataObject.customer
+        ).then((result) => {
+          // TODO notify user of failed invoice
+          return stripe.subscriptions.del(dataObject.subscription);
+        }).then((deletedSub) => {
+          return deleteSubscription(deletedSub);
+        }).then(() => {
+          return res.status(200).json({
+            message: 'Invoice Failed - Cancelled Subscription',
+          });
+        }
+        );
+      })
+      .catch((error) => {
+        log.warn('Stripe Webhook error - invoice.payment_failed - ', error);
+        return res.status(400).json({
+          message: error,
+        });
+      });
+  }
+  res.sendStatus(200);
+}
 
-    sub.status = 'PAYMENT_FAILED';
-    
+/**
+ * Delete the subscription record in mongo
+ * @param {Object} subscription
+ */
+async function deleteSubscription(subscription) {
+  let query = {
+    id: subscription.id,
+  };
+
+  try {
+    await Subscription.findOneAndRemove(query);
+  } catch (err) {
+    log.warn('CancelSubscription - error removing subscription', err);
+    throw err;
+  }
+}
+
+/**
+ * Updates a transaction status
+ * Creates a transaction if one doesn't already exist
+ * Returns the updated transaction
+ * @param {Object}
+ */
+async function updateInvoiceStatus(invoice) {
+  let query = {
+    paymentId: invoice.id,
+  };
+  let transaction;
+  try {
+    transaction = await Transaction.findOneAndUpdate(query, {
+      status: invoice.status,
+    });
+  } catch (err) {
+    log.warn('updateInvoiceStatus - update transaction error: ', error);
+    throw err;
+  }
+
+  // If no transaction found create one for the invoice as it is being processed by us for the first time
+  if (!transaction) {
+    let user;
+    query = {
+      customerId: invoice.customer,
+    };
     try {
-      await Subscription.updateOne({ id: sub.id }, sub)
+      user = await StripeUser.findOne(query);
     } catch (err) {
-      log.warn("Database error in webhook ", err)
-      return res.sendStatus(500);
+      log.warn('updateInvoiceStatus - failed to find stripe user');
+      throw err;
+    }
+    let data = {
+      classId: invoice.metadata.class_id,
+      userId: user.id,
+      stripeId: invoice.customer,
+      paymentId: invoice.id,
+      subscriptionId: invoice.subscription,
+      status: invoice.status,
+      type: 'debit',
+      created_date: new Date().toISOString()
+    };
+    try {
+      transaction = await Transaction.create(data);
+    } catch (err) {
+      log.warn('updateInvoiceStatus - error creating transaction ', err);
+      throw err;
     }
   }
 
-  res.sendStatus(200);
+  return transaction;
+}
+
+/**
+ * Removes a user from a class' participants array
+ * Called after failed payment of participant for class
+ * Returns the Class
+ * @param {String} classId
+ * @param {String} stripeId
+ * @returns {Object}
+ */
+async function removeUserFromClass(classId, stripeId) {
+
+  let query = {
+    customerId: stripeId,
+  };
+  let user;
+
+  try {
+    user = await StripeUser.findOne(query);
+  } catch (err) {
+    log.warn('removeUserFromClass find stripe user error: ', err);
+    throw err;
+  }
+
+  if (!user) {
+    log.warn('removeUserFromClass no stripe user found');
+    throw Error("No stripe user found")
+  }
+
+  let c;
+
+  try {
+    c = await Class.findOne({ id: classId });
+  } catch (err) {
+    log.warn("database error", err);
+    throw err
+  }
+
+  if (!c) {
+    log.warn('removeUserFromClass no class found');
+    throw Error("No class found")
+  }
+
+  let index = -1;
+  for (var i = 0; i < c.participants.length; i++) {
+    if (c.participants[i].id == user.id) {
+      index = i;
+    }
+  }
+
+  if (index == -1) {
+    return c;
+  }
+
+  c.participants.splice(index, 1);
+  c.available_spots = c.available_spots + 1;
+
+  try {
+    await Class.updateOne({ id: classId }, c);
+  } catch (err) {
+    log.warn('removeUserFromClass remove user from class error: ', err);
+    throw err;
+  }
+
+  return c;
 }
 
 module.exports = {
