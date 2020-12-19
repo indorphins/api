@@ -229,6 +229,7 @@ async function getUnlimitedSubProduct(req, res) {
   let products;
 
   log.info("getUnlimitedSubProduct - fetch stripe product ", unlimitedSubscriptionSku);
+
   // Fetch all active products
   try {
     products = await stripe.products.retrieve(unlimitedSubscriptionSku);
