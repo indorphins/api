@@ -27,7 +27,7 @@ const Sub = new mongoose.Schema({
     type: Object,
     required: true
   },
-  // cost object containing amount and recurring properties
+  // cost object containing amount and recurring
   cost: {
     type: Object,
     required: true

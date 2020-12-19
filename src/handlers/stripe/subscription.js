@@ -248,21 +248,12 @@ async function getProductsPrices(req, res) {
   res.status(200).json(productPrices);
 }
 
-async function fetchRefund(req, res) {
-  const refund = req.ctx.refund;
-
-  if (!refund) {
-    return res.status(404).json({
-      message: 'Refund not fetched'
-    })
-  }
-
-  res.status(200).json(refund);
-}
-
-async function getRefundAmount(req, res, next) {
-  // refund user based on classes not taken / total classes in subscription * sub cost
+async function cancelSubscription(req, res) {
   const userData = req.ctx.userData;
+
+  // must cancel the user's subscription and remove them from all booked classes (under the sub)
+  // refund user based on classes not taken / total classes in subscription * sub cost
+
   let subs;
 
   try {
@@ -294,6 +285,17 @@ async function getRefundAmount(req, res, next) {
 
   let activeSub = activeSubs[0];
 
+  // Cancel the sub on stripes end
+  let canceled;
+
+  try {
+    canceled = await stripe.subscriptions.del(sub.id);
+  } catch (err) {
+    log.warn("Stripe API error on subscription delete ", err);
+    return res.status(500).json({
+      message: 'Stripe API error'
+    })
+  }
   
   let refund = 0;
 
@@ -302,39 +304,6 @@ async function getRefundAmount(req, res, next) {
   } else if (activeSub.classes_left > 0) {
     refund = activeSub.classes_left / activeSub.max_classes * activeSub.cost.amount;
   }
-
-  req.ctx.refund = refund;
-  req.ctx.activeSub = activeSub;
-
-  next();
-}
-
-async function cancelSubscription(req, res) {
-  // must cancel the user's subscription and remove them from all booked classes (under the sub)
-  // refund user based on classes not taken / total classes in subscription * sub cost
-
-  const userData = req.ctx.userData;
-  const refund = req.ctx.refund;
-  const activeSub = req.ctx.activeSub;
-
-  if (!refund || !activeSub) {
-    log.warn("No refund or subscription to cancel");
-    return res.status(404).json({
-      message: "No refund or subscription to cancel"
-    })
-  }
-
-  // Cancel the sub on stripes end
-  try {
-    let canceled = await stripe.subscriptions.del(activeSub.id);
-  } catch (err) {
-    log.warn("Stripe API error on subscription delete ", err);
-    return res.status(500).json({
-      message: 'Stripe API error'
-    })
-  }
-
-  log.info("Canceled stripe subscription through stripe api ", canceled);
 
   if (refund > 0 && activeSub.latest_payment) {
     // issue a payment intent refund using latest_payment
@@ -378,15 +347,13 @@ async function cancelSubscription(req, res) {
   const now = new Date().toISOString();
 
   try {
-    classes = await Class.updateMany({ participants: userData.id, start_date: { $gte: now } }, { $pull: { participants: userData.id }})
+    classes = await Class.updateMany({ participants: userData.id, start_date: { $gte: now } }, { $pull: { participants: { $in: [userData.id] }}})
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
       message: "Database error"
     })
   }
-
-  console.log("FOUND Classes to remove user from ", classes);
 
   // update subscription to CANCELED
   try {
@@ -456,6 +423,12 @@ async function getSubscription(req, res) {
 
   log.info("Found user sub data ", s);
   res.status(200).json(s);
+}
+
+async function subscriptionWebhook(req, res) {
+
+  // Handle setting subscription status based on invoices paid/failed - see current webhook for stripe
+
 }
 
 /**
@@ -630,6 +603,5 @@ module.exports = {
   getSubscription,
   getSubscriptionCostOverDays,
   addUserToClass,
-  getRefundAmount,
-  fetchRefund
+  subscriptionWebhook
 }
