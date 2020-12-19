@@ -293,31 +293,19 @@ async function getRefundAmount(req, res, next) {
   }
 
   let activeSubs = subs.filter(sub => {
-    return sub.status === "ACTIVE"
+    return sub.status === "ACTIVE" || sub.status === "TRIAL"
   })
 
   if (activeSubs.length === 0) {
-    activeSubs = subs.filter(sub => {
-      return sub.status === "TRIAL"
+    log.warn('User has no active subscriptions');
+    return res.status(404).json({
+      message: 'User has no active subscriptions'
     })
-
-    if (activeSubs.length > 0) {
-      let activeSub = activeSubs[0];
-
-      req.ctx.refund = 0;
-      req.ctx.activeSub = activeSub;
-    
-      return next();
-    } else {
-      log.warn('User has no active subscriptions');
-      return res.status(404).json({
-        message: 'User has no active subscriptions'
-      })
-    }
   } 
 
   let activeSub = activeSubs[0];
 
+  
   let refund = 0;
 
   if (activeSub.classes_left < 0) {
@@ -339,18 +327,16 @@ async function cancelSubscription(req, res) {
   // refund user based on classes not taken / total classes in subscription * sub cost
 
   const userData = req.ctx.userData;
+  const refund = req.ctx.refund;
   const activeSub = req.ctx.activeSub;
   const now = req.body.now;
-  let refund = req.ctx.refund;
 
-  if (!activeSub) {
-    log.warn("No subscription to cancel");
+  if (!refund || !activeSub) {
+    log.warn("No refund or subscription to cancel");
     return res.status(404).json({
-      message: "No subscription to cancel"
+      message: "No refund or subscription to cancel"
     })
   }
-
-  if (!refund) refund = 0;
 
   // Cancel the sub on stripes end
   try {
@@ -361,6 +347,8 @@ async function cancelSubscription(req, res) {
       message: 'Stripe API error'
     })
   }
+
+  console.log("Deleted sub on stripe side with refund ", refund);
 
   if (refund > 0 && activeSub.latest_payment) {
     // issue a payment intent refund using latest_payment
@@ -427,10 +415,7 @@ async function cancelSubscription(req, res) {
     })
   }
 
-  res.status(200).json({
-    sub: activeSub,
-    refund: refund
-  });
+  res.status(200).json(activeSub);
 }
 
 // Returns cost IN CENTS of the subscription over the number of days it was active between startDate and endDate
@@ -538,7 +523,7 @@ async function addUserToClass(req, res) {
   let subs;
 
   try {
-    subs = await Subscription.find({ $and: [{user_id: userId} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: -1 });
+    subs = await Subscription.find({ $and: [{userId: userId} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: -1 });
   } catch (err) {
     log.warn("Database error ", err);
     return res.status(500).json({
@@ -583,7 +568,7 @@ async function addUserToClass(req, res) {
 
   let updatedClass;
   try {
-    updatedClass = await Class.findOneAndUpdate({ id: course.id }, updateData, {new: true});
+    updatedClass = Class.findOneAndUpdate({ id: course.id }, updateData, {new: true});
   } catch (err) {
     log.error("error updating class", err);
     return res.status(500).json({
@@ -591,8 +576,6 @@ async function addUserToClass(req, res) {
       error: err.message,
     });
   }
-
-  console.log("Updated course to ", updatedClass);
 
   if (sub.classes_left > 0) {
     let subUpdate = {
@@ -602,7 +585,7 @@ async function addUserToClass(req, res) {
     }
 
     try {
-      sub = await Subscription.findOneAndUpdate({ id: sub.id }, subUpdate, {new: true})
+      sub = Subscription.findOneAndUpdate({ id: sub.id }, subUpdate, {new: true})
     } catch (err) {
       log.warn("Error updating subscription");
       return res.status(500).json({
@@ -614,10 +597,10 @@ async function addUserToClass(req, res) {
   try {
     await Transaction.create({
       amount: 0,
-      subscriptionId: sub.id,
+      subscriptionId: activeSub.id,
       userId: userId,
       type: 'credit',
-      classId: updatedClass.id,
+      classId: course.id,
       created_date: new Date().toISOString()
     });
   } catch (err) {
@@ -629,7 +612,7 @@ async function addUserToClass(req, res) {
 
   let instructorData;
   try {
-    instructorData = await User.findOne({id: updatedClass.instructor});
+    instructorData = await User.findOne({id: classObj.instructor});
   } catch(err) {
     log.error("fetch instructor user record", err);
     return res.status(500).json({
@@ -640,6 +623,11 @@ async function addUserToClass(req, res) {
 
   let combined = Object.assign({}, updatedClass._doc);
   combined.instructor = Object.assign({}, instructorData._doc);
+  
+  let displayedPrice = price / 100;
+  if (!utils.isInteger(displayedPrice)) {
+    displayedPrice = displayedPrice.toFixed(2);
+  }
 
   let message = "You're in! You'll be able to join class from this page 5 minutes before class starts."
   if (sub.classes_left > 0) {
