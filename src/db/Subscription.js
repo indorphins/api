@@ -32,12 +32,6 @@ const Sub = new mongoose.Schema({
   }, 
   period_end: {
     type: Date
-  },
-  classes_left: {
-    type: Number
-  },
-  max_classes: {
-    type: Number
   }
 });
 

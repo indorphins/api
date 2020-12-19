@@ -7,8 +7,6 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const log = require('../../log');
 const utils = require('../../utils/index');
 const fromUnixTime = require('date-fns/fromUnixTime');
-const isBefore = require('date-fns/isBefore');
-const differenceInDays = require('date-fns/differenceInCalendarDays');
 
 async function createSubscription(req, res) {
   const userData = req.ctx.userData;
@@ -33,34 +31,8 @@ async function createSubscription(req, res) {
     })
   }
 
-  // Validate product is one of ours
-  let product;
-
-  try {
-    product = await stripe.products.retrieve(sku);
-  } catch (err) {
-    log.warn("Stripe API error ", err);
-    return res.status(500).json({
-      message: "Stripe API error"
-    })
-  }
-
-  if (!product) {
-    log.warn("Invalid product sku");
-    return res.status(404).json({
-      message: "Invalid product sku"
-    })
-  }
-
-  // Product must have metadata tied to the number of classes for this package
-  if (!product.metadata || !product.metadata.max_classes) {
-    log.warn("Product has no metadata");
-    return res.status(400).json({
-      message: "Invalid product metadata"
-    })
-  }
-
   // fetch the prices (should be one monthly recurring one but could be more in the future) corresponding to the product they selected 
+
   let prices;
 
   try {
@@ -93,10 +65,10 @@ async function createSubscription(req, res) {
   console.log("PRICE object from prices array: ", price);
 
   // Check if user has had a subscription before, if not give them free 30 day trial
-  let prevSubs;
+  let prevSub;
 
   try {
-    prevSubs = await Subscription.find({ user_id: userData.id });
+    prevSub = await Subscription.find({ user_id: userData.id });
   } catch (err) {
     log.warn("Database Error finding prev sub ", err);
     return res.status(500).json({
@@ -105,21 +77,8 @@ async function createSubscription(req, res) {
   }
 
   let freeTrial = false;
-  if (!prevSubs || prevSubs.length === 0) {
+  if (!prevSub || prevSub.length === 0) {
     freeTrial = true;
-  } 
-  
-  // Make sure there are no active subscriptions already
-  if (prevSubs && prevSubs.length > 0) {
-    for (let i = 0; i < prevSubs.length; i++) {
-      let s = prevSubs[i];
-      if (s.status === 'ACTIVE' || s.status === 'TRIAL') {
-        log.warn("User has " + s.status + " subscription - can't create another");
-        return res.status(400).json({
-          message: "You already have an active subscription"
-        })
-      }
-    }
   }
 
   // create a stripe subscription based on the product the user selected to sign up for
@@ -163,9 +122,7 @@ async function createSubscription(req, res) {
       recurring: price.recurring
     },
     period_start: fromUnixTime(stripeSub.current_period_start),
-    period_end: fromUnixTime(stripeSub.current_period_end),
-    classes_left: product.metadata.max_classes,
-    max_classes: product.metadata.max_classes
+    period_end: fromUnixTime(stripeSub.current_period_end)
   }
 
   try {
@@ -247,116 +204,10 @@ async function getProductsPrices(req, res) {
 }
 
 async function cancelSubscription(req, res) {
-  const userData = req.ctx.userData;
 
   // must cancel the user's subscription and remove them from all booked classes (under the sub)
   // refund user based on classes not taken / total classes in subscription * sub cost
-
-  let subs;
-
-  try {
-    subs = await Subscription.find({ user_id: userData.id }).sort({ created_date: -1 })
-  } catch (err) {
-    log.warn("Database error ", err);
-    return res.status(500).json({
-      message: "Database error"
-    })
-  }
   
-  if (!subs || subs.length === 0) {
-    log.warn("User has no subscriptions")
-    return res.status(404).json({
-      message: "User has no subscriptions"
-    })
-  }
-
-  let activeSub = subs.filter(sub => {
-    return sub.status === "ACTIVE" || sub.status === "TRIAL"
-  })
-
-  // Cancel the sub on stripes end
-  let cancelled;
-
-  try {
-    cancelled = await stripe.subscriptions.del(sub.id);
-  } catch (err) {
-    log.warn("Stripe API error on subscription delete ", err);
-    return res.status(500).json({
-      message: 'Stripe API error'
-    })
-  }
-  
-  let refund = 0;
-
-  if (activeSub.classes_left < 0) {
-    refund = getSubscriptionCostOverDays(activeSub, Date(), activeSub.period_end);
-  } else if (activeSub.classes_left > 0) {
-    refund = activeSub.classes_left / activeSub.max_classes * activeSub.cost.amount / 100;
-  }
-
-  if (refund !== 0) {
-    // issue a payment intent refund
-    // TODO
-    // create Transaction to record it
-  }
-
-
-  // remove user from all future classes
-  let classes;
-  const now = new Date().toISOString();
-
-  try {
-    classes = await Class.updateMany({ participants: userData.id, start_date: { $gte: now } }, { $pull: { participants: userData.id }})
-  } catch (err) {
-    log.warn("Database error ", err);
-    return res.status(500).json({
-      message: "Database error"
-    })
-  }
-
-  // update subscription to CANCELLED
-  try {
-    await Subscription.update({ id: activeSub.id }, { $set: { status: 'CANCELLED' }});
-  } catch (err) {
-    log.warn("Database error ", err);
-    return res.status(500).json({
-      message: "Database error"
-    })
-  }
-
-  res.status(200).json({
-    message: 'Subscription cancelled'
-  })
-}
-
-// Returns cost of the subscription over the number of days it was active between startDate and endDate
-function getSubscriptionCostOverDays(sub, startDate, endDate) {
-  console.log("Sub start ", sub.period_start)
-  console.log("Sub end ", sub.period_end)
-  console.log("Compare start ", startDate);
-  console.log("Compare end ", endDate);
-
-  const totalDays = differenceInDays(sub.period_start, sub.period_end);
-  const cost = sub.cost.amount / 100;
-  let daysInRange = 0;
-
-  if (isBefore(sub.period_start, startDate)) {
-    // get full days diff from start date to period end or end date whichever is closer
-    if (isBefore(sub.period_end, endDate)) {
-      daysInRange = differenceInDays(startDate, sub.period_end);
-    } else {
-      daysInRange = differenceInDays(startDate, endDate);
-    }
-  } else {
-    // get days diff from period start to period end or end date whichever is closer
-    if (isBefore(sub.period_end, endDate)) {
-      daysInRange = differenceInDays(sub.period_start, sub.period_end);
-    } else {
-      daysInRange = differenceInDays(sub.period_start, endDate);
-    }
-  }
-
-  return daysInRange / totalDays * cost;
 }
 
 // Fetch user subscription data from mongo - returns latest subscription if multiple exist
@@ -388,12 +239,4 @@ async function subscriptionWebhook(req, res) {
 
   // Handle setting subscription status based on invoices paid/failed - see current webhook for stripe
 
-}
-
-module.exports = {
-  createSubscription,
-  getProductsPrices,
-  cancelSubscription,
-  getSubscription,
-  subscriptionWebhook
 }
