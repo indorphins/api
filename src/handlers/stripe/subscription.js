@@ -228,6 +228,7 @@ async function createSubscription(req, res) {
 async function getUnlimitedSubProduct(req, res) {
   let products;
 
+  log.info("getUnlimitedSubProduct - fetch stripe product ", unlimitedSubscriptionSku);
   // Fetch all active products
   try {
     products = await stripe.products.retrieve(unlimitedSubscriptionSku);
@@ -237,6 +238,8 @@ async function getUnlimitedSubProduct(req, res) {
       message: 'Error fetching prodcuts from stripe'
     })
   }
+
+  log.info("getUnlimitedSubProduct - Got products from stripe ", products);
 
   if (!products) {
     log.warn("No products found from stripe");
