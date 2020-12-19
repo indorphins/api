@@ -338,7 +338,6 @@ async function cancelSubscription(req, res) {
           message: err.message
         });
       }
-    }
   }
 
   // remove user from all future classes
