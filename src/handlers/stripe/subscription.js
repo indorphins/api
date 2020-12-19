@@ -206,7 +206,7 @@ async function getProductsPrices(req, res) {
   let productPrices = []
 
   // Fetch the pricing data tied to each product
-  products.data.forEach(async product => {
+  products.data.forEach(product => {
     let prices;
 
     try {
