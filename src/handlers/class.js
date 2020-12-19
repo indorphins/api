@@ -253,34 +253,32 @@ async function deleteClass(req, res) {
         subscription = subscriptions[0];
       }
 
-      if (subscription) {
-        // Add back class to classes_left if not unlimited sub (classes left > -1) and classes_left < max_classes
-        if (subscription && subscription.classes_left > -1 && subscription.classes_left < subscription.max_classes) {
-          try {
-            sub = await Subscription.updateOne({ id: subscription.id }, { $inc: { classes_left: 1 }})
-          } catch (err) {
-            log.warn('Class cancel - add class back to subscription ', err);
-            return res.status(400).json({
-              message: err.message,
-            });
-          }
-        }
-
+      // Add back class to classes_left if not unlimited sub (classes left > -1) and classes_left < max_classes
+      if (subscription && subscription.classes_left > -1 && subscription.classes_left < subscription.max_classes) {
         try {
-          await Transaction.create({
-            amount: 0,
-            userId: p.id,
-            subscriptionId: subscription.id,
-            type: 'credit',
-            classId: c.id,
-            created_date: new Date().toISOString()
-          });
+          sub = await Subscription.updateOne({ id: subscription.id }, { $inc: { classes_left: 1 }})
         } catch (err) {
-          log.warn('Class cancel - error creating credit Transaction ', err);
-          return res.status(500).json({
-            message: err.message
+          log.warn('Class cancel - add class back to subscription ', err);
+          return res.status(400).json({
+            message: err.message,
           });
         }
+      }
+
+      try {
+        await Transaction.create({
+          amount: 0,
+          userId: p.id,
+          subscriptionId: sub.id,
+          type: 'credit',
+          classId: c.id,
+          created_date: new Date().toISOString()
+        });
+      } catch (err) {
+        log.warn('Class cancel - error creating credit Transaction ', err);
+        return res.status(500).json({
+          message: err.message
+        });
       }
     });
   } else {
