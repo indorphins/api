@@ -186,7 +186,7 @@ async function createSubscription(req, res) {
   options = {
     userId: userData.id,
     status: 'created subscription',
-    subscriptionId: sub.id,
+    subscription_id: sub.id,
     created_date: new Date().toISOString()
   }
 
@@ -393,7 +393,7 @@ async function cancelSubscription(req, res) {
           userId: userData.id,
           status: refundTransaction.status,
           type: 'credit',
-          subscriptionId: activeSub.id,
+          subscription_id: activeSub.id,
           created_date: new Date().toISOString()
         });
       } catch (err) {
@@ -432,7 +432,7 @@ async function cancelSubscription(req, res) {
   let options = {
     userId: userData.id,
     status: 'canceled subscription',
-    subscriptionId: sub.id,
+    subscription_id: sub.id,
     created_date: new Date().toISOString()
   }
 
@@ -629,7 +629,7 @@ async function addUserToClass(req, res) {
       amount: 0,
       subscriptionId: sub.id,
       userId: userId,
-      type: 'debit',
+      type: 'credit',
       classId: updatedClass.id,
       created_date: new Date().toISOString()
     });
