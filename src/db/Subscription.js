@@ -16,7 +16,6 @@ const Sub = new mongoose.Schema({
   // ACTIVE TRIAL CANCELLED PAYMENT_FAILED
   status: {
     type: String,
-    required: true
   },  
   start_date: {
     type: Date,
@@ -26,8 +25,7 @@ const Sub = new mongoose.Schema({
   },
   // item user bought - has price property with the price id
   item: {
-    type: Object,
-    required: true
+    type: Object
   },
   // cost object containing amount and recurring
   cost: {
@@ -35,12 +33,10 @@ const Sub = new mongoose.Schema({
     required: true
   },
   period_start: {
-    type: Date,
-    required: true
+    type: Date
   }, 
   period_end: {
-    type: Date,
-    required: true
+    type: Date
   },
   classes_left: {
     type: Number,
