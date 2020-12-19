@@ -7,6 +7,7 @@ const Sub = new mongoose.Schema({
   },
   class_id: {
     type: String,
+    required: true
   },
   // user's id 
   user_id: {
@@ -21,11 +22,8 @@ const Sub = new mongoose.Schema({
   created_date: {
     type: Date,
   },
-  item: {
-    type: Object
-  },
   cost: {
-    type: Object
+    type: Number
   }
 });
 
