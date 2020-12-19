@@ -1,3 +1,4 @@
+
 const StripeUser = require('../../db/StripeUser');
 const Class = require('../../db/Class');
 const Transaction = require('../../db/Transaction');
