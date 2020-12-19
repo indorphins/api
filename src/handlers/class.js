@@ -237,45 +237,50 @@ async function deleteClass(req, res) {
     });
   }
 
-  let subscriptions, subscription, sub, transactions, transaction, refundTransaction;
+  let transactions, transaction, refundTransaction;
 
   if (!c.recurring) {
     await asyncForEach(c.participants, async p => {
       try {
-        subscriptions = await Subscription.find({ $and: [{userId: p.id} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
+        transactions = await Transaction.find({ classId: c.id, userId: p.id, type: 'debit' }).sort({ created_date: "desc" });
       } catch (err) {
-        log.warn("Couldn't find corresponding subscriptions for user", err);
+        log.warn("Couldn't find corresponding transactions for class", err);
       }
       
-      if (subscriptions && subscriptions[0]) {
-        subscription = subscriptions[0];
+      if (transactions && transactions[0]) {
+        transaction = transactions[0];
       }
 
-      // Add back class to classes_left if not unlimited sub (classes left > -1) and classes_left < max_classes
-      if (subscription && subscription.classes_left > -1 && subscription.classes_left < subscription.max_classes) {
+      if (transaction) {
         try {
-          sub = await Subscription.updateOne({ id: subscription.id }, { $inc: { classes_left: 1 }})
+          refundTransaction = await stripe.refunds.create({
+            payment_intent: transaction.paymentId,
+            reverse_transfer: true,
+            refund_application_fee: true, // Gives back the platform fee
+          });
         } catch (err) {
-          log.warn('Class cancel - add class back to subscription ', err);
+          log.warn('Class cancel - refundCharge create refund error: ', err);
           return res.status(400).json({
             message: err.message,
           });
         }
-      }
 
-      try {
-        await Transaction.create({
-          amount: 0,
-          userId: p.id,
-          subscriptionId: sub.id,
-          type: 'credit',
-          created_date: new Date().toISOString()
-        });
-      } catch (err) {
-        log.warn('Class cancel - error creating credit Transaction ', err);
-        return res.status(500).json({
-          message: err.message
-        });
+        try {
+          await Transaction.create({
+            amount: transaction.amount,
+            paymentId: refundTransaction.id,
+            classId: c.id,
+            userId: p.id,
+            status: refundTransaction.status,
+            type: 'credit',
+            created_date: new Date().toISOString()
+          });
+        } catch (err) {
+          log.warn('Class cancel - error creating credit Transaction ', err);
+          return res.status(500).json({
+            message: err.message
+          });
+        }
       }
     });
   } else {
