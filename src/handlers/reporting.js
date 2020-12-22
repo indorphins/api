@@ -5,7 +5,7 @@ async function getReports(req, res) {
   const userData = req.ctx.userData;
 
   if (userData.type === 'standard') {
-    res.status(403).json({
+    return res.status(403).json({
       message: "Account type forbidden"
     })
   }
@@ -16,7 +16,7 @@ async function getReports(req, res) {
     reports = await Reportings.find().sort({week: -1, year: -1});
   } catch (err) {
     log.warn("Error finding reports");
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error finding reports'
     });
   }
@@ -28,7 +28,7 @@ async function getInstructorReports(req, res) {
   const userData = req.ctx.userData;
 
   if (userData.type === 'standard') {
-    res.status(403).json({
+    return res.status(403).json({
       message: "Account type forbidden"
     })
   }
@@ -39,7 +39,7 @@ async function getInstructorReports(req, res) {
     reports = await InstructorReportings.find().sort({week: -1, year: -1});
   } catch (err) {
     log.warn("Error finding reports");
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error finding reports'
     });
   }
