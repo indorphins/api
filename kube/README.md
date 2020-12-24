@@ -91,13 +91,18 @@ kubectl get service indorphins-be -o yaml
 Deploying the application with `kubectl` is simple. There are two environments defined `dev.yml` and `prod.yml`. Pass in the filename for the environment to deploy.
 
 ```
+kubectl apply -f ./prod.yml
 kubectl apply -f ./dev.yml
 ```
 
 > *Note: Indorphins depends on a ConfigMap for the application configuration, which can be deleted and redeployed if values need to be updated. Both dev and prod use the same config currently.*
 
 ```
+kubectl delete configmap <configmap-name> 
+
 kubectl create configmap indorphins-config --from-env-file=../env/prod.env
+kubectl create configmap indorphins-dev-config --from-env-file=../env/dev.env
+
 ```
 
 
@@ -106,7 +111,9 @@ kubectl create configmap indorphins-config --from-env-file=../env/prod.env
 Change VERSION to the docker image tag version to deploy
 
 ```
-kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:VERSION
+kubectl --record deployment.apps/indorphins-be set image deployment.v1.apps/indorphins-be indorphins-be=586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest
+
+kubectl --record deployment.apps/indorphins-be-dev set image deployment.v1.apps/indorphins-be-dev indorphins-be-dev=586425846122.dkr.ecr.us-east-1.amazonaws.com/indorphins:latest
 ```
 
 For the latest version simply use "latest" as the VERSION.
