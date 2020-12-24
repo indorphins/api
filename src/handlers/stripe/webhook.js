@@ -28,7 +28,7 @@ async function invoiceWebhook(req, res) {
   const dataObject = event.data.object;
   let sub;
 
-  if (event.type === 'invoice.paid') {
+  if (event.type === 'invoice.paid' && dataObject.amount_paid > 0) {
     // update period start and end dates as well as status to ACTIVE
     try {
       sub = await Subscription.findOne({ id: dataObject.subscription });
@@ -37,9 +37,12 @@ async function invoiceWebhook(req, res) {
       return res.sendStatus(500);
     }
 
+    if (!sub) {
+      log.warn("No subscription found for webhook invoice.paid ", dataObject.subscription);
+      return res.sendStatus(404);
+    }
+
     sub.status = 'ACTIVE';
-    sub.period_start = fromUnixTime(dataObject.period_start).toISOString();
-    sub.period_end = fromUnixTime(dataObject.period_end).toISOString();
     sub.latest_payment = dataObject.payment_intent;
 
     try {
@@ -95,6 +98,30 @@ async function invoiceWebhook(req, res) {
       }
     } else {
       log.info("Webhook - invoice failed but no subscription tied to it ", dataObject);
+    }
+  }
+
+  if (event.type === 'customer.subscription.updated') {
+    try {
+      sub = await Subscription.findOne({ id: dataObject.subscription });
+    } catch (err) {
+      log.warn("Database error in webhook ", err)
+      return res.sendStatus(500);
+    }
+
+    if (!sub) {
+      log.warn("No subscription found for webhook customer.subscription.updated ", dataObject.subscription);
+      return res.sendStatus(404);
+    }
+
+    sub.period_start = fromUnixTime(dataObject.current_period_start).toISOString();
+    sub.period_end = fromUnixTime(dataObject.current_period_end).toISOString();
+
+    try {
+      await Subscription.updateOne({ id: sub.id }, sub)
+    } catch (err) {
+      log.warn("Database error in webhook ", err)
+      return res.sendStatus(500);
     }
   }
 

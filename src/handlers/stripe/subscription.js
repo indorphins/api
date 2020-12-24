@@ -157,6 +157,8 @@ async function createSubscription(req, res) {
     }
   }
 
+  log.debug("Created stripe subscription ", stripeSub);
+
   // Create our own subscription object in our db
   const now = new Date().toISOString();
 
@@ -228,7 +230,7 @@ async function createSubscription(req, res) {
 async function getUnlimitedSubProduct(req, res) {
   let products;
 
-  log.info("getUnlimitedSubProduct - fetch stripe product ", unlimitedSubscriptionSku);
+  log.debug("getUnlimitedSubProduct - fetch stripe product ", unlimitedSubscriptionSku);
   // Fetch all active products
   try {
     products = await stripe.products.retrieve(unlimitedSubscriptionSku);
@@ -239,7 +241,7 @@ async function getUnlimitedSubProduct(req, res) {
     })
   }
 
-  log.info("getUnlimitedSubProduct - Got products from stripe ", products);
+  log.debug("getUnlimitedSubProduct - Got products from stripe ", products);
 
   if (!products) {
     log.warn("No products found from stripe");
@@ -419,7 +421,7 @@ async function cancelSubscription(req, res) {
         }
       }
 
-      console.log("Created refund ", refundTransaction)
+      log.debug("Issued stripe refund for subscription ", refundTransaction);
 
       if (refundTransaction) {
         try {
