@@ -70,7 +70,7 @@ async function invoiceWebhook(req, res) {
       return res.sendStatus(500);
     }
 
-    log.info("Webook - invoice.paid - created Transaction ", transaction);
+    log.debug("Webook - invoice.paid - created Transaction ", transaction);
   }
 
   if (
@@ -97,7 +97,7 @@ async function invoiceWebhook(req, res) {
         return res.sendStatus(500);
       }
     } else {
-      log.info("Webhook - invoice failed but no subscription tied to it ", dataObject);
+      log.warn("Webhook - invoice failed but no subscription tied to it ", dataObject);
     }
   }
 
