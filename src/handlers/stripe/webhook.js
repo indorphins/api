@@ -70,7 +70,7 @@ async function invoiceWebhook(req, res) {
       return res.sendStatus(500);
     }
 
-    log.info("Webook - invoice.paid - created Transaction ", transaction);
+    log.debug("Webook - invoice.paid - created Transaction ", transaction);
   }
 
   if (
@@ -97,7 +97,31 @@ async function invoiceWebhook(req, res) {
         return res.sendStatus(500);
       }
     } else {
-      log.info("Webhook - invoice failed but no subscription tied to it ", dataObject);
+      log.warn("Webhook - invoice failed but no subscription tied to it ", dataObject);
+    }
+  }
+
+  if (event.type === 'customer.subscription.updated') {
+    try {
+      sub = await Subscription.findOne({ id: dataObject.subscription });
+    } catch (err) {
+      log.warn("Database error in webhook ", err)
+      return res.sendStatus(500);
+    }
+
+    if (!sub) {
+      log.warn("No subscription found for webhook customer.subscription.updated ", dataObject.subscription);
+      return res.sendStatus(404);
+    }
+
+    sub.period_start = fromUnixTime(dataObject.current_period_start).toISOString();
+    sub.period_end = fromUnixTime(dataObject.current_period_end).toISOString();
+
+    try {
+      await Subscription.updateOne({ id: sub.id }, sub)
+    } catch (err) {
+      log.warn("Database error in webhook ", err)
+      return res.sendStatus(500);
     }
   }
 
