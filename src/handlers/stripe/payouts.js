@@ -25,10 +25,7 @@ async function getInstructorsSubShare(req, res) {
   let filter = {
     $and: [
       {
-        $or: [
-          { status: 'ACTIVE' },
-          { status: 'TRIAL' }
-        ]
+        status: 'ACTIVE'
       },
       {
         $or: [
