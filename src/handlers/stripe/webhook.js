@@ -103,14 +103,14 @@ async function invoiceWebhook(req, res) {
 
   if (event.type === 'customer.subscription.updated') {
     try {
-      sub = await Subscription.findOne({ id: dataObject.subscription });
+      sub = await Subscription.findOne({ id: dataObject.id });
     } catch (err) {
       log.warn("Database error in webhook ", err)
       return res.sendStatus(500);
     }
 
     if (!sub) {
-      log.warn("No subscription found for webhook customer.subscription.updated ", dataObject.subscription);
+      log.warn("No subscription found for webhook customer.subscription.updated ", dataObject);
       return res.sendStatus(404);
     }
 
