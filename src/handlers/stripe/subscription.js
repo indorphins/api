@@ -500,20 +500,20 @@ function getSubscriptionCostOverDays(sub, startDate, endDate) {
   if (isBefore(start, startDate)) {
     // get days diff from start date to period end or end date whichever is closer
     if (isBefore(end, endDate)) {
-      daysInRange = differenceInDays(end, startDate) + 1;
-
+      daysInRange = differenceInDays(end, startDate);
     } else {
-      daysInRange = differenceInDays(endDate, startDate) + 1;
+      daysInRange = differenceInDays(endDate, startDate);
     }
-
   } else {
     // get days diff from period start to period end or end date whichever is closer
     if (isBefore(end, endDate)) {
-      daysInRange = differenceInDays(end, start) + 1;
+      daysInRange = differenceInDays(end, start);
     } else {
-      daysInRange = differenceInDays(endDate, start) + 1;
+      daysInRange = differenceInDays(endDate, start);
     }
   }
+
+  if (daysInRange === 0) daysInRange = 1;
 
   return Math.round(daysInRange / totalDays * cost);
 }
