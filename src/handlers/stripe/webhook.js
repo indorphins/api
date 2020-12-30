@@ -90,7 +90,7 @@ async function invoiceWebhook(req, res) {
     if (sub) {
       sub.status = 'PAYMENT_FAILED';
       sub.canceled_date = new Date().toISOString();
-      
+
       try {
         await Subscription.updateOne({ id: sub.id }, sub)
       } catch (err) {
@@ -117,6 +117,13 @@ async function invoiceWebhook(req, res) {
 
     sub.period_start = fromUnixTime(dataObject.current_period_start).toISOString();
     sub.period_end = fromUnixTime(dataObject.current_period_end).toISOString();
+
+    if (dataObject.status === 'active') {
+      sub.status = 'ACTIVE';
+    } 
+    if (dataObject.status === 'trialing') {
+      sub.status = 'TRIAL';
+    }
 
     try {
       await Subscription.updateOne({ id: sub.id }, sub)
