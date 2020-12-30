@@ -459,6 +459,8 @@ async function cancelSubscription(req, res) {
   let sub;
 
   activeSub.status = 'CANCELED';
+  activeSub.canceled_date = new Date().toISOString();
+
   try {
     sub = await Subscription.updateOne({ id: activeSub.id }, activeSub, {new: true});
   } catch (err) {
@@ -489,7 +491,7 @@ async function cancelSubscription(req, res) {
 
 // Returns cost IN CENTS of the subscription over the number of days it was active between startDate and endDate
 function getSubscriptionCostOverDays(sub, startDate, endDate) {
-  const totalDays = differenceInDays(sub.period_end, sub.period_start) + 1;
+  const totalDays = differenceInDays(sub.period_end, sub.period_start);
   const cost = sub.cost.amount;
   const start = new Date(sub.period_start);
   const end = new Date(sub.period_end);
@@ -499,9 +501,11 @@ function getSubscriptionCostOverDays(sub, startDate, endDate) {
     // get days diff from start date to period end or end date whichever is closer
     if (isBefore(end, endDate)) {
       daysInRange = differenceInDays(end, startDate) + 1;
+
     } else {
       daysInRange = differenceInDays(endDate, startDate) + 1;
     }
+
   } else {
     // get days diff from period start to period end or end date whichever is closer
     if (isBefore(end, endDate)) {
@@ -511,7 +515,7 @@ function getSubscriptionCostOverDays(sub, startDate, endDate) {
     }
   }
 
-  return daysInRange / totalDays * cost;
+  return Math.round(daysInRange / totalDays * cost);
 }
 
 // Fetch user subscription data from mongo - returns latest subscription if multiple exist

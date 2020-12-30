@@ -22,6 +22,9 @@ const Sub = new mongoose.Schema({
   created_date: {
     type: Date,
   },
+  canceled_date: {
+    type: Date,
+  },
   // item user bought - has price property with the price id
   item: {
     type: Object,
