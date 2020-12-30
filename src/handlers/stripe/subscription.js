@@ -491,10 +491,14 @@ async function cancelSubscription(req, res) {
 
 // Returns cost IN CENTS of the subscription over the number of days it was active between startDate and endDate
 function getSubscriptionCostOverDays(sub, startDate, endDate) {
-  const totalDays = differenceInDays(sub.period_end, sub.period_start);
+  if (sub.cost && sub.cost.amount === 0) {
+    return 0;
+  }
+
   const cost = sub.cost.amount;
   const start = new Date(sub.period_start);
   const end = new Date(sub.period_end);
+  let totalDays = differenceInDays(sub.period_end, sub.period_start);
   let daysInRange = 0;
 
   if (isBefore(start, startDate)) {
@@ -514,6 +518,7 @@ function getSubscriptionCostOverDays(sub, startDate, endDate) {
   }
 
   if (daysInRange === 0) daysInRange = 1;
+  if (totalDays === 0) totalDays = 1;
 
   return Math.round(daysInRange / totalDays * cost);
 }
