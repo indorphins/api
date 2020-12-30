@@ -403,6 +403,13 @@ async function cancelSubscription(req, res) {
       })
     }
 
+    // If no payment to refund there should be no refund
+    // Occurs in the hour after the trial ends before the invoice is finalized but
+    // the subscription is marked ACTIVE
+    if (!activeSub.latest_payment) {
+      refund = 0;
+    }
+
     if (refund > 0 && activeSub.latest_payment) {
       // issue a payment intent refund using latest_payment
       let refundTransaction;
