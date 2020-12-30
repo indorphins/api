@@ -138,7 +138,8 @@ async function getInstructorsSubShare(req, res) {
     }
   });
 
-  log.info("Got instructor payouts ", payouts);
+  log.info("Fetched instructor payouts");
+  log.debug("payout data ", payouts);
   return res.status(200).json(payouts);
 }
 
