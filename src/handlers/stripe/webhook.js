@@ -89,7 +89,8 @@ async function invoiceWebhook(req, res) {
 
     if (sub) {
       sub.status = 'PAYMENT_FAILED';
-
+      sub.canceled_date = new Date().toISOString();
+      
       try {
         await Subscription.updateOne({ id: sub.id }, sub)
       } catch (err) {
