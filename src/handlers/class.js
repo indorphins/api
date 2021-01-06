@@ -160,20 +160,31 @@ async function getClass(req, res) {
     });
   }
 
-  try {
-    i = await User.findOne({ id: c.instructor })
-  } catch (err) {
-    log.warn("error fetching instructor", err);
+  if (!c) {
+    log.warn("error fetching class by id", err);
     return res.status(404).json({
       message: "Class not found",
     });
   }
 
+  try {
+    i = await User.findOne({ id: c.instructor })
+  } catch (err) {
+    log.warn("error fetching instructor", err);
+    return res.status(404).json({
+      message: "Instructor not found",
+    });
+  }
+
   let data = Object.assign({}, c._doc);
-  data.instructor = Object.assign({}, i._doc);
+
+  if (!i) {
+    log.warn("Instructor not found for getClass")
+  } else {
+    data.instructor = Object.assign({}, i._doc);
+  }
 
   log.debug("course data", data);
-
   res.status(200).json(data);
 };
 
