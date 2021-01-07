@@ -177,6 +177,7 @@ async function joinSession(req, res) {
 
   if (user.id == c.instructor) {
     data.instructor = true;
+    data.id = user.id;
   }
 
   try {
