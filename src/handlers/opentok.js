@@ -170,13 +170,15 @@ async function joinSession(req, res) {
   }
 
   let data = {
-    id: user.id,
+    id: uuid.v4(),
+    user_id: user.id,
     username: user.username,
     instructor: false,
   };
 
   if (user.id == c.instructor) {
     data.instructor = true;
+    data.id = user.id;
   }
 
   try {
