@@ -302,6 +302,8 @@ async function getUnlimitedSubProduct(req, res) {
   res.status(200).json(productPrices);
 }
 
+// *** This method no longer populates the refund property in req.ctx since refunds are deprecated for subscriptions
+// rather it finds a valid subscription that can be canceled and puts it in req.ctx.activeSub
 async function getRefundAmount(req, res, next) {
   // refund user based on classes not taken / total classes in subscription * sub cost
   const userData = req.ctx.userData;
@@ -324,53 +326,55 @@ async function getRefundAmount(req, res, next) {
   }
 
   let activeSubs = subs.filter(sub => {
-    return sub.status === "ACTIVE"
+    return sub.status === "ACTIVE" || sub.status === 'TRIAL';
   })
 
   if (activeSubs.length === 0) {
-    activeSubs = subs.filter(sub => {
-      return sub.status === "TRIAL"
-    })
-
-    if (activeSubs.length > 0) {
-      let activeSub = activeSubs[0];
-
-      req.ctx.refund = 0;
-      req.ctx.activeSub = activeSub;
-    
-      return next();
-    } else {
       log.warn('User has no active subscriptions');
       return res.status(404).json({
         message: 'User has no active subscriptions'
       })
-    }
-  } 
+  }
+
+  //   activeSubs = subs.filter(sub => {
+  //     return sub.status === "TRIAL"
+  //   })
+
+  //   if (activeSubs.length > 0) {
+  //     let activeSub = activeSubs[0];
+
+  //     req.ctx.refund = 0;
+  //     req.ctx.activeSub = activeSub;
+    
+  //     return next();
+  //   } else {
+  //     log.warn('User has no active subscriptions');
+  //     return res.status(404).json({
+  //       message: 'User has no active subscriptions'
+  //     })
+  //   }
+  // } 
 
   let activeSub = activeSubs[0];
-
   let refund = 0;
 
-
-  if (userData.type !== 'standard') {
-    req.ctx.refund = 0;
-    req.ctx.activeSub = activeSub;
-  
-    return next();
-  }
-
-  if (activeSub.classes_left < 0) {
-    const start = new Date();
-    const end = new Date(activeSub.period_end);
-    refund = getSubscriptionCostOverDays(activeSub, start, end);
-  } else if (activeSub.classes_left > 0) {
-    refund = activeSub.classes_left / activeSub.max_classes * activeSub.cost.amount;
-  }
-
-  req.ctx.refund = refund;
+  req.ctx.refund = 0;
   req.ctx.activeSub = activeSub;
 
-  next();
+  return next();
+
+  // if (activeSub.classes_left < 0) {
+  //   const start = new Date();
+  //   const end = new Date(activeSub.period_end);
+  //   refund = getSubscriptionCostOverDays(activeSub, start, end);
+  // } else if (activeSub.classes_left > 0) {
+  //   refund = activeSub.classes_left / activeSub.max_classes * activeSub.cost.amount;
+  // }
+
+  // req.ctx.refund = refund;
+  // req.ctx.activeSub = activeSub;
+
+  // next();
 }
 
 async function cancelSubscription(req, res) {
@@ -379,7 +383,6 @@ async function cancelSubscription(req, res) {
 
   const userData = req.ctx.userData;
   const activeSub = req.ctx.activeSub;
-  const now = req.body.now;
   let refund = req.ctx.refund;
 
   if (!activeSub) {
@@ -393,11 +396,13 @@ async function cancelSubscription(req, res) {
 
   if (userData.type === 'standard') {
 
-    // Cancel the sub on stripes end
+    // Update the sub to cancel on period end
     try {
-      await stripe.subscriptions.del(activeSub.id);
+      await stripe.subscriptions.update(activeSub.id, {
+        cancel_at_period_end: true
+      });
     } catch (err) {
-      log.warn("Stripe API error on subscription delete ", err);
+      log.warn("Stripe API error on subscription update to cancel ", err);
       return res.status(500).json({
         message: 'Stripe API error'
       })
@@ -406,88 +411,48 @@ async function cancelSubscription(req, res) {
     // If no payment to refund there should be no refund
     // Occurs in the hour after the trial ends before the invoice is finalized but
     // the subscription is marked ACTIVE
-    if (!activeSub.latest_payment) {
-      refund = 0;
-    }
+    // if (!activeSub.latest_payment) {
+    //   refund = 0;
+    // }
 
-    if (refund > 0 && activeSub.latest_payment) {
-      // issue a payment intent refund using latest_payment
-      let refundTransaction;
-      try {
-        refundTransaction = await stripe.refunds.create({
-          payment_intent: activeSub.latest_payment,
-          amount: refund
-        });
-      } catch (err) {
-        log.warn('Stripe - create refund error: ', err);
-        let re = /is already fully reversed/g
-        if (!err.message.match(re)) {
-          return res.status(400).json({
-            message: err.message,
-          });
-        }
-      }
+    // if (refund > 0 && activeSub.latest_payment) {
+    //   // issue a payment intent refund using latest_payment
+    //   let refundTransaction;
+    //   try {
+    //     refundTransaction = await stripe.refunds.create({
+    //       payment_intent: activeSub.latest_payment,
+    //       amount: refund
+    //     });
+    //   } catch (err) {
+    //     log.warn('Stripe - create refund error: ', err);
+    //     let re = /is already fully reversed/g
+    //     if (!err.message.match(re)) {
+    //       return res.status(400).json({
+    //         message: err.message,
+    //       });
+    //     }
+    //   }
 
-      log.debug("Issued stripe refund for subscription ", refundTransaction);
+    //   log.debug("Issued stripe refund for subscription ", refundTransaction);
 
-      if (refundTransaction) {
-        try {
-          await Transaction.create({
-            amount: refund,
-            paymentId: refundTransaction.id,
-            userId: userData.id,
-            status: refundTransaction.status,
-            type: 'credit',
-            subscriptionId: activeSub.id,
-            created_date: new Date().toISOString()
-          });
-        } catch (err) {
-          return res.status(500).json({
-            message: err.message
-          });
-        }
-      }
-    }
-  }
-
-  // remove user from all future classes
-  const nowDate = new Date(now).toISOString();
-
-  try {
-    await Class.updateMany({ 'participants.id': userData.id, start_date : { $gte: nowDate }}, { $pull: { participants: { id: userData.id } }});
-  } catch (err) {
-    log.warn("Database error ", err);
-    return res.status(500).json({
-      message: "Database error"
-    })
-  }
-
-  // update subscription to CANCELED
-  let sub;
-
-  activeSub.status = 'CANCELED';
-  activeSub.canceled_date = new Date().toISOString();
-
-  try {
-    sub = await Subscription.updateOne({ id: activeSub.id }, activeSub, {new: true});
-  } catch (err) {
-    log.warn("Database error ", err);
-    return res.status(500).json({
-      message: "Database error"
-    })
-  }
-
-  let options = {
-    userId: userData.id,
-    status: 'canceled subscription',
-    subscriptionId: activeSub.id,
-    created_date: new Date().toISOString()
-  }
-
-  try {
-    await Transaction.create(options);
-  } catch (err) {
-    log.warn("Error creating transaction for subscription cancellation ", err);
+    //   if (refundTransaction) {
+    //     try {
+    //       await Transaction.create({
+    //         amount: refund,
+    //         paymentId: refundTransaction.id,
+    //         userId: userData.id,
+    //         status: refundTransaction.status,
+    //         type: 'credit',
+    //         subscriptionId: activeSub.id,
+    //         created_date: new Date().toISOString()
+    //       });
+    //     } catch (err) {
+    //       return res.status(500).json({
+    //         message: err.message
+    //       });
+    //     }
+    //   }
+    // }
   }
 
   res.status(200).json({
