@@ -58,6 +58,10 @@ const Sub = new mongoose.Schema({
   trial_length: {
     type: Number,
     required: true
+  },
+  cancel_at_period_end: {
+    type: Boolean,
+    required: true
   }
 });
 
