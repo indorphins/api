@@ -390,7 +390,7 @@ async function refund(req, res) {
       // If beyond the refund window boot from class but don't process refund
       if (now >= refundWindow && now < course.start_date) {
         transaction.amount = 0;
-        message = "This class is scheduled to start in the next 24 hours. You've been removed but no refund can be issued."
+        message = "This class is scheduled to start in the next 24 hours. You've been removed but no refund can be issued"
       }
     } else {
       // Find the user's subscription and add a class back to it if limited max_classes
@@ -545,7 +545,7 @@ async function refund(req, res) {
       try {
         await Transaction.create({
           amount: transaction.amount,
-          subscriptionId: subscription.id,
+          paymentId: refundTransaction.id,
           classId: classId,
           userId: userId,
           type: 'credit',
