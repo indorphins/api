@@ -35,11 +35,38 @@ async function createSubscription(req, res) {
     freeTrial = true;
   } 
   
-  // Make sure there are no active subscriptions already
+  // Make sure there are no active subscriptions already 
+  // if there are and they're set to cancel at period end, resume it
   if (prevSubs && prevSubs.length > 0) {
     for (let i = 0; i < prevSubs.length; i++) {
       let s = prevSubs[i];
       if (s.status === 'ACTIVE' || s.status === 'TRIAL') {
+        if (s.cancel_at_period_end) {
+          log.info("User ", userData.id, " has existing sub - resume rather than create ", s);
+          // Update via stripe their existing sub to not cancel
+          try {
+            await stripe.subscriptions.update(s.id, {
+              cancel_at_period_end: false
+            });
+          } catch (err) {
+            log.warn("Stripe API error on subscription update to resume ", err);
+            return res.status(500).json({
+              message: 'Stripe API error'
+            })
+          }
+
+          s.cancel_at_period_end = false;
+
+          try {
+            await Subscription.updateOne({ id: s.id }, s);
+          } catch (err) {
+            log.warn("Error resuming sub update call ", err);
+          }
+
+          log.info("Successfully resumed subscription");
+          return res.status(200).json(s);
+        }
+
         log.warn("User has " + s.status + " subscription - can't create another");
         return res.status(400).json({
           message: "You already have an active subscription"
@@ -177,7 +204,8 @@ async function createSubscription(req, res) {
       period_end: fromUnixTime(stripeSub.current_period_end).toISOString(),
       classes_left: product.metadata.max_classes,
       max_classes: product.metadata.max_classes,
-      trial_length: parseInt(product.metadata.trial_length)
+      trial_length: parseInt(product.metadata.trial_length),
+      cancel_at_period_end: false
     }
   } else {
     // Arbitrary end date of 01-01-2024
@@ -194,7 +222,8 @@ async function createSubscription(req, res) {
       period_end: fromUnixTime(1704067200).toISOString(),
       classes_left: -1,
       max_classes: -1,
-      trial_length: 0
+      trial_length: 0,
+      cancel_at_period_end: false
     }
   }
   let sub;
@@ -453,6 +482,14 @@ async function cancelSubscription(req, res) {
     //     }
     //   }
     // }
+  }
+
+  activeSub.cancel_at_period_end = true;
+
+  try {
+    await Subscription.updateOne({ id: activeSub.id }, activeSub);
+  } catch (err) {
+    log.warn("Database error updating sub ", err);
   }
 
   res.status(200).json({
