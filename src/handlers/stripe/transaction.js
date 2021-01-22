@@ -572,9 +572,13 @@ async function refund(req, res) {
     updateData.$inc = {
       available_spots: 1
     }
-
-    if (transaction && transaction.subscriptionId) {
-      updateData.$inc.subscription_users = -1;
+    // There won't be a transaction for subscription joins since the search is for amount > 0
+    if (!transaction) {
+      if (!course.subscription_users) {
+        updateData.subscription_users = 0;
+      } else {
+        updateData.$inc.subscription_users = -1;
+      }
     }
   }
 
