@@ -358,53 +358,83 @@ async function refund(req, res) {
     return res.status(400).json({ message: "You are not in this class" });
   }
 
+  // Find the transaction associated with user and class - if subscription go the sub route
+  // otherwise go the refund route 
+
+  let transactions;
+  try {
+    transactions = await Transaction.find({ 
+      classId: classId,
+      userId: userId,
+      type: 'debit',
+      amount: { $gt: 0 },
+    }).sort({created_date: "desc"});
+  } catch (err) {
+    log.warn("Couldn't find corresponding transaction for class", err);
+  }
+
+  if (transactions && transactions[0]) {
+    transaction = transactions[0];
+  }
+
   if (!course.recurring) {
 
     if (now >= course.start_date) {
       return res.status(400).json({ message: "This class has already occurred and cannot be left or refunded" });
     }
 
-    // Find the user's subscription and add a class back to it if limited max_classes
-    let subscriptions, subscription, sub;
-
-    try {
-      subscriptions = await Subscription.find({ $and: [{user_id: userId} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
-    } catch (err) {
-      log.warn("Couldn't find corresponding subscriptions for user", err);
-    }
-
-    if (subscriptions && subscriptions[0]) {
-      subscription = subscriptions[0];
-    }
-
-
-    // Add back class to classes_left if not unlimited sub (classes left > -1) and classes_left < max_classes
-    if (subscription && subscription.classes_left > -1 && subscription.classes_left < subscription.max_classes) {
-      try {
-        sub = await Subscription.updateOne({ id: subscription.id }, { $inc: { classes_left: 1 }}, {new: true})
-      } catch (err) {
-        log.warn('Refund class - add class back to subscription ', err);
-        return res.status(400).json({
-          message: err.message,
-        });
+    // If the class was booked without a subscription...
+    if (transaction && !transaction.subscriptionId) {
+      let refundWindow = new Date(course.start_date);
+      refundWindow.setDate(refundWindow.getDate() - 1);
+      // If beyond the refund window boot from class but don't process refund
+      if (now >= refundWindow && now < course.start_date) {
+        transaction.amount = 0;
+        message = "This class is scheduled to start in the next 24 hours. You've been removed but no refund can be issued"
       }
-    }
+    } else {
+      // Find the user's subscription and add a class back to it if limited max_classes
+      let subscriptions, subscription, sub;
 
-    if (subscription) {
       try {
-        await Transaction.create({
-          amount: 0,
-          userId: userId,
-          subscriptionId: subscription.id,
-          type: 'credit',
-          classId: course.id,
-          created_date: new Date().toISOString()
-        });
+        subscriptions = await Subscription.find({ $and: [{user_id: userId} , { $or : [{status: 'ACTIVE'}, {status: 'TRIAL'}]}]}).sort({ created_date: "desc" });
       } catch (err) {
-        log.warn('Refund cancel - error creating credit Transaction ', err);
-        return res.status(500).json({
-          message: err.message
-        });
+        log.warn("Couldn't find corresponding subscriptions for user", err);
+      }
+
+      if (subscriptions && subscriptions[0]) {
+        subscription = subscriptions[0];
+      }
+
+
+      // Add back class to classes_left if not unlimited sub (classes left > -1) and classes_left < max_classes
+      if (subscription && subscription.classes_left > -1 && subscription.classes_left < subscription.max_classes) {
+        try {
+          sub = await Subscription.updateOne({ id: subscription.id }, { $inc: { classes_left: 1 }}, {new: true})
+        } catch (err) {
+          log.warn('Refund class - add class back to subscription ', err);
+          return res.status(400).json({
+            message: err.message,
+          });
+        }
+      }
+
+      if (subscription) {
+        try {
+          await Transaction.create({
+            amount: 0,
+            userId: userId,
+            subscriptionId: subscription.id,
+            type: 'credit',
+            classId: course.id,
+            created_date: new Date().toISOString()
+          });
+        } catch (err) {
+          log.warn('Refund cancel - error creating credit Transaction ', err);
+          return res.status(500).json({
+            message: err.message
+          });
+        }
       }
     }
   } else {
@@ -492,8 +522,8 @@ async function refund(req, res) {
     }
   }
 
-  // There should be no transaction found here to trigger refund charge
-  if (transaction) {
+  // There should be a transaction but with 0 amount if from subscription
+  if (transaction && transaction.amount > 0) {
     let refundTransaction;
     try {
       refundTransaction = await stripe.refunds.create({
@@ -515,7 +545,7 @@ async function refund(req, res) {
       try {
         await Transaction.create({
           amount: transaction.amount,
-          subscriptionId: subscription.id,
+          paymentId: refundTransaction.id,
           classId: classId,
           userId: userId,
           type: 'credit',
@@ -541,6 +571,14 @@ async function refund(req, res) {
   if (userType === 'standard') {
     updateData.$inc = {
       available_spots: 1
+    }
+    // There won't be a transaction for subscription joins since the search is for amount > 0
+    if (!transaction) {
+      if (!course.subscription_users) {
+        updateData.subscription_users = 0;
+      } else {
+        updateData.$inc.subscription_users = -1;
+      }
     }
   }
 

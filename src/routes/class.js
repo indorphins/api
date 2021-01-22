@@ -32,7 +32,7 @@ router.put('/:id', classHandlers.updateClass);
 router.post('/:id/feedback/:sessionId', middleware.authentication);
 router.post('/:id/feedback/:sessionId', feedbackHandlers.post);
 
-// Old add user to class route
+// Old add user to class route via book now
 router.post('/:id/payment/:payment_method_id', middleware.authentication);
 router.post('/:id/payment/:payment_method_id', stripeHandlers.transaction.create);
 

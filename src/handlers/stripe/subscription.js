@@ -638,14 +638,20 @@ async function addUserToClass(req, res) {
   let updateData = {
     $push: {
       participants: participant
-    }
+    },
   }
 
   // Instructors don't take up a spot since they play for free
   if (userType === 'standard') {
     updateData.$inc = {
       available_spots: -1
-    };
+    }
+  }
+
+  if (!course.subscription_users) {
+    updateData.subscription_users = 1
+  } else {
+    updateData.$inc.subscription_users = 1;
   }
 
   let updatedClass;
