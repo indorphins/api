@@ -572,6 +572,10 @@ async function refund(req, res) {
     updateData.$inc = {
       available_spots: 1
     }
+
+    if (transaction && transaction.subscriptionId) {
+      updateData.$inc.subscription_users = -1;
+    }
   }
 
   let updatedCourse;
