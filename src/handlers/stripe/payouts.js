@@ -96,11 +96,11 @@ async function getInstructorsSubShare(req, res) {
 
   classes.forEach(c => {
     if (!spotsBooked[c.instructor]) {
-      spotsBooked[c.instructor] = c.participants ? c.participants.length : 0;
+      spotsBooked[c.instructor] = c.subscription_users ? c.subscription_users : 0;
     } else {
-      spotsBooked[c.instructor] += c.participants ? c.participants.length : 0;
+      spotsBooked[c.instructor] += c.subscription_users ? c.subscription_users : 0;
     }
-    totalSpotsBooked += c.participants ? c.participants.length : 0;
+    totalSpotsBooked += c.subscription_users ? c.subscription_users : 0;
   })
 
   // Fetch all instructors
