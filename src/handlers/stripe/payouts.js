@@ -123,8 +123,12 @@ async function getInstructorsSubShare(req, res) {
   }
 
   // Instructors get a share equal to the number of spots booked in classes hosted between start and end date 
-  // DIVIDED BY the total number of spots booked in all classes over that time
+  // DIVIDED BY the total number of spots booked in all classes over that time (set to 1 if 0 to avoid NaN)
   // TIMES the amount of subscription money generated during that time allotted for instructors (80%)
+
+  if (totalSpotsBooked === 0) {
+    totalSpotsBooked = 1;
+  }
 
   let payouts = instructors.map(i => {
     let booked = spotsBooked[i.id] ? spotsBooked[i.id] : 0;
