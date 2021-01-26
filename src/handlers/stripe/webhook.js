@@ -126,6 +126,13 @@ async function invoiceWebhook(req, res) {
     }
     if (dataObject.status === 'canceled') {
       // remove user from all future classes
+      try {
+        sub = await Subscription.findOne({ id: dataObject.id });
+      } catch (err) {
+        log.warn("Database error in webhook ", err)
+        return res.sendStatus(200);
+      }
+      
       const nowDate = new Date().toISOString();
       const userId = sub.user_id;
 
@@ -346,6 +353,13 @@ async function devWebhook(req, res) {
 
   if (event.type === 'customer.subscription.deleted') {
     // remove user from all future classes
+    try {
+      sub = await Subscription.findOne({ id: dataObject.id });
+    } catch (err) {
+      log.warn("Database error in webhook ", err)
+      return res.sendStatus(200);
+    }
+
     const nowDate = new Date().toISOString();
     const userId = sub.user_id;
 
