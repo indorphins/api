@@ -126,7 +126,7 @@ async function invoiceWebhook(req, res) {
     }
     if (dataObject.status === 'canceled') {
       // remove user from all future classes
-      const nowDate = new Date(now).toISOString();
+      const nowDate = new Date().toISOString();
       const userId = sub.user_id;
 
       try {
@@ -296,7 +296,7 @@ async function devWebhook(req, res) {
     }
     if (dataObject.status === 'canceled') {
       // remove user from all future classes
-      const nowDate = new Date(now).toISOString();
+      const nowDate = new Date().toISOString();
       const userId = sub.user_id;
 
       try {
@@ -346,7 +346,7 @@ async function devWebhook(req, res) {
 
   if (event.type === 'customer.subscription.deleted') {
     // remove user from all future classes
-    const nowDate = new Date(now).toISOString();
+    const nowDate = new Date().toISOString();
     const userId = sub.user_id;
 
     try {
