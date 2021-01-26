@@ -331,7 +331,7 @@ async function refund(req, res) {
   const now = new Date();
   let course;
   let transaction;
-  let message = "You have been removed from the class";
+  let message = "Thanks for the heads up! We’ve refunded you for this class and hope to see you again soon!";
 
   try {
     course = await Class.findOne({
@@ -390,7 +390,7 @@ async function refund(req, res) {
       // If beyond the refund window boot from class but don't process refund
       if (now >= refundWindow && now < course.start_date) {
         transaction.amount = 0;
-        message = "This class is scheduled to start in the next 24 hours. You've been removed but no refund can be issued"
+        message = "Thanks for making space for others! To over communicate: no refund was made because of the short notice cancellation."
       }
     } else {
       // Find the user's subscription and add a class back to it if limited max_classes
@@ -556,7 +556,6 @@ async function refund(req, res) {
           message: err.message
         });
       }
-      message = message + ", and your recent payment refunded";
     }
   }
 
@@ -606,7 +605,7 @@ async function refund(req, res) {
   data.instructor = Object.assign({}, instructorData._doc);
 
   return res.status(200).json({
-    message: message + ". Sorry to see you go 👋",
+    message: message,
     course: data,
   });
 }
