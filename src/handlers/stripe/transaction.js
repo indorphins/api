@@ -331,7 +331,7 @@ async function refund(req, res) {
   const now = new Date();
   let course;
   let transaction;
-  let message = "Thanks for the heads up! We’ve refunded you for this class and hope to see you again soon!";
+  let message = "Thanks for making space for others! We’ve removed you from this class.";
 
   try {
     course = await Class.findOne({
@@ -387,6 +387,7 @@ async function refund(req, res) {
     if (transaction && !transaction.subscriptionId) {
       let refundWindow = new Date(course.start_date);
       refundWindow.setDate(refundWindow.getDate() - 1);
+      message = 'Thanks for making space for others! We’ve removed you from this class and issued you a refund.';
       // If beyond the refund window boot from class but don't process refund
       if (now >= refundWindow && now < course.start_date) {
         transaction.amount = 0;
