@@ -181,6 +181,55 @@ async function invoiceWebhook(req, res) {
     }
   }
 
+  if (event.type === 'customer.subscription.deleted') {
+    // remove user from all future classes
+    try {
+      sub = await Subscription.findOne({ id: dataObject.id });
+    } catch (err) {
+      log.warn("Database error in webhook ", err)
+      return res.sendStatus(200);
+    }
+
+    const nowDate = new Date().toISOString();
+    const userId = sub.user_id;
+
+    try {
+      await Class.updateMany({ 'participants.id': userId, start_date : { $gte: nowDate }}, { $pull: { participants: { id: userId } }});
+    } catch (err) {
+      log.warn("Database error ", err);
+      return res.status(500).json({
+        message: "Database error"
+      })
+    }
+
+    // update subscription to CANCELED
+    sub.status = 'CANCELED';
+    sub.canceled_date = new Date().toISOString();
+
+    try {
+      await Subscription.updateOne({ id: sub.id }, sub);
+    } catch (err) {
+      log.warn("Database error ", err);
+      return res.status(500).json({
+        message: "Database error"
+      })
+    }
+
+    let options = {
+      userId: userId,
+      status: 'canceled subscription',
+      subscriptionId: sub.id,
+      created_date: new Date().toISOString()
+    }
+
+    try {
+      await Transaction.create(options);
+    } catch (err) {
+      log.warn("Error creating transaction for subscription cancellation ", err);
+    }
+    return res.sendStatus(200);
+  }
+
   res.sendStatus(200);
 }
 
@@ -309,7 +358,7 @@ async function devWebhook(req, res) {
         log.warn("Database error in webhook ", err)
         return res.sendStatus(200);
       }
-      
+
       const nowDate = new Date().toISOString();
       const userId = sub.user_id;
 
