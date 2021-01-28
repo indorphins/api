@@ -105,6 +105,7 @@ async function createClass(req, res) {
     classData.available_spots = classData.total_spots;
     classData.instructor = req.ctx.userData.id;
     classData.participants = [];
+    classData.subscription_users = 0;
   
     try {
       productSkuData = await utils.createClassSku(classData);
@@ -118,7 +119,6 @@ async function createClass(req, res) {
   
     classData.product_sku = productSkuData.product_sku;
     classData.product_price_id = productSkuData.product_price_id;
-  
   
     try {
       newClass = await Class.create(classData);

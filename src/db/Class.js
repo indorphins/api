@@ -67,7 +67,7 @@ const ClassSchema = new mongoose.Schema({
   cost: {
     type: Number,
     required: true,
-    default: 20.0,
+    default: 10.0,
   },
   photo_url: {
     type: String,
@@ -77,6 +77,11 @@ const ClassSchema = new mongoose.Schema({
   },
   product_price_id: {
     type: String,
+  },
+  subscription_users: {
+    type: Number,
+    required: true,
+    default: 0
   }
 });
 
