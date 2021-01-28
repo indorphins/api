@@ -646,12 +646,12 @@ async function addUserToClass(req, res) {
     updateData.$inc = {
       available_spots: -1
     }
-  }
-
-  if (!course.subscription_users) {
-    updateData.subscription_users = 1
-  } else {
-    updateData.$inc.subscription_users = 1;
+    
+    if (!course.subscription_users) {
+      updateData.subscription_users = 1
+    } else {
+      updateData.$inc.subscription_users = 1;
+    }
   }
 
   let updatedClass;
