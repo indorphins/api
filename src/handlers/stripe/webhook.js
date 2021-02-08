@@ -4,6 +4,7 @@ const Transaction = require('../../db/Transaction');
 const Class = require('../../db/Class');
 const User = require('../../db/User');
 const log = require('../../log');
+const utils = require('../../utils/index');
 const fromUnixTime = require('date-fns/fromUnixTime');
 
 /**
@@ -306,33 +307,45 @@ async function customerSubscriptionDeleted(dataObject, res) {
     return res.sendStatus(404);
   }
 
-  let updateData = {
-    $pull: {
-      participants: {
-        id: userId
-      }
-    }
-  }
-
-  if (user.type === 'standard') {
-    updateData.$inc = {
-      available_spots: 1
-    }
-
-    if (!course.subscription_users) {
-      updateData.subscription_users = 0;
-    } else {
-      updateData.$inc.subscription_users = -1;
-    }
-  }
-
+  let courses;
   try {
-    await Class.updateMany({ 'participants.id': userId, start_date : { $gte: nowDate }}, updateData);
+    courses = await Class.find({ 'participants.id': userId, start_date : { $gte: nowDate }})
   } catch (err) {
-    log.warn("Database error ", err);
-    return res.status(500).json({
-      message: "Database error"
-    })
+    log.warn("Database error in webhook ", err)
+    return res.sendStatus(500);
+  }
+
+  if (courses && courses.length > 0) {
+    await utils.asyncForEach(courses, async course => {
+      let updateData = {
+        $pull: {
+          participants: {
+            id: userId
+          }
+        }
+      }
+
+      if (user.type === 'standard') {
+        updateData.$inc = {
+          available_spots: 1
+        }
+    
+        if (!course.subscription_users) {
+          updateData.subscription_users = 0;
+        } else {
+          updateData.$inc.subscription_users = -1;
+        }
+      }
+    
+      try {
+        await Class.updateOne({ id: course.id }, updateData);
+      } catch (err) {
+        log.warn("Database error ", err);
+        return res.status(500).json({
+          message: "Database error"
+        })
+      }
+    });
   }
 
   // update subscription to CANCELED
