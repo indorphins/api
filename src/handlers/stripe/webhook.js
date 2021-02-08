@@ -295,7 +295,7 @@ async function customerSubscriptionDeleted(dataObject, res) {
 
   let user;
   try {
-    user = await User.findById({id: userId});
+    user = await User.findOne({ id: userId });
   } catch (err) {
     log.warn("Database error in webhook ", err)
     return res.sendStatus(500);
