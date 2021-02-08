@@ -2,6 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Subscription = require('../../db/Subscription');
 const Transaction = require('../../db/Transaction');
 const Class = require('../../db/Class');
+const User = require('../../db/User');
 const log = require('../../log');
 const fromUnixTime = require('date-fns/fromUnixTime');
 
@@ -281,6 +282,7 @@ async function devWebhook(req, res) {
 
 async function customerSubscriptionDeleted(dataObject, res) {
   // remove user from all future classes
+  let sub;
   try {
     sub = await Subscription.findOne({ id: dataObject.id });
   } catch (err) {
@@ -291,6 +293,19 @@ async function customerSubscriptionDeleted(dataObject, res) {
   const nowDate = new Date().toISOString();
   const userId = sub.user_id;
 
+  let user;
+  try {
+    user = await User.findById({id: userId});
+  } catch (err) {
+    log.warn("Database error in webhook ", err)
+    return res.sendStatus(500);
+  }
+
+  if (!user) {
+    log.warn("No user found tied to subscription user id ", userId);
+    return res.sendStatus(404);
+  }
+
   let updateData = {
     $pull: {
       participants: {
@@ -299,7 +314,7 @@ async function customerSubscriptionDeleted(dataObject, res) {
     }
   }
 
-  if (userType === 'standard') {
+  if (user.type === 'standard') {
     updateData.$inc = {
       available_spots: 1
     }
