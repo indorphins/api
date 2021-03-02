@@ -33,6 +33,10 @@ const ClassSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  instructor_name:{
+    type: String,
+    required: true
+  },
   participants: [UserRef],
   // Should be UTC date
   session: {
