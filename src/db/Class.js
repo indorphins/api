@@ -33,7 +33,7 @@ const ClassSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  instructorName:{
+  instructor_name:{
     type: String,
     required: true
   },
