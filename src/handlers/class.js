@@ -104,7 +104,7 @@ async function createClass(req, res) {
     classData.created_date = new Date().toISOString();
     classData.available_spots = classData.total_spots;
     classData.instructor = req.ctx.userData.id;
-    classData.instructorName = req.ctx.userData.username;
+    classData.instructor_name = req.ctx.userData.username;
     classData.participants = [];
     classData.subscription_users = 0;
 
