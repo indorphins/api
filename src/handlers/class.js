@@ -107,6 +107,7 @@ async function createClass(req, res) {
     classData.instructor_name = req.ctx.userData.username;
     classData.participants = [];
     classData.subscription_users = 0;
+    classData.private = classData.private_class ? classData.private_class : false;
 
     try {
       productSkuData = await utils.createClassSku(classData);
