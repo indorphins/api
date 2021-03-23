@@ -86,6 +86,10 @@ const ClassSchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 0
+  },
+  private: {
+    type: Boolean,
+    default: false
   }
 });
 
