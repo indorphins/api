@@ -131,11 +131,62 @@ function getEmailSender() {
   return 'Indoorphins.fit <no-reply@indoorphins.fit>';
 }
 
+// Returns sender's email address that can be replied to
+function getReplyableEmailSender() {
+  return 'Indoorphins.fit <hello@indoorphins.fit>'
+}
+
 function createDefaultMessageText(classTime, instructor) {
   const start = new Date(classTime);
   let startTime = start.getHours() + ':' + start.getMinutes();
   startTime = tConvert(startTime);
   return `A friendly note from your neighborhood Indoorphins instructor ${instructor}!`
+}
+
+/**
+ * Returns the subject text for account created email notification
+ */
+function createAccountCreatedSubject() {
+  return `Welcome to Indoorphins!`;
+}
+
+/**
+ * Returns the body text for account created email notification
+ * @param {String} username 
+ * @param {String} email
+ * @param {String} password
+ */
+function createAccountCreatedBody(username, email, password) {
+  return {
+    text: `
+      Hey ${username},
+
+      Your company is about to kickoff a fitness series with us at www.indoorphins.fit! We have 20+ weekly group fitness classes that teams can take together (or that you can take alone).
+
+      This login info will let you book into any class for free:
+
+      Email: ${email}
+      Password: ${password}
+
+      Your team will be sharing more info with you over the coming days, but if you have any questions in the meantime, feel free to reply to this email.
+
+      Checkout the schedule here (${process.env.CLIENT_HOST}) to get going!
+
+      Let’s Move!
+      The Team @ Indoorphins
+    `, 
+    html: `
+      <p>Hey <strong>${username}</strong>,</p>
+      <p>Your company is about to kickoff a fitness series with us at <a href="https://www.indoorphins.fit">www.indoorphins.fit</a>! We have 20+ weekly group fitness classes that teams can take together (or that you can take alone).</p>
+      <p>This login info will let you book into any class for free:</p>
+      <p>  <strong>Email: ${email}</strong></p>
+      <p>  <strong>Password: ${password}</strong></p>
+      <p>Your team will be sharing more info with you over the coming days, but if you have any questions in the meantime, feel free to reply to this email.</p>
+      <p>Checkout the <a href="${process.env.CLIENT_HOST}">schedule here</a> to get going!</p>
+      <p>Let's Move!</p>
+      <p>The Team @ Indoorphins</p>
+    `
+  };
 }
 
 /**
@@ -208,6 +259,9 @@ module.exports = {
   createDefaultMessageText,
   createClassJoinedSubject,
   createClassJoinedBody,
+  createAccountCreatedSubject,
+  createAccountCreatedBody,
+  getReplyableEmailSender,
   isInteger,
-  asyncForEach
+  asyncForEach,
 }

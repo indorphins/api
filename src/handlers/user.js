@@ -31,6 +31,11 @@ async function createUser(req, res) {
 		}
 	}
 
+  // when creating via admin tool ctx userData is admin so no type is set
+  if (!userData.type) {
+    userData.type = 'standard';
+  }
+
 	try {
 		newUser = await User.create(userData);
 	} catch (err) {
