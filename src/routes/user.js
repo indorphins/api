@@ -4,6 +4,7 @@ const user = require('../handlers/user');
 const stripe = require('../handlers/stripe');
 const campaign = require('../handlers/campaign');
 const router = express.Router();
+const subscriptionHandlers = require("../handlers/stripe/subscription");
 
 router.get('/referFriend', middleware.authentication);
 router.get('/referFriend', campaign.referFriend);

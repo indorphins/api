@@ -6,6 +6,7 @@ const User = require('../db/User')
 const noreply = 'noreply@indorphins.com'
 const support = 'support@indoorphins.fit'
 const alex = 'alex@indorphins.com';
+const base62 = require("base62/lib/ascii");
 
 // TODO move to env vars when we set up sms
 const fromPhone = '+14405368595'
@@ -223,6 +224,53 @@ async function sendSms(to, from, text) {
 }
 
 /**
+ * Sends an email to the input user email (if they exist) telling that
+ * their account was created and gives them their password
+ * @param {Object} req 
+ * @param {Object} res 
+ */
+async function accountCreated(req, res) {
+  const userData = req.ctx.userData;
+  const userEmail = req.body.email;
+  const hashedPassword = req.body.password;
+
+  if (userData.type !== 'admin') {
+    return res.status(403).json({
+      message: 'Invalid authorization'
+    })
+  }
+
+  let user;
+  try {
+    user = await User.findOne({email: userEmail});
+  } catch (err) {
+    log.warn("accountCreated database error finding user: ", err);
+    return res.status(500).json({
+      message: 'Database error'
+    })
+  }
+
+  let pw = Buffer.from(hashedPassword, 'base64').toString();
+
+  const subject = utils.createAccountCreatedSubject();
+  const body = utils.createAccountCreatedBody(user.username, userEmail, pw);
+
+  try {
+    await sendEmail(userEmail, utils.getReplyableEmailSender(), subject, body.text, body.html, false);
+  } catch (err) {
+    log.warn("Error sending acct created email email: ", err);
+    return res.status(400).json({
+      message: 'Error sending acct created email',
+      error: err
+    })
+  }
+
+  res.status(200).json({
+    message: "Sent acct created email success"
+  })
+}
+
+/**
  * Checks if user is in class. If so send them an email notification
  * Using the input class_date to set datetime parameters from req.body
  * @param {Object} req 
@@ -289,5 +337,6 @@ async function classJoined(req, res) {
 module.exports = {
   sendEmail,
   sendSms,
-  classJoined
+  classJoined,
+  accountCreated
 }

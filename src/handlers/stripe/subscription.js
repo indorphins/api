@@ -12,6 +12,16 @@ const differenceInDays = require('date-fns/differenceInCalendarDays');
 const unlimitedSubscriptionSku = process.env.UNLIMITED_SUB_SKU
 const uuid = require('uuid');
 
+/* STRIPE SUBSCRIPTION NOTES
+ * 
+ * metadata values are key to the logic of our subscriptions
+ * "max_classes" limits the number of classes a user can take 
+ * currently -1 is the only value we have which equates to unlimited
+ * "trial_length" determines how many days the free trial of the subscription will be active 
+ * not all subscriptions get trials, only users without previous subs and users created by Admins
+ * 
+ */
+
 async function createSubscription(req, res) {
   const userData = req.ctx.userData;
   const sku = req.body.sku;
@@ -723,6 +733,202 @@ async function addUserToClass(req, res) {
   });
 }
 
+/**
+ * Method for admins to enroll users in a free trial subscription
+ * Without the need for payment methods tied to the input user
+ * Subscriptions will cancel at period end
+ * @param {Object} req 
+ * @param {Object} res 
+ */
+async function createSubscriptionAsAdmin(req, res) {
+  const userData = req.ctx.userData;
+  const userId = req.body.user_id;
+  const sku = req.body.sku;
+  const priceId = req.body.price;
+
+  if (userData && userData.type !== 'admin') {
+    log.warn("Non admins can't create subscriptions for users");
+    return res.status(403).json({
+      message: "Unauthorized"
+    })
+  }
+
+  // Check if user has had a subscription before, if not give them free 14 day trial
+  // If they have an active sub don't let them create another
+  let prevSubs;
+
+  try {
+    prevSubs = await Subscription.find({ user_id: userId });
+  } catch (err) {
+    log.warn("Database Error finding prev sub ", err);
+    return res.status(500).json({
+      message: "Database error"
+    })
+  }
+
+  if (prevSubs && prevSubs.length > 0) {
+    return res.status(400).json({
+      message: 'User already has had a subscription'
+    })
+  }
+
+  let stripeUser;
+  try {
+    stripeUser = await StripeUser.findOne({ id: userId })
+  } catch (err) {
+    log.warn("Database error ", err);
+    return res.status(500).json({
+      message: "Database Error"
+    })
+  }
+
+  if (!stripeUser || !stripeUser.customerId) {
+    log.warn("No stripe user found to create subscription for");
+    return res.status(404).json({
+      message: "No valid stripe user found to create subscription"
+    })
+  }
+
+  let stripeSub, price, product;
+
+  // Validate product is one of ours
+  try {
+    product = await stripe.products.retrieve(sku);
+  } catch (err) {
+    log.warn("Stripe API error ", err);
+    return res.status(500).json({
+      message: "Stripe API error"
+    })
+  }
+
+  if (!product) {
+    log.warn("Invalid product sku");
+    return res.status(404).json({
+      message: "Invalid product sku"
+    })
+  }
+
+  // Product must have metadata tied to the number of classes for this package
+  if (!product.metadata || !product.metadata.max_classes || !product.metadata.trial_length) {
+    log.warn("Product has no metadata or missing max_classes or trial_length properties");
+    return res.status(400).json({
+      message: "Invalid product metadata"
+    })
+  }
+
+  // fetch the prices (should be one monthly recurring one but could be more in the future) corresponding to the product they selected 
+  let prices;
+
+  try {
+    prices = await stripe.prices.list({product: sku});
+  } catch (err) {
+    log.warn("Stripe API error ", err);
+    return res.status(500).json({
+      message: "Stripe API Error"
+    })
+  }
+
+  if (!prices || !prices.data || prices.data.length === 0) {
+    log.warn("No prices tied to product");
+    return res.status(404).json({
+      message: "No prices found"
+    })
+  }
+
+  price = prices.data.filter(p => {
+    return p.id === priceId;
+  });
+
+  if (!price || price.length === 0) {
+    log.warn("Invalid price");
+    return res.status(400).json({
+      message: 'Invalid price'
+    })
+  }
+
+  price = price[0];
+
+  // create a stripe subscription based on the product the user selected to sign up for
+  let options = { 
+    customer: stripeUser.customerId,
+    items: [
+      {price: price.id}
+    ],
+    proration_behavior: 'none',
+    payment_behavior: 'error_if_incomplete',
+    collection_method: 'charge_automatically',
+    cancel_at_period_end: true,
+    trial_period_days: parseInt(product.metadata.trial_length)
+  };
+
+  try {
+    stripeSub = await stripe.subscriptions.create(options)
+  } catch (err) {
+    log.warn("Stripe API error on subscription creation ", err);
+    return res.status(500).json({
+      message: "Stripe API error"
+    })
+  }
+
+  if (!stripeSub) {
+    // Would need to handle cancelling the sub - but this case shouldn't ever happen and we can likely remove
+    log.warn("Subscription not returned ", err);
+    return res.status(404).json({
+      message: "Subscription not returned"
+    })
+  }
+
+  log.debug("Created stripe subscription ", stripeSub);
+
+  // Create our own subscription object in our db
+  const now = new Date().toISOString();
+  options = {
+    id: stripeSub.id,
+    user_id: userId,
+    status: 'TRIAL',
+    created_date: fromUnixTime(stripeSub.created).toISOString(),
+    item: { price: price.id },
+    cost: { 
+      amount: price.unit_amount,
+      recurring: price.recurring
+    },
+    period_start: fromUnixTime(stripeSub.current_period_start).toISOString(),
+    period_end: fromUnixTime(stripeSub.current_period_end).toISOString(),
+    classes_left: product.metadata.max_classes,
+    max_classes: product.metadata.max_classes,
+    trial_length: parseInt(product.metadata.trial_length),
+    cancel_at_period_end: false // set to false so that user's with this trial sub will see the 'Cancel Sub' button rather than 'Resume sub'
+  }
+  
+  let sub;
+
+  try {
+    sub = await Subscription.create(options)
+  } catch (err) {
+    log.warn("Database error creating our Subscription ", err);
+    return res.status(500).json({
+      message: "Database Error"
+    })
+  }
+
+  options = {
+    userId: userId,
+    status: 'created subscription',
+    subscriptionId: sub.id,
+    created_date: now
+  }
+
+  try {
+    await Transaction.create(options);
+  } catch (err) {
+    log.warn("Error creating transaction for subscription creation ", err);
+  }
+
+  log.info("Successfully created subscription ", sub);
+
+  return res.status(200).json(sub);
+}
+
 module.exports = {
   createSubscription,
   getProductsPrices: getUnlimitedSubProduct,
@@ -731,4 +937,5 @@ module.exports = {
   getSubscriptionCostOverDays,
   addUserToClass,
   getRefundAmount,
+  createSubscriptionAsAdmin
 }

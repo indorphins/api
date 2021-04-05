@@ -1,8 +1,10 @@
 const uuid = require('uuid');
 const User = require('../db/User');
+const StripeUser = require('../db/StripeUser');
 const Campaign = require('../db/Campaign');
 const log = require('../log');
 const knownAccounts = require('../db/known_accounts.json');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 /**
  * Express handler to create a new user. Requires a valid firebase token so that we can properly associate
@@ -31,6 +33,11 @@ async function createUser(req, res) {
 		}
 	}
 
+  // when creating via admin tool ctx userData is admin so no type is set
+  if (!userData.type) {
+    userData.type = 'standard';
+  }
+
 	try {
 		newUser = await User.create(userData);
 	} catch (err) {
@@ -40,7 +47,42 @@ async function createUser(req, res) {
 		});
   }
 
-	res.status(201).json({
+  const query = {
+    id: userData.id
+  }
+
+  let stripeUser;
+  try {
+    stripeUser = await StripeUser.findOne(query);
+  } catch (error) {
+    log.warn('Error creating customer ', error);
+    return res.status(400).json({
+      message: error
+    });
+  }
+
+  if (!stripeUser) {
+    let customer = await stripe.customers.create({
+      email: userData.email,
+    });
+
+    let data = {
+      id: userData.id,
+      methods: [],
+      customerId: customer.id,
+    };
+  
+    try {
+      stripeUser = await StripeUser.create(data);
+    } catch (err) {
+      log.warn('createStripeUser - error: ', err);
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+  }
+
+	return res.status(201).json({
 		message: 'New user created',
 		data: newUser,
 	});
