@@ -164,7 +164,6 @@ function createAccountCreatedBody(username, email, password) {
       Your company is about to kickoff a fitness series with us at www.indoorphins.fit! We have 20+ weekly group fitness classes that teams can take together (or that you can take alone).
 
       This login info will let you book into any class for free:
-
       Email: ${email}
       Password: ${password}
 
@@ -174,17 +173,22 @@ function createAccountCreatedBody(username, email, password) {
 
       Let’s Move!
       The Team @ Indoorphins
+
+      By logging in with this information, you agree to our <a href="https://indoorphins.fit/TOS.html">Terms of Service</a> and <a href="https://indoorphins.fit/PP.html">Privacy Policy</a>
     `, 
     html: `
-      <p>Hey <strong>${username}</strong>,</p>
+      <p>Hey ${username},</p>
       <p>Your company is about to kickoff a fitness series with us at <a href="https://www.indoorphins.fit">www.indoorphins.fit</a>! We have 20+ weekly group fitness classes that teams can take together (or that you can take alone).</p>
-      <p>This login info will let you book into any class for free:</p>
-      <p>  <strong>Email: ${email}</strong></p>
-      <p>  <strong>Password: ${password}</strong></p>
+      <p>This login info will let you book into any class for free:<br/>
+      <strong>Email: ${email}</strong><br/>
+      <strong>Password: ${password}</strong>
+      </p>
       <p>Your team will be sharing more info with you over the coming days, but if you have any questions in the meantime, feel free to reply to this email.</p>
       <p>Checkout the <a href="${process.env.CLIENT_HOST}">schedule here</a> to get going!</p>
-      <p>Let's Move!</p>
-      <p>The Team @ Indoorphins</p>
+      <p>Let's Move!<br/>
+      The Team @ Indoorphins
+      </p>
+      <p>By logging in with this information, you agree to our <a href="https://indoorphins.fit/TOS.html">Terms of Service</a> and <a href="https://indoorphins.fit/PP.html">Privacy Policy</a></p>
     `
   };
 }
