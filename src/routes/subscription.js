@@ -19,4 +19,8 @@ router.delete('/', subscriptionHandlers.cancelSubscription);
 router.post('/', middleware.authentication);
 router.post('/', subscriptionHandlers.createSubscription);
 
+// For admins to create subscriptions for users
+router.post('/admin', middleware.authentication);
+router.post('/admin', subscriptionHandlers.createSubscriptionAsAdmin);
+
 module.exports = router;
