@@ -858,7 +858,7 @@ async function createSubscriptionAsAdmin(req, res) {
     payment_behavior: 'error_if_incomplete',
     collection_method: 'charge_automatically',
     cancel_at_period_end: true,
-    trial_period_days: parseInt(product.metadata.trial_length)
+    trial_period_days: 30 // Hard set value of 30 days for subs created by admins
   };
 
   try {
@@ -896,7 +896,7 @@ async function createSubscriptionAsAdmin(req, res) {
     period_end: fromUnixTime(stripeSub.current_period_end).toISOString(),
     classes_left: product.metadata.max_classes,
     max_classes: product.metadata.max_classes,
-    trial_length: parseInt(product.metadata.trial_length),
+    trial_length: 30,
     cancel_at_period_end: false // set to false so that user's with this trial sub will see the 'Cancel Sub' button rather than 'Resume sub'
   }
   
