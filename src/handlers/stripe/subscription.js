@@ -897,7 +897,7 @@ async function createSubscriptionAsAdmin(req, res) {
     classes_left: product.metadata.max_classes,
     max_classes: product.metadata.max_classes,
     trial_length: parseInt(product.metadata.trial_length),
-    cancel_at_period_end: true
+    cancel_at_period_end: false // set to false so that user's with this trial sub will see the 'Cancel Sub' button rather than 'Resume sub'
   }
   
   let sub;
