@@ -2,7 +2,8 @@ const Reportings = require('../db/Reportings');
 const InstructorReportings = require('../db/InstructorReportings');
 const User = require('../db/User');
 const Class = require('../db/Class');
-const {} = require('date-fns')
+const log = require('../log');
+const utils = require('../utils/index');
 
 async function getReports(req, res) {
   const userData = req.ctx.userData;
@@ -54,7 +55,7 @@ async function getReportsByDomain(req, res) {
   const userData = req.ctx.userData;
   const domain = req.params.domain;
 
-  if (userData.type === 'standard') {
+  if (userData.type !== 'admin') {
     return res.status(403).json({
       message: "Account type forbidden"
     })
@@ -75,29 +76,73 @@ async function getReportsByDomain(req, res) {
     return u.id;
   })
 
-  console.log("DOMAIN  ", domain);
-  let classes;
+  let classes = [];
 
-  try {
-    classes = await Class.find({ "participants.id" : {$in: userIDs} });
-  } catch (err) {
-    log.warn("Error finding classes for users by domain ", err);
-    return res.status(500).json({
-      message: "Error fetching data by domain"
+  await utils.asyncForEach(users, async user => {
+    let userClassMap = {}
+    let userClasses = [];
+    try {
+      userClasses = await Class.find({"participants.id": user.id});
+    } catch (err) {
+      log.warn("Get reports by domain DB error finding classes by id ", id, err);
+      return res.status(500).json({
+        message: 'Database error'
+      })
+    }
+    userClassMap[user.email] = userClasses
+    classes.push(userClassMap)
+  })
+
+  return res.status(200).json(classes)
+}
+
+async function getReportsByUser(req, res) {
+  const userData = req.ctx.userData;
+  const userEmail = req.params.user_email;
+
+  if (userData.type !== 'admin') {
+    return res.status(403).json({
+      message: "Account type forbidden"
     })
   }
 
-  console.log("GOT DOMAIN CLASSES ", classes);
-  console.log("GOT DOMAIN USERS ", users);
+  let user;
 
-  return res.status(200).json({
-    classes: classes,
-    users: users
-  })
+  try {
+    user = await User.findOne({email: userEmail});
+  } catch (err) {
+    log.warn("Error finding user classes ", err);
+    return res.status(500).json({
+      message: "Error finding user classes"
+    })
+  }
+
+  if (!user || !user.id) {
+    log.warn("getReportsByUser - No user exists with that email");
+    return res.status(500).json({
+      message: "No user exists with that email"
+    })
+  }
+
+  let classes;
+
+  try {
+    classes = await Class.find({ "participants.id" : user.id });
+  } catch (err) {
+    log.warn("Error finding classes for user ", err);
+    return res.status(500).json({
+      message: "Error finding user classes"
+    })
+  }
+
+  let userClassPair = {}
+  userClassPair[user.email] = classes
+  return res.status(200).json([userClassPair]);
 }
 
 module.exports = {
   getReports,
   getInstructorReports,
-  getReportsByDomain
+  getReportsByDomain,
+  getReportsByUser
 }
