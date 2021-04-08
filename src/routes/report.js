@@ -16,4 +16,9 @@ router.get('/payouts/:start_date/:end_date', payoutHandlers.getInstructorsSubSha
 router.get('/domain/:domain', middleware.authentication);
 router.get('/domain/:domain', reportHandlers.getReportsByDomain);
 
+router.get('/user/:user_email', middleware.authentication);
+router.get('/user/:user_email', reportHandlers.getReportsByUser);
+
+router.get('/')
+
 module.exports = router;
